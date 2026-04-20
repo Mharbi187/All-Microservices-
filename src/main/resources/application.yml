@@ -1,0 +1,88 @@
+spring:
+  application:
+    name: core-service
+  config:
+    import: optional:configserver:http://config-server:8888
+
+  datasource:
+    # ⚠️ SECURITY: All datasource credentials must come from environment variables
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/nexusaiddb}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+  rabbitmq:
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    listener:
+      simple:
+        retry:
+          enabled: true
+          initial-interval: 1000
+          max-attempts: 3
+          max-interval: 10000
+          multiplier: 2.0
+        default-requeue-rejected: false
+
+# JWT Configuration
+security:
+  jwt:
+    private-key: ${JWT_PRIVATE_KEY:}
+    private-key-path: ${JWT_PRIVATE_KEY_PATH:}
+    expiration: 86400000
+
+server:
+  port: 8080
+  shutdown: graceful
+
+# Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,env
+  endpoint:
+    health:
+      show-details: when-authorized
+  info:
+    env:
+      enabled: true
+
+info:
+  app:
+    name: NexusAid Core Service
+    description: Module 1 - Gestion Sociale et des Ressources
+    version: 1.0.0
+
+# Swagger
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+# Eureka Client
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka-server:8761/eureka/
+  instance:
+    prefer-ip-address: true
+
+# OpenRouter AI Configuration
+openrouter:
+  api-key: ${OPENROUTER_API_KEY:}
+  api-url: https://openrouter.ai/api/v1/chat/completions
+  model: meta-llama/llama-3.1-8b-instruct:free
+

@@ -1,0 +1,15 @@
+package com.nexusaid.core.entity.enums;
+
+public enum RoleTitle {
+    PRESIDENT,
+    VICE_PRESIDENT,
+    SECRETAIRE_GENERAL,
+    RESP_SECOURISME,
+    RESP_DIFFUSION,
+    RESP_JEUNESSE,
+    RESP_SANTE,
+    RESP_CATASTROPHES,
+    RESP_ACTION_SOCIALE,
+    RESP_IMMIGRATION,
+    RESP_VFF
+}
