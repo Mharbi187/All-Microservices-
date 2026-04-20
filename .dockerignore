@@ -1,0 +1,58 @@
+# Virtual environments
+.venv/
+.venv_fresh/
+.venv*/
+
+# Git
+.git/
+.github/
+.gitignore
+
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE
+.vscode/
+.idea/
+
+# Tests
+tests/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Documentation
+*.md
+LICENSE
+docs/
+
+# Scripts (not needed at runtime)
+*.bat
+*.ps1
+*.sh
+
+# Credentials (should never be in image)
+.env
+.env.*
+detection-*.json
+secrets.toml
+
+# Model analysis artifacts
+model_analysis.txt
+PROJECT_CLEANUP_ANALYSIS.md
+
+# Cache
+data/cache/*.db
+data/cache/*.sqlite
+
+# Logs
+logs/
+*.log
+
+# Temp
+temp/
+tmp/
+repo/
+recovered_diagrams_from_logs/

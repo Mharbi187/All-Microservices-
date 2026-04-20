@@ -1,0 +1,181 @@
+name: Poll GEE for Disaster Data
+
+on:
+  schedule:
+    - cron: "0 * * * *"
+  workflow_dispatch:
+
+jobs:
+  poll-and-predict:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: "Distaster Detection"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Secret scan (tracked files)
+        run: bash scripts/secret_scan.sh
+
+      - name: Run unit tests (smoke check)
+        env:
+          GEE_SERVICE_ACCOUNT: "ci-dummy@example.iam.gserviceaccount.com"
+          GEE_PRIVATE_KEY_PATH: "/dev/null"
+        run: |
+          python -m pytest tests/ \
+            --ignore=tests/test_data.py \
+            --ignore=tests/test_live_extraction.py \
+            -q --tb=line
+
+      - name: Authenticate Google Earth Engine
+        env:
+          GEE_SERVICE_ACCOUNT: ${{ secrets.GEE_SERVICE_ACCOUNT }}
+          GEE_PRIVATE_KEY: ${{ secrets.GEE_PRIVATE_KEY }}
+        run: |
+          echo "$GEE_PRIVATE_KEY" > private-key.json
+          earthengine authenticate --service-account "$GEE_SERVICE_ACCOUNT" --key-file private-key.json
+
+      - name: Fetch GEE data and predict (shared inference pipeline)
+        run: |
+          python - <<'PY'
+          import json
+          import logging
+          import os
+
+          from src.data_acquisition import GEEDataAcquisition
+          from src.inference_shared import predict_sampled_dataframe, select_alert_candidates
+          from src.model import DisasterRiskModel
+
+          logging.basicConfig(level=logging.INFO)
+          logger = logging.getLogger(__name__)
+
+          os.makedirs("data/cache", exist_ok=True)
+
+          gee = GEEDataAcquisition()
+          composite = gee.create_composite_image()
+          sampled = gee.sample_data(composite, num_pixels=500)
+
+          model = DisasterRiskModel()
+          model.load()
+
+          source_health = {
+              "gee_satellite": "online",
+              "alphaearth": "online",
+              "usgs_seismic": "offline",
+              "openweather": "offline",
+          }
+
+          predictions = predict_sampled_dataframe(
+              sampled_df=sampled,
+              model=model,
+              data_source_health=source_health,
+              risk_threshold=0.7,
+          )
+          predictions.to_csv("data/cache/latest_predictions.csv", index=False)
+
+          alerts = select_alert_candidates(
+              predictions=predictions,
+              max_alerts=5,
+              dedupe_precision=2,
+              min_risk=0.8,
+          )
+          with open("data/cache/latest_alerts.json", "w", encoding="utf-8") as handle:
+              json.dump(alerts, handle, ensure_ascii=False, indent=2)
+
+          logger.info("Predictions rows: %s", len(predictions))
+          logger.info("High-risk deduped alerts: %s", len(alerts))
+          PY
+
+      - name: Upload predictions
+        uses: actions/upload-artifact@v4
+        with:
+          name: predictions
+          path: |
+            Distaster Detection/data/cache/latest_predictions.csv
+            Distaster Detection/data/cache/latest_alerts.json
+          retention-days: 7
+
+      - name: Send alerts for high-risk areas
+        if: success()
+        env:
+          TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
+          TWILIO_PHONE_NUMBER: ${{ secrets.TWILIO_PHONE_NUMBER }}
+          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+        run: |
+          python - <<'PY'
+          import json
+          import logging
+          from pathlib import Path
+
+          from src.alerts import AlertSystem
+
+          logging.basicConfig(level=logging.INFO)
+          logger = logging.getLogger(__name__)
+
+          alerts_path = Path("data/cache/latest_alerts.json")
+          if not alerts_path.exists():
+              logger.info("No alert payload generated.")
+              raise SystemExit(0)
+
+          alerts = json.loads(alerts_path.read_text(encoding="utf-8"))
+          if not alerts:
+              logger.info("No high-risk areas detected.")
+              raise SystemExit(0)
+
+          alert_system = AlertSystem()
+          sent = 0
+          for alert in alerts:
+              hazard_type = str(alert.get("hazard_type", "none"))
+              if hazard_type in {"none", "anomaly"}:
+                  continue
+
+              location = {
+                  "name": str(alert.get("location_name", "Tunisia")),
+                  "lat": float(alert.get("lat", 34.0)),
+                  "lon": float(alert.get("lon", 9.0)),
+              }
+
+              result = alert_system.send_alert(
+                  hazard_type=hazard_type,
+                  location=location,
+                  risk_score=float(alert.get("risk_score", 0.0)),
+                  language="English",
+              )
+              sent += 1
+              logger.info(
+                  "Alert sent (%s) risk=%.2f location=(%.3f, %.3f) sources=%s result=%s",
+                  alert.get("disaster_type", "UNKNOWN"),
+                  float(alert.get("risk_score", 0.0)),
+                  location["lat"],
+                  location["lon"],
+                  alert.get("data_source_health", {}),
+                  result,
+              )
+
+          logger.info("Total alerts sent: %s", sent)
+          PY
+
+      - name: Clean up credentials
+        if: always()
+        run: rm -f private-key.json

@@ -1,0 +1,44 @@
+﻿============================================================
+ANALYSE DU MODELE DE DETECTION DE CATASTROPHES
+============================================================
+
+[1] CONTENU DU MODELE
+----------------------------------------
+  - model
+  - feature_names
+  - feature_importances
+  - training_metrics
+
+[2] METRIQUES D'ENTRAINEMENT
+----------------------------------------
+  accuracy: 1.0000
+  precision: 1.0000
+  recall: 1.0000
+  f1_score: 1.0000
+  train_size: 2053
+  test_size: 881
+  training_date: 2025-11-17 12:24:03
+  false_positive_rate: 0
+
+[3] FEATURES UTILISEES
+----------------------------------------
+  Nombre total: 12
+    1. water_extent
+    2. precipitation
+    3. b0
+    4. b5
+    5. b10
+    6. b15
+    7. b20
+    8. b25
+    9. b30
+    10. b35
+    11. b40
+    12. b45
+
+[4] TYPE DE MODELE
+----------------------------------------
+  Type: RandomForestClassifier
+  Nombre d'estimateurs: 100
+
+ERREUR: cannot unpack non-iterable DecisionTreeClassifier object
