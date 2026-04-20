@@ -1,0 +1,56 @@
+{
+    "app": {
+        "name": "Nexus-AID",
+        "tagline": "Croissant Rouge Tunisien"
+    },
+    "nav": {
+        "dashboard": "Tableau de bord",
+        "volunteers": "Volontaires",
+        "committees": "Comités",
+        "stocks": "Stocks",
+        "donations": "Donations",
+        "firstAid": "Secourisme IA",
+        "reports": "Rapports",
+        "disasters": "Catastrophes",
+        "settings": "Paramètres",
+        "profile": "Mon Profil"
+    },
+    "auth": {
+        "login": "Se connecter",
+        "logout": "Déconnexion",
+        "email": "Adresse e-mail",
+        "password": "Mot de passe",
+        "forgotPassword": "Mot de passe oublié ?",
+        "welcomeBack": "Bienvenue",
+        "loginSubtitle": "Connectez-vous à votre espace Nexus-AID"
+    },
+    "dashboard": {
+        "title": "Tableau de bord",
+        "totalVolunteers": "Total Volontaires",
+        "activeAlerts": "Alertes Actives",
+        "stockItems": "Articles en Stock",
+        "donations": "Donations ce mois",
+        "recentActivity": "Activité Récente",
+        "quickActions": "Actions Rapides"
+    },
+    "common": {
+        "save": "Enregistrer",
+        "cancel": "Annuler",
+        "delete": "Supprimer",
+        "edit": "Modifier",
+        "add": "Ajouter",
+        "search": "Rechercher",
+        "filter": "Filtrer",
+        "export": "Exporter",
+        "loading": "Chargement...",
+        "noData": "Aucune donnée",
+        "confirm": "Confirmer",
+        "back": "Retour",
+        "next": "Suivant",
+        "actions": "Actions",
+        "status": "Statut",
+        "date": "Date",
+        "name": "Nom",
+        "description": "Description"
+    }
+}

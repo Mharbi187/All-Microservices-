@@ -1,0 +1,181 @@
+// ============================================================
+// NEXUS-AID — Application Routes
+// Centralized route configuration with lazy loading + auth guard
+// ============================================================
+
+import { lazy, Suspense } from 'react';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
+import MainLayout from '@/layouts/MainLayout';
+import AuthLayout from '@/layouts/AuthLayout';
+import LandingLayout from '@/layouts/LandingLayout';
+import { useAuthStore } from '@/stores';
+
+// ---- Full-screen loading page shown during lazy chunk loading ----
+const PageLoader = () => (
+    <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+        gap: '20px',
+    }}>
+        {/* Spinner ring */}
+        <div style={{
+            width: '56px',
+            height: '56px',
+            borderRadius: '50%',
+            border: '4px solid rgba(99, 102, 241, 0.2)',
+            borderTopColor: '#6366f1',
+            animation: 'nexus-spin 0.8s linear infinite',
+        }} />
+        {/* Brand text */}
+        <span style={{
+            color: '#e2e8f0',
+            fontSize: '15px',
+            letterSpacing: '0.08em',
+            fontFamily: 'Inter, system-ui, sans-serif',
+            opacity: 0.75,
+        }}>
+            NEXUS-AID — Chargement…
+        </span>
+
+        {/* Keyframes injected inline */}
+        <style>{`
+      @keyframes nexus-spin {
+        to { transform: rotate(360deg); }
+      }
+    `}</style>
+    </div>
+);
+
+// ---- Helper: wrap any element in Suspense with the loader ----
+const withLoader = (element: React.ReactNode) => (
+    <Suspense fallback={<PageLoader />}>{element}</Suspense>
+);
+
+// ---- Auth Guard: redirect to /login if not authenticated ----
+const ProtectedRoute: React.FC = () => {
+    const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+    if (!isAuthenticated) {
+        return <Navigate to="/login" replace />;
+    }
+    return <MainLayout />;
+};
+
+const FullscreenProtectedRoute: React.FC = () => {
+    const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+    if (!isAuthenticated) {
+        return <Navigate to="/login" replace />;
+    }
+    return <Outlet />;
+};
+
+// ---- Lazy-loaded pages for code splitting ----
+const HomePage = lazy(() => import('@/pages/home/HomePage'));
+const LoginPage = lazy(() => import('@/pages/auth/LoginPage'));
+const RegisterPage = lazy(() => import('@/pages/auth/RegisterPage'));
+const DashboardPage = lazy(() => import('@/pages/dashboard/DashboardPage'));
+const VolunteersPage = lazy(() => import('@/pages/volunteers/VolunteersPage'));
+const CommitteesPage = lazy(() => import('@/pages/committees/CommitteesPage'));
+const StocksPage = lazy(() => import('@/pages/stocks/StocksPage'));
+const DonationsPage = lazy(() => import('@/pages/donations/DonationsPage'));
+const ReportsPage = lazy(() => import('@/pages/reports/ReportsPage'));
+const SettingsPage = lazy(() => import('@/pages/settings/SettingsPage'));
+const ValidationQueuePage = lazy(() => import('@/pages/management/ValidationQueuePage'));
+const AuditTrailPage = lazy(() => import('@/pages/management/AuditTrailPage'));
+const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
+const AboutPage = lazy(() => import('@/pages/about/AboutPage'));
+
+// ---- Volunteer self-service pages ----
+const MyProfilePage = lazy(() => import('@/pages/volunteer/MyProfilePage'));
+const MyCommitteePage = lazy(() => import('@/pages/volunteer/MyCommitteePage'));
+const MyComplaintsPage = lazy(() => import('@/pages/volunteer/MyComplaintsPage'));
+const ResourcesPage = lazy(() => import('@/pages/volunteer/ResourcesPage'));
+const YouthSpacePage = lazy(() => import('@/pages/volunteer/YouthSpacePage'));
+
+// ---- Domain-specific pages ----
+const SecourismePage = lazy(() => import('@/pages/domains/SecourismePage'));
+const DiffusionPage = lazy(() => import('@/pages/domains/DiffusionPage'));
+const JeunessePage = lazy(() => import('@/pages/domains/JeunessePage'));
+const SantePage = lazy(() => import('@/pages/domains/SantePage'));
+const SocialPage = lazy(() => import('@/pages/domains/SocialPage'));
+const ImmigrationPage = lazy(() => import('@/pages/domains/ImmigrationPage'));
+const VffPage = lazy(() => import('@/pages/domains/VffPage'));
+const CatastrophesPage = lazy(() => import('@/pages/domains/CatastrophesPage'));
+
+// ---- Crisis Command Center ----
+const RadarDashboardPage = lazy(() => import('@/pages/crisis/Dashboard'));
+const CrisisRoomPage = lazy(() => import('@/pages/crisis/CrisisRoomPage'));
+
+export const router = createBrowserRouter([
+    // ---- Landing / Public Routes (Homepage = default) ----
+    {
+        path: '/',
+        element: <LandingLayout />,
+        children: [
+            { index: true, element: withLoader(<HomePage />) },
+            { path: 'about', element: withLoader(<AboutPage />) },
+        ],
+    },
+
+    // ---- App Routes (protected, with sidebar + header) ----
+    {
+        path: '/',
+        element: <ProtectedRoute />,
+        children: [
+            { path: 'dashboard', element: withLoader(<DashboardPage />) },
+            { path: 'volunteers', element: withLoader(<VolunteersPage />) },
+            { path: 'committees', element: withLoader(<CommitteesPage />) },
+            { path: 'stocks', element: withLoader(<StocksPage />) },
+            { path: 'donations', element: withLoader(<DonationsPage />) },
+            { path: 'reports', element: withLoader(<ReportsPage />) },
+            { path: 'settings', element: withLoader(<SettingsPage />) },
+            { path: 'validation-queue', element: withLoader(<ValidationQueuePage />) },
+            { path: 'audit-logs', element: withLoader(<AuditTrailPage />) },
+
+            // Volunteer routes
+            { path: 'volunteer/profile', element: withLoader(<MyProfilePage />) },
+            { path: 'volunteer/committee', element: withLoader(<MyCommitteePage />) },
+            { path: 'volunteer/complaints', element: withLoader(<MyComplaintsPage />) },
+            { path: 'volunteer/resources', element: withLoader(<ResourcesPage />) },
+            { path: 'volunteer/youth', element: withLoader(<YouthSpacePage />) },
+            // Domain-specific routes
+            { path: 'secourisme', element: withLoader(<SecourismePage />) },
+            { path: 'diffusion', element: withLoader(<DiffusionPage />) },
+            { path: 'jeunesse', element: withLoader(<JeunessePage />) },
+            { path: 'sante', element: withLoader(<SantePage />) },
+            { path: 'social', element: withLoader(<SocialPage />) },
+            { path: 'immigration', element: withLoader(<ImmigrationPage />) },
+            { path: 'vff', element: withLoader(<VffPage />) },
+            { path: 'catastrophes', element: withLoader(<CatastrophesPage />) },
+
+            // Core Crisis Modules
+            { path: 'radar', element: withLoader(<RadarDashboardPage />) },
+            { path: 'crisis-room/:id', element: withLoader(<CrisisRoomPage />) },
+        ],
+    },
+
+    // ---- Fullscreen Crisis Views (protected, no main shell) ----
+    {
+        element: <FullscreenProtectedRoute />,
+        children: [
+            { path: '/radar/fullscreen', element: withLoader(<RadarDashboardPage />) },
+            { path: '/crisis-room/:id/fullscreen', element: withLoader(<CrisisRoomPage />) },
+        ],
+    },
+
+    // ---- Auth Routes (no sidebar, dark background) ----
+    {
+        element: <AuthLayout />,
+        children: [
+            { path: '/login', element: withLoader(<LoginPage />) },
+            { path: '/register', element: withLoader(<RegisterPage />) },
+        ],
+    },
+
+    // ---- 404 ----
+    { path: '*', element: withLoader(<NotFoundPage />) },
+]);
