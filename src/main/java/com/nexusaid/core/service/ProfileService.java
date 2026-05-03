@@ -306,6 +306,46 @@ public class ProfileService {
         profile.put("avatar", user.getAvatar());
         profile.put("roles", rolesList);
 
+        // Volunteer-specific extra fields
+        if (user instanceof Volunteer v) {
+            profile.put("phone", v.getPhone());
+            profile.put("skills", v.getSkills());
+            profile.put("matricule", v.getMatricule());
+            profile.put("cin", v.getCin());
+        }
+
         return profile;
+    }
+
+    /**
+     * Updates editable profile fields for the authenticated user.
+     * Phone and fullName are always editable.
+     * Skills are only editable once the account is APPROVED.
+     */
+    @Transactional
+    public void updateProfile(UUID userId, Map<String, Object> updates) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        if (updates.containsKey("fullName") && updates.get("fullName") != null) {
+            user.setFullName((String) updates.get("fullName"));
+        }
+        if (updates.containsKey("phone") && updates.get("phone") != null) {
+            user.setPhone((String) updates.get("phone"));
+        }
+
+        // Skills update only for approved volunteers
+        if (user instanceof Volunteer volunteer
+                && user.getAccountStatus() == AccountStatus.APPROVED
+                && updates.containsKey("skills")) {
+            Object skillsVal = updates.get("skills");
+            if (skillsVal instanceof java.util.List<?> skillsList) {
+                volunteer.setSkills(skillsList.stream()
+                        .map(Object::toString)
+                        .collect(Collectors.toList()));
+            }
+        }
+
+        userRepository.save(user);
     }
 }

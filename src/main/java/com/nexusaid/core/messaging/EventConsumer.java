@@ -166,30 +166,4 @@ public class EventConsumer {
                                 .findFirst();
                 return partial.orElse(null);
         }
-
-        /**
-         * DLQ Consumer: Logs and alerts on poison messages that failed all retries.
-         * Without this, rejected messages accumulate silently in nexusaid.dlq until
-         * RabbitMQ runs out of disk.
-         */
-        @RabbitListener(queues = "nexusaid.dlq")
-        public void handleDeadLetterMessage(Map<String, Object> message) {
-                log.error("[DLQ] Poison message received — manual intervention required: {}", message);
-                // TODO: Send alert via email/Slack/PagerDuty
-                // TODO: Persist to a dead_letter_log table for dashboarding
-        }
-
-        @RabbitListener(queues = "nexusaid.donation.events")
-        public void handleDonationReceived(Map<String, Object> event) {
-                log.info("[CORE] Donation event received: donationId={}, type={}, amount={}",
-                                event.get("donationId"), event.get("donationType"), event.get("amount"));
-                // Inventory reconciliation hook can be implemented here.
-        }
-
-        @RabbitListener(queues = "nexusaid.report.published")
-        public void handleReportPublished(Map<String, Object> event) {
-                log.info("[CORE] Report published event received: reportId={}, committeeId={}, type={}",
-                                event.get("reportId"), event.get("committeeId"), event.get("reportType"));
-                // Committee notification hook can be implemented here.
-        }
 }

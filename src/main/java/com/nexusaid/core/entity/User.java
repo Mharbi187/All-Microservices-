@@ -54,4 +54,7 @@ public class User {
 
     @Column(name = "avatar_public_id")
     private String avatarPublicId;
+
+    @Column(name = "first_login_completed", nullable = false)
+    private boolean firstLoginCompleted = false;
 }

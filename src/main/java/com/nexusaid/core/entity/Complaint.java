@@ -1,12 +1,13 @@
 package com.nexusaid.core.entity;
 
 import com.nexusaid.core.entity.enums.ComplaintStatus;
-import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
+import com.nexusaid.core.entity.enums.ComplaintVisibility;
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.Type;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -22,29 +23,35 @@ public class Complaint {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "complainant_id")
-    private UUID complainantId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "submitter_id")
+    private User submitter;
 
-    @Column(name = "complainant_type", length = 50)
-    private String complainantType; // e.g., "VOLUNTEER", "PARTNER"
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "target_committee_id", nullable = false)
+    private Committee targetCommittee;
 
-    @Column(length = 255)
+    @Column(length = 255, nullable = false)
     private String subject;
 
-    @Column(columnDefinition = "TEXT")
-    private String description;
-
-    @Type(JsonBinaryType.class)
-    @Column(name = "photo_urls", columnDefinition = "jsonb")
-    private String[] photoUrls;
-
-    @Type(JsonBinaryType.class)
-    @Column(columnDefinition = "jsonb")
-    private String location; // JSON of GPS coordinates
+    @Column(columnDefinition = "TEXT", nullable = false)
+    private String message;
 
     @Enumerated(EnumType.STRING)
-    @Column(length = 20)
+    @Column(length = 20, nullable = false)
+    private ComplaintVisibility visibility;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20, nullable = false)
     private ComplaintStatus status;
+
+    @OneToMany(mappedBy = "complaint", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<ComplaintAttachment> attachments = new ArrayList<>();
+
+    @OneToMany(mappedBy = "complaint", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<ComplaintResponse> responses = new ArrayList<>();
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -57,7 +64,10 @@ public class Complaint {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
         if (this.status == null) {
-            this.status = ComplaintStatus.PENDING;
+            this.status = ComplaintStatus.EN_ATTENTE;
+        }
+        if (this.visibility == null) {
+            this.visibility = ComplaintVisibility.VISIBLE;
         }
     }
 

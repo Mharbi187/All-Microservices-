@@ -55,6 +55,24 @@ public class CommitteeService {
         return committeeRepository.findAll();
     }
 
+    /**
+     * Résumé public des comités (utilisé pour la page d'inscription).
+     * Retourne seulement id, name et type — sans charger les relations Volunteer/roles.
+     */
+    public List<java.util.Map<String, Object>> getAllCommitteesSummary() {
+        return committeeRepository.findAll().stream()
+                .map(c -> {
+                    java.util.Map<String, Object> dto = new java.util.LinkedHashMap<>();
+                    dto.put("id", c.getId());
+                    dto.put("name", c.getName());
+                    dto.put("type", c.getType());
+                    dto.put("region", c.getRegion());
+                    dto.put("status", c.getStatus());
+                    return dto;
+                })
+                .collect(Collectors.toList());
+    }
+
     // =========================================================================
     // CREATE COMMITTEE — avec validations CRT
     // =========================================================================

@@ -49,4 +49,16 @@ public class SecourismeController {
             @RequestBody RescueDevice device) {
         return ResponseEntity.ok(secourismeService.addDevice(committeeId, device));
     }
+
+    // ----- Certifications and Trainings (Mock Endpoints) -----
+
+    @GetMapping("/certifications/volunteer/{volunteerId}")
+    public ResponseEntity<List<Object>> getVolunteerCertifications(@PathVariable UUID volunteerId) {
+        return ResponseEntity.ok(List.of());
+    }
+
+    @GetMapping("/trainings")
+    public ResponseEntity<List<Object>> getCommitteTrainings(@RequestParam("committeeId") UUID committeeId) {
+        return ResponseEntity.ok(List.of());
+    }
 }

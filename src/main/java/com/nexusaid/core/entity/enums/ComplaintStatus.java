@@ -1,7 +1,8 @@
 package com.nexusaid.core.entity.enums;
 
 public enum ComplaintStatus {
-    PENDING,
-    RESOLVED,
-    REJECTED
+    EN_ATTENTE,
+    EN_COURS,
+    RESOLU,
+    REJETE
 }

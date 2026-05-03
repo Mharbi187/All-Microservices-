@@ -1,52 +1,73 @@
 package com.nexusaid.core.controller;
 
-import com.nexusaid.core.entity.Complaint;
-import com.nexusaid.core.entity.enums.ComplaintStatus;
-import com.nexusaid.core.security.UserDetailsImpl;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nexusaid.core.dto.complaint.ComplaintCreateDto;
+import com.nexusaid.core.dto.complaint.ComplaintDto;
+import com.nexusaid.core.dto.complaint.ComplaintStatusUpdateDto;
 import com.nexusaid.core.service.ComplaintService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/profiles/complaints")
+@RequestMapping("/api/v1/complaints")
 @RequiredArgsConstructor
 public class ComplaintController {
 
     private final ComplaintService complaintService;
+    private final ObjectMapper objectMapper;
 
-    @GetMapping
-    public ResponseEntity<List<Complaint>> getAllComplaints() {
-        return ResponseEntity.ok(complaintService.getAllComplaints());
+    @PostMapping
+    public ResponseEntity<ComplaintDto> createComplaint(
+            @RequestPart("data") String dataJson,
+            @RequestPart(value = "files", required = false) List<MultipartFile> files) throws IOException {
+        
+        ComplaintCreateDto createDto = objectMapper.readValue(dataJson, ComplaintCreateDto.class);
+        return ResponseEntity.ok(complaintService.createComplaint(createDto, files));
     }
 
     @GetMapping("/my-complaints")
-    public ResponseEntity<List<Complaint>> getMyComplaints(
-            @AuthenticationPrincipal UserDetailsImpl userDetails) {
-        return ResponseEntity.ok(complaintService.getComplaintsByComplainant(userDetails.getUser().getId()));
+    public ResponseEntity<List<ComplaintDto>> getMyComplaints() {
+        return ResponseEntity.ok(complaintService.getMyComplaints());
     }
 
-    @PostMapping
-    public ResponseEntity<Complaint> submitComplaint(
-            @RequestBody Complaint request,
-            @AuthenticationPrincipal UserDetailsImpl userDetails) {
-        
-        // Use the authenticated user's ID as the complainant
-        UUID complainantId = userDetails.getUser().getId();
-        String complainantType = userDetails.getUser().getType().name();
-        
-        return ResponseEntity.ok(complaintService.submitComplaint(complainantId, complainantType, request));
+    @GetMapping("/{id}")
+    public ResponseEntity<ComplaintDto> getComplaintById(@PathVariable UUID id) {
+        return ResponseEntity.ok(complaintService.getComplaintById(id));
+    }
+
+    @GetMapping("/committee/{committeeId}")
+    @PreAuthorize("hasAnyRole('PRESIDENT', 'VICE_PRESIDENT', 'SECRETAIRE_GENERAL', 'PRESIDENT_NATIONAL')")
+    public ResponseEntity<List<ComplaintDto>> getComplaintsByTargetCommittee(@PathVariable UUID committeeId) {
+        return ResponseEntity.ok(complaintService.getComplaintsByTargetCommittee(committeeId));
+    }
+
+    @GetMapping("/all")
+    @PreAuthorize("hasRole('PRESIDENT_NATIONAL')")
+    public ResponseEntity<List<ComplaintDto>> getAllComplaints() {
+        return ResponseEntity.ok(complaintService.getAllComplaints());
     }
 
     @PutMapping("/{id}/status")
-    public ResponseEntity<Complaint> updateComplaintStatus(
+    @PreAuthorize("hasAnyRole('PRESIDENT', 'VICE_PRESIDENT', 'SECRETAIRE_GENERAL', 'PRESIDENT_NATIONAL')")
+    public ResponseEntity<ComplaintDto> updateComplaintStatus(
             @PathVariable UUID id,
-            @RequestParam ComplaintStatus newStatus) {
-        // Typically requires specific roles to update status, omitted for brevity
-        return ResponseEntity.ok(complaintService.updateComplaintStatus(id, newStatus));
+            @RequestBody ComplaintStatusUpdateDto updateDto) {
+        return ResponseEntity.ok(complaintService.updateComplaintStatus(id, updateDto));
+    }
+
+    @PostMapping("/{id}/responses")
+    @PreAuthorize("hasAnyRole('PRESIDENT', 'VICE_PRESIDENT', 'SECRETAIRE_GENERAL', 'PRESIDENT_NATIONAL')")
+    public ResponseEntity<ComplaintDto> addResponse(
+            @PathVariable UUID id,
+            @RequestBody Map<String, String> payload) {
+        return ResponseEntity.ok(complaintService.addResponse(id, payload.get("message")));
     }
 }

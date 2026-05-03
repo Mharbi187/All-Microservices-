@@ -37,8 +37,17 @@ public class SecurityConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/v1/auth/**", "/api/v1/profiles/register", "/error", "/actuator/**")
-                        .permitAll()
+                        .requestMatchers(
+                                "/api/v1/auth/**",
+                                "/api/v1/profiles/register",
+                                "/api/v1/onboarding/public/**",
+                                "/error",
+                                "/actuator/**"
+                        ).permitAll()
+                        // Lecture publique des comités (nécessaire pour la page d'inscription)
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/management/committees").permitAll()
+                        .requestMatchers("/api/v1/security/**").authenticated()
+                        .requestMatchers("/api/v1/onboarding/**").authenticated()
                         .anyRequest().authenticated())
                 .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authenticationProvider())

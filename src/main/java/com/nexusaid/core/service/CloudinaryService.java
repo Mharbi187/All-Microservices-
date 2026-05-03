@@ -44,4 +44,27 @@ public class CloudinaryService {
             // if the deletion fails (e.g., image already manualy deleted).
         }
     }
+
+    /**
+     * Uploads a file (image or document) to Cloudinary.
+     *
+     * @param fileData the file bytes
+     * @param folder the folder name in Cloudinary
+     * @param filename the original filename
+     * @return map with the upload results containing keys like 'url' and 'public_id'
+     * @throws IOException if upload fails
+     */
+    public Map<String, Object> uploadFile(byte[] fileData, String folder, String filename) throws IOException {
+        String resourceType = "auto"; // allows Cloudinary to decide based on file (raw for pdfs sometimes)
+        if (filename != null && (filename.toLowerCase().endsWith(".pdf") || filename.toLowerCase().endsWith(".docx"))) {
+            resourceType = "raw"; // Force raw for documents to avoid issues on some Cloudinary setups
+        }
+        
+        Map<String, Object> options = ObjectUtils.asMap(
+                "folder", folder,
+                "resource_type", resourceType
+        );
+        log.info("Uploading file to Cloudinary in folder: {}", folder);
+        return cloudinary.uploader().upload(fileData, options);
+    }
 }

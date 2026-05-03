@@ -10,6 +10,7 @@ import java.util.UUID;
 
 @Repository
 public interface ComplaintRepository extends JpaRepository<Complaint, UUID> {
-    List<Complaint> findByComplainantId(UUID complainantId);
-    List<Complaint> findByStatus(ComplaintStatus status);
+    List<Complaint> findBySubmitterIdOrderByCreatedAtDesc(UUID submitterId);
+    List<Complaint> findByTargetCommitteeIdOrderByCreatedAtDesc(UUID targetCommitteeId);
+    List<Complaint> findByTargetCommitteeIdAndStatusOrderByCreatedAtDesc(UUID targetCommitteeId, ComplaintStatus status);
 }

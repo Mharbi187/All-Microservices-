@@ -20,9 +20,5 @@ COPY --from=build /workspace/app/target/*.jar app.jar
 # Expose port
 EXPOSE 8080
 
-# Environment variables for database connection (defaults can be overridden by docker-compose)
-ENV SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/nexusaiddb
-ENV SPRING_DATASOURCE_USERNAME=postgres
-
 # Entrypoint
 ENTRYPOINT ["java", "-jar", "app.jar"]

@@ -26,9 +26,9 @@ public class CommitteeController {
     private final CommitteeService committeeService;
 
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<Committee>> getAllCommittees() {
-        return ResponseEntity.ok(committeeService.getAllCommittees());
+    // Public: liste des comités accessible pour la page d'inscription (utilisateur non connecté)
+    public ResponseEntity<List<java.util.Map<String, Object>>> getAllCommittees() {
+        return ResponseEntity.ok(committeeService.getAllCommitteesSummary());
     }
 
     @GetMapping("/hierarchy/overview")

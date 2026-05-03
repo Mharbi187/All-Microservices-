@@ -6,6 +6,7 @@ import com.nexusaid.core.security.UserDetailsImpl;
 import com.nexusaid.core.service.ProfileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,6 +29,14 @@ public class ProfileController {
         return ResponseEntity.ok(profileService.getMyProfile(userDetails.getUser().getId()));
     }
 
+    @PutMapping("/me")
+    public ResponseEntity<String> updateMyProfile(
+            @RequestBody Map<String, Object> updates,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        profileService.updateProfile(userDetails.getUser().getId(), updates);
+        return ResponseEntity.ok("Profile updated successfully.");
+    }
+
     @PutMapping("/me/avatar-url")
     public ResponseEntity<String> updateMyAvatar(
             @RequestBody Map<String, String> requestBody,
@@ -47,6 +56,7 @@ public class ProfileController {
     // === COMMITTEE-SCOPED ENDPOINTS (President actions) ===
 
     @GetMapping("/committees/{committeeId}/pending-volunteers")
+    @PreAuthorize("hasAnyRole('PRESIDENT', 'VICE_PRESIDENT', 'SECRETAIRE_GENERAL', 'RESP_JEUNESSE', 'ADMIN')")
     public ResponseEntity<List<Volunteer>> getPendingVolunteers(
             @PathVariable UUID committeeId,
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
@@ -55,6 +65,7 @@ public class ProfileController {
     }
 
     @GetMapping("/committees/{committeeId}/volunteers")
+    @PreAuthorize("hasAnyRole('PRESIDENT', 'VICE_PRESIDENT', 'SECRETAIRE_GENERAL', 'RESP_JEUNESSE', 'ADMIN')")
     public ResponseEntity<List<Volunteer>> getAllVolunteers(
             @PathVariable UUID committeeId,
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
@@ -63,6 +74,7 @@ public class ProfileController {
     }
 
     @PutMapping("/volunteers/{volunteerId}/approve")
+    @PreAuthorize("hasAnyRole('PRESIDENT', 'VICE_PRESIDENT', 'SECRETAIRE_GENERAL', 'RESP_JEUNESSE', 'ADMIN')")
     public ResponseEntity<String> approveVolunteer(
             @PathVariable UUID volunteerId,
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
@@ -71,6 +83,7 @@ public class ProfileController {
     }
 
     @PutMapping("/volunteers/{volunteerId}/reject")
+    @PreAuthorize("hasAnyRole('PRESIDENT', 'VICE_PRESIDENT', 'SECRETAIRE_GENERAL', 'RESP_JEUNESSE', 'ADMIN')")
     public ResponseEntity<String> rejectVolunteer(
             @PathVariable UUID volunteerId,
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
@@ -79,6 +92,7 @@ public class ProfileController {
     }
 
     @PutMapping("/volunteers/{volunteerId}/promote-to-trainer")
+    @PreAuthorize("hasAnyRole('PRESIDENT', 'ADMIN')")
     public ResponseEntity<String> promoteToTrainer(
             @PathVariable UUID volunteerId,
             @RequestBody Map<String, String> requestBody,

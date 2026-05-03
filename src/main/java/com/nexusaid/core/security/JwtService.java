@@ -1,15 +1,19 @@
 package com.nexusaid.core.security;
 
+import com.nexusaid.core.entity.RefreshToken;
+import com.nexusaid.core.repository.RefreshTokenRepository;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import jakarta.annotation.PostConstruct;
 
 import java.security.KeyFactory;
 import java.security.PrivateKey;
 import java.security.spec.PKCS8EncodedKeySpec;
+import java.time.Instant;
 import java.util.Base64;
 import java.util.Date;
 import java.util.HashMap;
@@ -26,11 +30,20 @@ public class JwtService {
     @Value("${jwt.private.key:}")
     private String inlinePrivateKey;
 
-    @Value("${security.jwt.expiration}")
-    private long jwtExpiration;
+    @Value("${security.jwt.expiration:1800000}")
+    private long jwtExpiration; // 30 minutes default
+
+    @Value("${security.jwt.refresh-expiration:604800000}")
+    private long refreshExpiration; // 7 days default
 
     private PrivateKey privateKey;
     private java.security.PublicKey publicKey;
+
+    private final RefreshTokenRepository refreshTokenRepository;
+
+    public JwtService(RefreshTokenRepository refreshTokenRepository) {
+        this.refreshTokenRepository = refreshTokenRepository;
+    }
 
     @PostConstruct
     public void init() throws Exception {
@@ -114,5 +127,77 @@ public class JwtService {
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
+    }
+
+    // ─── Refresh Token Management ──────────────────────────────────
+
+    /**
+     * Create a new refresh token for a user.
+     */
+    @Transactional
+    public RefreshToken createRefreshToken(UUID userId) {
+        RefreshToken refreshToken = RefreshToken.builder()
+                .token(UUID.randomUUID().toString() + "-" + UUID.randomUUID().toString())
+                .userId(userId)
+                .expiresAt(Instant.now().plusMillis(refreshExpiration))
+                .build();
+        return refreshTokenRepository.save(refreshToken);
+    }
+
+    /**
+     * Validate and rotate a refresh token.
+     * The old token is revoked and a new one is issued (rotation policy).
+     * If a revoked token is reused, all user tokens are revoked (theft detection).
+     */
+    @Transactional
+    public RefreshToken rotateRefreshToken(String tokenStr) {
+        RefreshToken existing = refreshTokenRepository.findByToken(tokenStr)
+                .orElseThrow(() -> new RuntimeException("Refresh token not found"));
+
+        // If token was already revoked → possible theft! Revoke ALL user tokens
+        if (existing.isRevoked()) {
+            refreshTokenRepository.revokeAllByUserId(existing.getUserId());
+            throw new RuntimeException("Refresh token reuse detected — all tokens revoked for security");
+        }
+
+        // If token expired
+        if (existing.isExpired()) {
+            existing.setRevoked(true);
+            refreshTokenRepository.save(existing);
+            throw new RuntimeException("Refresh token has expired");
+        }
+
+        // Revoke the old token
+        existing.setRevoked(true);
+
+        // Create new token
+        RefreshToken newToken = createRefreshToken(existing.getUserId());
+        existing.setReplacedBy(newToken.getToken());
+        refreshTokenRepository.save(existing);
+
+        return newToken;
+    }
+
+    /**
+     * Revoke all refresh tokens for a user (logout / password change).
+     */
+    @Transactional
+    public void revokeAllUserTokens(UUID userId) {
+        refreshTokenRepository.revokeAllByUserId(userId);
+    }
+
+    /**
+     * Clean up expired/revoked tokens (call via scheduled task).
+     */
+    @Transactional
+    public int cleanupExpiredTokens() {
+        return refreshTokenRepository.deleteExpiredAndRevoked(Instant.now());
+    }
+
+    /**
+     * Get JWT access token expiration in milliseconds.
+     */
+    public long getAccessTokenExpiration() {
+        return jwtExpiration;
     }
 }
