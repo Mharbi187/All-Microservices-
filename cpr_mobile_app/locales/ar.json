@@ -1,0 +1,47 @@
+{
+    "common": {
+        "start": "ابدأ",
+        "stop": "توقف",
+        "back": "رجوع",
+        "settings": "الإعدادات",
+        "protocols": "البروتوكولات"
+    },
+    "home": {
+        "title": "مساعد الإنعاش",
+        "callEmergency": "اتصل بالطوارئ",
+        "oneRescuer": "منقذ واحد",
+        "twoRescuers": "منقذان",
+        "disclaimer": "هذه الأداة للتدريب فقط"
+    },
+    "cpr": {
+        "time": "الوقت",
+        "cycle": "دورة",
+        "compressions": "ضغطة",
+        "ventilations": "نفخات",
+        "bpm": "نبضة/دقيقة",
+        "depth": "العمق",
+        "recoil": "الارتداد"
+    },
+    "protocols": {
+        "adult": "بالغ",
+        "child": "طفل",
+        "infant": "رضيع",
+        "pregnancy": "امرأة حامل",
+        "drowning": "غرق",
+        "trauma": "إصابة العمود الفقري"
+    },
+    "guidance": {
+        "tooSlow": "أسرع! زد السرعة",
+        "tooFast": "أبطئ قليلاً",
+        "goodRhythm": "إيقاع ممتاز! استمر",
+        "fullRecoil": "اترك الصدر يرتفع كاملاً"
+    },
+    "settings": {
+        "location": "الموقع والطوارئ",
+        "detectedCountry": "البلد المكتشف",
+        "emergencyNumber": "رقم الطوارئ",
+        "voiceGuide": "الدليل الصوتي",
+        "haptic": "الاهتزازات",
+        "language": "اللغة"
+    }
+}

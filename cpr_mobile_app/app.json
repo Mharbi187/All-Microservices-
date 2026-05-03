@@ -1,0 +1,53 @@
+{
+  "expo": {
+    "name": "CPR Assistant",
+    "slug": "cpr-croissant-rouge-tunisie",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#DC2626"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "org.croissantrougetunisie.cprassistant"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#DC2626"
+      },
+      "package": "org.croissantrougetunisie.cprassistant",
+      "permissions": [
+        "CAMERA",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "VIBRATE"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Requis pour la détection CPR"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Pour le numéro d'urgence local"
+        }
+      ],
+      "expo-asset",
+      "expo-font",
+      "react-native-vision-camera"
+    ]
+  }
+}

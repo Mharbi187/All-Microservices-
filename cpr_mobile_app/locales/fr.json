@@ -1,0 +1,47 @@
+{
+    "common": {
+        "start": "Démarrer",
+        "stop": "Arrêter",
+        "back": "Retour",
+        "settings": "Paramètres",
+        "protocols": "Protocoles"
+    },
+    "home": {
+        "title": "CPR Assistant",
+        "callEmergency": "Appeler les secours",
+        "oneRescuer": "1 Secouriste",
+        "twoRescuers": "2 Secouristes",
+        "disclaimer": "Cet outil est une AIDE À LA FORMATION uniquement"
+    },
+    "cpr": {
+        "time": "Temps",
+        "cycle": "Cycle",
+        "compressions": "compressions",
+        "ventilations": "VENTILATIONS",
+        "bpm": "BPM",
+        "depth": "Profondeur",
+        "recoil": "Relâchement"
+    },
+    "protocols": {
+        "adult": "Adulte",
+        "child": "Enfant (1-Puberté)",
+        "infant": "Nourrisson (<1 an)",
+        "pregnancy": "Femme enceinte (>20 sem.)",
+        "drowning": "Noyade",
+        "trauma": "Traumatisme rachis"
+    },
+    "guidance": {
+        "tooSlow": "Plus vite! Augmentez le rythme",
+        "tooFast": "Ralentissez légèrement",
+        "goodRhythm": "Excellent rythme! Continuez",
+        "fullRecoil": "Relâchez complètement le thorax"
+    },
+    "settings": {
+        "location": "Localisation & Urgence",
+        "detectedCountry": "Pays détecté",
+        "emergencyNumber": "Numéro d'urgence",
+        "voiceGuide": "Guide vocal",
+        "haptic": "Vibrations",
+        "language": "Langue"
+    }
+}
