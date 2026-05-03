@@ -39,21 +39,33 @@ public class RabbitMQConfig {
     public static final String VOLUNTEER_EVENTS_QUEUE = "nexusaid.volunteer.events";
 
     // ── Queues produced by MS3 ───────────────────────────────
-    public static final String DONATION_EVENTS_QUEUE = "nexusaid.donation.events";
-    public static final String REPORT_PUBLISHED_QUEUE = "nexusaid.report.published";
+    public static final String DONATION_EVENTS_QUEUE    = "nexusaid.donation.events";
+    public static final String REPORT_PUBLISHED_QUEUE   = "nexusaid.report.published";
+
+    // ── Report workflow event queues ─────────────────────────
+    public static final String REPORT_SUBMITTED_QUEUE  = "nexusaid.report.submitted";
+    public static final String REPORT_VALIDATED_QUEUE  = "nexusaid.report.validated";
+    public static final String REPORT_FINALIZED_QUEUE  = "nexusaid.report.finalized";
+    public static final String REPORT_ARCHIVED_QUEUE   = "nexusaid.report.archived";
 
     // ── DLQ ──────────────────────────────────────────────────
     public static final String DLQ_QUEUE = "nexusaid.dlq";
 
     // ── Routing Keys ─────────────────────────────────────────
-    public static final String INTERVENTION_CREATED_KEY = "intervention.created";
-    public static final String INTERVENTION_CLOSED_KEY = "intervention.closed";
-    public static final String STOCK_ROUTING_KEY = "stock.alert";
-    public static final String DISASTER_ROUTING_KEY = "disaster.alert";
-    public static final String VOLUNTEER_REGISTERED_KEY = "volunteer.registered";
+    public static final String INTERVENTION_CREATED_KEY    = "intervention.created";
+    public static final String INTERVENTION_CLOSED_KEY     = "intervention.closed";
+    public static final String STOCK_ROUTING_KEY           = "stock.alert";
+    public static final String DISASTER_ROUTING_KEY        = "disaster.alert";
+    public static final String VOLUNTEER_REGISTERED_KEY    = "volunteer.registered";
     public static final String VOLUNTEER_ROLE_ASSIGNED_KEY = "volunteer.role.assigned";
-    public static final String DONATION_RECEIVED_KEY = "donation.received";
-    public static final String REPORT_PUBLISHED_KEY = "report.published";
+    public static final String DONATION_RECEIVED_KEY       = "donation.received";
+    public static final String REPORT_PUBLISHED_KEY        = "report.published";
+
+    // ── Report workflow routing keys ──────────────────────────
+    public static final String REPORT_SUBMITTED_KEY  = "report.submitted";
+    public static final String REPORT_VALIDATED_KEY  = "report.validated";
+    public static final String REPORT_FINALIZED_KEY  = "report.finalized";
+    public static final String REPORT_ARCHIVED_KEY   = "report.archived";
 
     // ── Exchanges ────────────────────────────────────────────
 
@@ -125,6 +137,36 @@ public class RabbitMQConfig {
                 .build();
     }
 
+    // ── Workflow event queues (MS3 → downstream) ─────────────
+
+    @Bean
+    public Queue reportSubmittedQueue() {
+        return QueueBuilder.durable(REPORT_SUBMITTED_QUEUE)
+                .withArgument("x-dead-letter-exchange", DLX_EXCHANGE)
+                .build();
+    }
+
+    @Bean
+    public Queue reportValidatedQueue() {
+        return QueueBuilder.durable(REPORT_VALIDATED_QUEUE)
+                .withArgument("x-dead-letter-exchange", DLX_EXCHANGE)
+                .build();
+    }
+
+    @Bean
+    public Queue reportFinalizedQueue() {
+        return QueueBuilder.durable(REPORT_FINALIZED_QUEUE)
+                .withArgument("x-dead-letter-exchange", DLX_EXCHANGE)
+                .build();
+    }
+
+    @Bean
+    public Queue reportArchivedQueue() {
+        return QueueBuilder.durable(REPORT_ARCHIVED_QUEUE)
+                .withArgument("x-dead-letter-exchange", DLX_EXCHANGE)
+                .build();
+    }
+
     // ── Bindings ─────────────────────────────────────────────
 
     @Bean
@@ -165,6 +207,28 @@ public class RabbitMQConfig {
     @Bean
     public Binding reportPublishedBinding(Queue reportPublishedQueue, TopicExchange nexusaidExchange) {
         return BindingBuilder.bind(reportPublishedQueue).to(nexusaidExchange).with(REPORT_PUBLISHED_KEY);
+    }
+
+    // ── Workflow event bindings ───────────────────────────────
+
+    @Bean
+    public Binding reportSubmittedBinding(Queue reportSubmittedQueue, TopicExchange nexusaidExchange) {
+        return BindingBuilder.bind(reportSubmittedQueue).to(nexusaidExchange).with(REPORT_SUBMITTED_KEY);
+    }
+
+    @Bean
+    public Binding reportValidatedBinding(Queue reportValidatedQueue, TopicExchange nexusaidExchange) {
+        return BindingBuilder.bind(reportValidatedQueue).to(nexusaidExchange).with(REPORT_VALIDATED_KEY);
+    }
+
+    @Bean
+    public Binding reportFinalizedBinding(Queue reportFinalizedQueue, TopicExchange nexusaidExchange) {
+        return BindingBuilder.bind(reportFinalizedQueue).to(nexusaidExchange).with(REPORT_FINALIZED_KEY);
+    }
+
+    @Bean
+    public Binding reportArchivedBinding(Queue reportArchivedQueue, TopicExchange nexusaidExchange) {
+        return BindingBuilder.bind(reportArchivedQueue).to(nexusaidExchange).with(REPORT_ARCHIVED_KEY);
     }
 
     // ── Serialization ────────────────────────────────────────

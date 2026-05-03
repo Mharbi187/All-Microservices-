@@ -1,14 +1,17 @@
 package com.nexusaid.admin.service;
 
+import com.nexusaid.admin.dto.CreateTemplateStructureRequest;
 import com.nexusaid.admin.dto.TemplateBlockDto;
 import com.nexusaid.admin.dto.TemplateCreateRequest;
 import com.nexusaid.admin.dto.TemplateResponse;
 import com.nexusaid.admin.entity.Template;
 import com.nexusaid.admin.entity.TemplateBlock;
+import com.nexusaid.admin.entity.enums.TemplateScope;
 import com.nexusaid.admin.entity.enums.VisibilityScope;
 import com.nexusaid.admin.repository.TemplateBlockRepository;
 import com.nexusaid.admin.repository.TemplateRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -106,5 +109,43 @@ public class TemplateService {
                 .createdAt(template.getCreatedAt())
                 .updatedAt(template.getUpdatedAt())
                 .build();
+    }
+
+    // ── v2 methods ────────────────────────────────────────────────────────────
+
+    /**
+     * Creates a template "header" record for v2 (structure lives in TemplateVersion).
+     */
+    @Transactional
+    public TemplateResponse createTemplateV2(CreateTemplateStructureRequest request, UUID userId) {
+        Template template = Template.builder()
+                .title(request.title())
+                .description(request.description())
+                .createdBy(userId)
+                .creatorRole("UNKNOWN")            // resolved from JWT by caller
+                .creatorCommitteeId(UUID.randomUUID()) // placeholder — set by caller if needed
+                .visibilityScope(VisibilityScope.ALL)
+                .scope(request.scope())
+                .isBaseTemplate(request.isBaseTemplate())
+                .isActive(true)
+                .version(1)
+                .build();
+        return mapToResponse(templateRepository.save(template));
+    }
+
+    /**
+     * Validates that the current user's role is allowed to create a template of the given scope.
+     * Throws AccessDeniedException if unauthorized.
+     */
+    public void validateScopePermission(TemplateScope scope, String role) {
+        boolean allowed = switch (scope) {
+            case NATIONAL -> role.contains("PRESIDENT") || role.contains("SG") || role.contains("SECRETAIRE_GENERAL");
+            case REGIONAL -> role.contains("PRESIDENT") || role.contains("VP") || role.contains("VICE_PRESIDENT");
+            case LOCAL    -> true; // any authenticated user can create LOCAL templates
+        };
+        if (!allowed) {
+            throw new AccessDeniedException(
+                    "Role [" + role + "] is not authorized to create " + scope + " scope templates.");
+        }
     }
 }

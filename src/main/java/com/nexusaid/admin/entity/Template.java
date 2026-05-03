@@ -1,8 +1,12 @@
 package com.nexusaid.admin.entity;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.nexusaid.admin.entity.enums.TemplateScope;
 import com.nexusaid.admin.entity.enums.VisibilityScope;
+import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.Type;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -16,6 +20,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@com.fasterxml.jackson.annotation.JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Template {
 
     @Id
@@ -49,10 +54,38 @@ public class Template {
     @Builder.Default
     private Boolean isActive = true;
 
+    // ── v2: JSONB-based scope & inheritance ────────────────────────────
+
+    /** Hierarchy scope for access control enforcement */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "scope", length = 20)
+    private TemplateScope scope;
+
+    /** True = this is a root/base template, not derived from another */
+    @Column(name = "is_base_template", nullable = false)
+    @Builder.Default
+    private Boolean isBaseTemplate = false;
+
+    /** Parent template from which this one inherits default blocks */
+    @Column(name = "parent_template_id")
+    private UUID parentTemplateId;
+
+    /** JSONB rules controlling which committees are assigned this template */
+    @Type(JsonBinaryType.class)
+    @Column(name = "assignment_rules", columnDefinition = "jsonb")
+    private JsonNode assignmentRules;
+
+    // ── Legacy blocks relationship (backward compat) ───────────────────
     @OneToMany(mappedBy = "template", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("positionOrder ASC")
     @Builder.Default
     private List<TemplateBlock> blocks = new ArrayList<>();
+
+    // ── Template versions (v2 structure) ──────────────────────────────
+    @OneToMany(mappedBy = "template", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("versionNumber ASC")
+    @Builder.Default
+    private List<TemplateVersion> versions = new ArrayList<>();
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

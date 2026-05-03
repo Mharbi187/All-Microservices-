@@ -1,11 +1,17 @@
 package com.nexusaid.admin.entity;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.Type;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -15,6 +21,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@com.fasterxml.jackson.annotation.JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class ReportInstance {
 
     @Id
@@ -43,6 +50,52 @@ public class ReportInstance {
 
     @Column(name = "finalized_by")
     private UUID finalizedBy;
+
+    // ── v2 fields ───────────────────────────────────────────────────────
+
+    /** JSONB-based form data (v2 templates) */
+    @Type(JsonBinaryType.class)
+    @Column(name = "filled_data", columnDefinition = "jsonb")
+    private JsonNode filledData;
+
+    /**
+     * Pinned to the exact published TemplateVersion used at report creation.
+     * Never changes — ensures stable rendering of historical reports.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "template_version_id")
+    private TemplateVersion templateVersion;
+
+    /** SHA-256 of filledData at archive time — proves content was not tampered */
+    @Column(name = "content_hash", length = 64)
+    private String contentHash;
+
+    /** MinIO key of the PDF generated and stored at archive time */
+    @Column(name = "pdf_storage_key", length = 512)
+    private String pdfStorageKey;
+
+    @Column(name = "pdf_url", length = 1024)
+    private String pdfUrl;
+
+    @Column(name = "pdf_generated_at")
+    private LocalDateTime pdfGeneratedAt;
+
+    @Column(name = "pdf_version")
+    @Builder.Default
+    private Integer pdfVersion = 1;
+
+    @ElementCollection
+    @CollectionTable(name = "report_assigned_users", joinColumns = @JoinColumn(name = "report_id"))
+    @Column(name = "user_id")
+    @Builder.Default
+    private Set<UUID> assignedUsers = new HashSet<>();
+
+    /** User who triggered the ARCHIVED transition */
+    @Column(name = "archived_by")
+    private UUID archivedBy;
+
+    @Column(name = "finalized_at")
+    private Instant finalizedAt;
 
     @OneToMany(mappedBy = "report", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default

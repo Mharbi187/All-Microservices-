@@ -13,6 +13,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@com.fasterxml.jackson.annotation.JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class ReportBlockData {
 
     @Id
@@ -21,6 +22,7 @@ public class ReportBlockData {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "report_id")
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private ReportInstance report;
 
     @ManyToOne(fetch = FetchType.LAZY)
