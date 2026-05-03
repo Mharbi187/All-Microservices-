@@ -15,15 +15,21 @@ spring:
       # Automatic route discovery via Eureka
       discovery:
         locator:
-          enabled: true
-          lower-case-service-id: true
+          enabled: false
       # Explicit route definitions for precise control
       routes:
         # MS1 - Core Service (Module 1: Social & Resources)
+        # Auth routes with strict rate limiting (anti brute-force)
         - id: core-auth
           uri: lb://core-service
           predicates:
             - Path=/api/v1/auth/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                rate-limiter: "#{@authRateLimiter}"
+                key-resolver: "#{@ipKeyResolver}"
+                deny-empty-key: false
 
         - id: core-profiles
           uri: lb://core-service
@@ -34,6 +40,8 @@ spring:
           uri: lb://core-service
           predicates:
             - Path=/api/v1/management/committees/**
+          filters:
+            - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_FIRST
 
         - id: core-management
           uri: lb://core-service
@@ -58,7 +66,7 @@ spring:
         - id: core-complaints
           uri: lb://core-service
           predicates:
-            - Path=/api/v1/profiles/complaints/**
+            - Path=/api/v1/complaints/**
 
         - id: core-stock-alerts
           uri: lb://core-service
@@ -110,6 +118,32 @@ spring:
           predicates:
             - Path=/api/v1/sync/**
 
+        - id: core-news
+          uri: lb://core-service
+          predicates:
+            - Path=/api/v1/news/**
+
+        - id: core-events
+          uri: lb://core-service
+          predicates:
+            - Path=/api/v1/events/**
+
+        - id: core-quizzes
+          uri: lb://core-service
+          predicates:
+            - Path=/api/v1/quizzes/**
+
+        - id: core-security
+          uri: lb://core-service
+          predicates:
+            - Path=/api/v1/security/**
+
+        - id: core-onboarding
+          uri: lb://core-service
+          predicates:
+            - Path=/api/v1/onboarding/**
+
+
         # MS3 - Admin Service (Module 3: Admin, Reporting, Donations)
         - id: admin-templates
           uri: lb://admin-service
@@ -138,10 +172,7 @@ spring:
           predicates:
             - Path=/api/v1/admin/dashboard/**
 
-        - id: admin-events
-          uri: lb://admin-service
-          predicates:
-            - Path=/api/v1/events/**
+        # (Events & News are routed to core-service above)
 
         # MS4 - Disaster Detection (Module 4: Catastrophes) — REST API
         - id: disaster-api
@@ -172,11 +203,11 @@ spring:
             - RewritePath=/admin/(?<path>.*), /${path}
 
         # Unified NexusAid Dashboard (Static/Vite)
-        # Catch-all for UI routes not starting with /api, /ws, /core, or /admin
+        # Catch-all ONLY for UI routes — explicitly excludes /api/, /ws/, /core/, /admin/
         - id: main-frontend
           uri: ${FRONTEND_URL:http://frontend:80}
           predicates:
-            - Path=/, /**
+            - Path=/,/index.html,/assets/**,/favicon**,/static/**,/manifest.json,/robots.txt
           filters:
             - SetResponseHeader=X-Frame-Options, SAMEORIGIN
 
@@ -192,7 +223,7 @@ spring:
       globalcors:
         corsConfigurations:
           '[/**]':
-            allowedOrigins: ${ALLOWED_ORIGINS:http://localhost:5173,http://localhost:5174}
+            allowedOrigins: ${ALLOWED_ORIGINS:http://localhost:5173,http://localhost:5174,http://localhost:9173}
             allowCredentials: true
             allowedMethods:
               - GET
@@ -235,6 +266,7 @@ resilience4j:
 logging:
   level:
     org.springframework.cloud.gateway: INFO
+    reactor.netty: INFO
 
 springdoc:
   swagger-ui:

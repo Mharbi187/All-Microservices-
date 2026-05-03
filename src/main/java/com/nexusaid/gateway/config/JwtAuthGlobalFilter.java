@@ -27,11 +27,19 @@ public class JwtAuthGlobalFilter implements GlobalFilter, Ordered {
 
     private static final List<String> PUBLIC_PATH_PREFIXES = List.of(
             "/api/v1/auth/",
+            "/api/v1/onboarding/public/",  // endpoints publics d'onboarding (comités, gouvernorats)
+            "/api/v1/profiles/register",   // inscription directe
             "/actuator/",
             "/swagger-ui/",
             "/v3/api-docs/",
             "/core/v3/api-docs/",
-            "/admin/v3/api-docs/");
+            "/admin/v3/api-docs/",
+            "/api/v1/admin/donations/receipts/",
+            "/api/v1/admin/donations/needs/active");
+
+    // Endpoints GET accessibles sans JWT (lecture publique pour la page d'inscription, etc.)
+    private static final List<String> PUBLIC_GET_EXACT_PATHS = List.of(
+            "/api/v1/management/committees");
 
     @Value("${jwt.public.key.path:}")
     private String publicKeyPath;
@@ -66,8 +74,10 @@ public class JwtAuthGlobalFilter implements GlobalFilter, Ordered {
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();
         String path = request.getURI().getPath();
+        org.springframework.http.HttpMethod method = request.getMethod();
 
-        if (isPublicPath(path) || isFrontendPath(path) || isWebSocketUpgrade(request)) {
+        if (isPublicPath(path) || isFrontendPath(path) || isWebSocketUpgrade(request)
+                || isPublicGetPath(path, method)) {
             return chain.filter(exchange);
         }
 
@@ -92,6 +102,12 @@ public class JwtAuthGlobalFilter implements GlobalFilter, Ordered {
 
     private boolean isPublicPath(String path) {
         return PUBLIC_PATH_PREFIXES.stream().anyMatch(path::startsWith);
+    }
+
+    /** GET exact-match public paths (ex: liste des comités pour la page d'inscription) */
+    private boolean isPublicGetPath(String path, org.springframework.http.HttpMethod method) {
+        return org.springframework.http.HttpMethod.GET.equals(method)
+                && PUBLIC_GET_EXACT_PATHS.contains(path);
     }
 
     private boolean isFrontendPath(String path) {
