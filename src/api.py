@@ -56,7 +56,7 @@ def get_public_key():
     """
     # Try environment variable (inline key)
     if "JWT_PUBLIC_KEY" in os.environ:
-        return os.environ["JWT_PUBLIC_KEY"]
+        return os.environ["JWT_PUBLIC_KEY"].replace("\\n", "\n")
     
     # Try environment variable (file path)
     if "JWT_PUBLIC_KEY_FILE" in os.environ:
