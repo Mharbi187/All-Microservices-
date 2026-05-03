@@ -128,6 +128,7 @@ export const useAuthStore = create<AuthState>()(
                             lastName: nameParts.slice(1).join(' ') || '',
                             type: userType,
                             roles,
+                            rawRoles: profile.roles || [],
                             committeeId,
                             committeeName,
                             status: profile.accountStatus as import('@/types').AccountStatus | undefined,

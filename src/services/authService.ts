@@ -47,6 +47,14 @@ export const updateProfile = async (updates: Record<string, unknown>): Promise<v
     await apiClient.put('/profiles/me', updates);
 };
 
+/**
+ * Downloads the volunteer's QR badge as a blob URL.
+ */
+export const getMyBadgeQr = async (volunteerId: string): Promise<string> => {
+    const { data } = await apiClient.get(`/profiles/${volunteerId}/badge-qr`, { responseType: 'blob' });
+    return URL.createObjectURL(data);
+};
+
 // Default export as an object for backward compatibility
 const authService = {
     login,
@@ -54,6 +62,7 @@ const authService = {
     getProfile,
     updateAvatarUrl,
     updateProfile,
+    getMyBadgeQr,
 };
 
 export default authService;

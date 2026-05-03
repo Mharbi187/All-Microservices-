@@ -23,6 +23,8 @@ import {
     BellOutlined,
     MedicineBoxOutlined,
     SoundOutlined,
+    CalendarOutlined,
+    ReadOutlined,
     SmileOutlined,
     HeartOutlined,
     HomeOutlined,
@@ -30,6 +32,7 @@ import {
     SafetyOutlined,
     AuditOutlined,
     RadarChartOutlined,
+    TrophyOutlined,
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import { useTranslation } from 'react-i18next';
@@ -82,6 +85,21 @@ const MainLayout: React.FC = () => {
                 label: 'Mon Comité',
             });
         }
+        
+        // News — visible to all authenticated users
+        volunteerChildren.push({
+            key: '/volunteer/news',
+            icon: <ReadOutlined />,
+            label: 'Actualités',
+        });
+        
+        // Calendar — visible to all authenticated users
+        volunteerChildren.push({
+            key: '/volunteer/calendar',
+            icon: <CalendarOutlined />,
+            label: 'Calendrier',
+        });
+        
         if (isAllowed('/volunteer/complaints')) {
             volunteerChildren.push({
                 key: '/volunteer/complaints',
@@ -103,6 +121,12 @@ const MainLayout: React.FC = () => {
                 label: 'Intégration Jeunes',
             });
         }
+        // Quiz — visible to all volunteers
+        volunteerChildren.push({
+            key: '/volunteer/quiz',
+            icon: <TrophyOutlined />,
+            label: 'Quiz & Certifications',
+        });
         if (volunteerChildren.length > 0) {
             items.push({
                 key: 'volunteer_space',
@@ -169,12 +193,12 @@ const MainLayout: React.FC = () => {
             });
         }
 
-        // Reports
+        // Reporting Hub — visible pour tous les rôles qui y ont accès
         if (isAllowed('/reports')) {
             items.push({
                 key: '/reports',
-                icon: <FileTextOutlined />,
-                label: t('nav.reports'),
+                icon: <AuditOutlined />,
+                label: 'Système Reporting',
             });
         }
 
@@ -310,6 +334,9 @@ const MainLayout: React.FC = () => {
         immigration: 'Immigration',
         vff: 'VFF',
         catastrophes: 'Moniteur Météo',
+        reporting: 'Système Reporting',
+        'admin-reports': 'Rapports Admin',
+        templates: 'Modèles',
         'validation-queue': 'Validation Roles',
         'audit-logs': 'Audit Trail',
     };

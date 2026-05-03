@@ -29,17 +29,28 @@ export interface TrainingDTO {
 }
 
 const volunteerProfileService = {
-    /** Get my certifications - uses profiles domain (secourisme endpoint does not exist) */
+    /**
+     * Get my certifications.
+     * Falls back to empty array if endpoint not yet available.
+     */
     getMyCertifications: async (volunteerId: string): Promise<CertificationDTO[]> => {
-        // NOTE: Backend endpoint /certifications is not yet implemented in core-service/profiles
-        // Returning empty array to avoid 500 error spam in console
-        return [];
+        try {
+            const { data } = await apiClient.get<CertificationDTO[]>(`/secourisme/certifications/volunteer/${volunteerId}`);
+            return Array.isArray(data) ? data : [];
+        } catch {
+            // Endpoint may not exist yet — return empty array gracefully
+            return [];
+        }
     },
 
-    /** Get trainings for my committee (not yet implemented in backend) */
+    /** Get trainings for my committee */
     getMyTrainings: async (committeeId: string): Promise<TrainingDTO[]> => {
-        // NOTE: Backend endpoint /trainings is not yet implemented in core-service/secourisme
-        return [];
+        try {
+            const { data } = await apiClient.get<TrainingDTO[]>(`/secourisme/trainings?committeeId=${committeeId}`);
+            return Array.isArray(data) ? data : [];
+        } catch {
+            return [];
+        }
     },
 
     /** Update avatar */

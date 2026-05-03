@@ -56,6 +56,8 @@ export interface User {
     fullName: string;
     type?: UserType;
     roles: RoleTitle[];
+    /** Raw role objects from backend: [{role, committee, committeeType, committeeId}] */
+    rawRoles?: ProfileRoleEntry[];
     committeeId?: string;
     committeeName?: string;
     status?: AccountStatus;

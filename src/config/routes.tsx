@@ -82,7 +82,6 @@ const VolunteersPage = lazy(() => import('@/pages/volunteers/VolunteersPage'));
 const CommitteesPage = lazy(() => import('@/pages/committees/CommitteesPage'));
 const StocksPage = lazy(() => import('@/pages/stocks/StocksPage'));
 const DonationsPage = lazy(() => import('@/pages/donations/DonationsPage'));
-const ReportsPage = lazy(() => import('@/pages/reports/ReportsPage'));
 const SettingsPage = lazy(() => import('@/pages/settings/SettingsPage'));
 const ValidationQueuePage = lazy(() => import('@/pages/management/ValidationQueuePage'));
 const AuditTrailPage = lazy(() => import('@/pages/management/AuditTrailPage'));
@@ -91,10 +90,13 @@ const AboutPage = lazy(() => import('@/pages/about/AboutPage'));
 
 // ---- Volunteer self-service pages ----
 const MyProfilePage = lazy(() => import('@/pages/volunteer/MyProfilePage'));
+const NewsPage = lazy(() => import('@/pages/volunteer/NewsPage'));
+const CalendarPage = lazy(() => import('@/pages/volunteer/CalendarPage'));
 const MyCommitteePage = lazy(() => import('@/pages/volunteer/MyCommitteePage'));
 const MyComplaintsPage = lazy(() => import('@/pages/volunteer/MyComplaintsPage'));
 const ResourcesPage = lazy(() => import('@/pages/volunteer/ResourcesPage'));
 const YouthSpacePage = lazy(() => import('@/pages/volunteer/YouthSpacePage'));
+const QuizPage = lazy(() => import('@/pages/volunteer/QuizPage'));
 
 // ---- Domain-specific pages ----
 const SecourismePage = lazy(() => import('@/pages/domains/SecourismePage'));
@@ -109,6 +111,15 @@ const CatastrophesPage = lazy(() => import('@/pages/domains/CatastrophesPage'));
 // ---- Crisis Command Center ----
 const RadarDashboardPage = lazy(() => import('@/pages/crisis/Dashboard'));
 const CrisisRoomPage = lazy(() => import('@/pages/crisis/CrisisRoomPage'));
+
+// ---- Reporting & Template Builder ----
+const TemplateListPage = lazy(() => import('@/pages/templates/TemplateListPage'));
+const TemplateBuilderPage = lazy(() => import('@/pages/templates/TemplateBuilderPage'));
+const AdminReportListPage = lazy(() => import('@/pages/admin-reports/AdminReportListPage'));
+const ReportFillPage = lazy(() => import('@/pages/admin-reports/ReportFillPage'));
+const ReportDetailPage = lazy(() => import('@/pages/admin-reports/ReportDetailPage'));
+const ReportingHubPage = lazy(() => import('@/pages/reports/ReportingHubPage'));
+
 
 export const router = createBrowserRouter([
     // ---- Landing / Public Routes (Homepage = default) ----
@@ -131,17 +142,20 @@ export const router = createBrowserRouter([
             { path: 'committees', element: withLoader(<CommitteesPage />) },
             { path: 'stocks', element: withLoader(<StocksPage />) },
             { path: 'donations', element: withLoader(<DonationsPage />) },
-            { path: 'reports', element: withLoader(<ReportsPage />) },
+            // Removed duplicate redirect
             { path: 'settings', element: withLoader(<SettingsPage />) },
             { path: 'validation-queue', element: withLoader(<ValidationQueuePage />) },
             { path: 'audit-logs', element: withLoader(<AuditTrailPage />) },
 
             // Volunteer routes
             { path: 'volunteer/profile', element: withLoader(<MyProfilePage />) },
+            { path: 'volunteer/news', element: withLoader(<NewsPage />) },
+            { path: 'volunteer/calendar', element: withLoader(<CalendarPage />) },
             { path: 'volunteer/committee', element: withLoader(<MyCommitteePage />) },
             { path: 'volunteer/complaints', element: withLoader(<MyComplaintsPage />) },
             { path: 'volunteer/resources', element: withLoader(<ResourcesPage />) },
             { path: 'volunteer/youth', element: withLoader(<YouthSpacePage />) },
+            { path: 'volunteer/quiz', element: withLoader(<QuizPage />) },
             // Domain-specific routes
             { path: 'secourisme', element: withLoader(<SecourismePage />) },
             { path: 'diffusion', element: withLoader(<DiffusionPage />) },
@@ -155,6 +169,23 @@ export const router = createBrowserRouter([
             // Core Crisis Modules
             { path: 'radar', element: withLoader(<RadarDashboardPage />) },
             { path: 'crisis-room/:id', element: withLoader(<CrisisRoomPage />) },
+
+            // Reporting — Hub unifié (point d'entrée principal)
+            { path: 'reports', element: withLoader(<ReportingHubPage />) },
+            // Reporting — pages détail (conservées pour navigation directe)
+            { path: 'templates', element: withLoader(<TemplateListPage />) },
+            { path: 'admin-reports', element: withLoader(<AdminReportListPage />) },
+            { path: 'admin-reports/:id', element: withLoader(<ReportDetailPage />) },
+            { path: 'admin-reports/:id/fill', element: withLoader(<ReportFillPage />) },
+        ],
+    },
+
+    // ---- Template Builder (fullscreen — no sidebar) ----
+    {
+        element: <FullscreenProtectedRoute />,
+        children: [
+            { path: '/templates/new', element: withLoader(<TemplateBuilderPage />) },
+            { path: '/templates/:id/edit', element: withLoader(<TemplateBuilderPage />) },
         ],
     },
 

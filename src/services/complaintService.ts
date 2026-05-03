@@ -1,30 +1,61 @@
-// ============================================================
-// NEXUS-AID — Complaint Service
-// ============================================================
+import api from './api';
+import axios from 'axios';
+import { config } from '../config/env';
+import type { ComplaintCreateDto, ComplaintDto, ComplaintStatusUpdateDto } from '@/types/complaint.types';
 
-import apiClient from './api';
-import type { ComplaintDTO } from '@/types';
+const COMPLAINTS_API = '/complaints';
 
-const complaintService = {
-    getAll: async (): Promise<ComplaintDTO[]> => {
-        const { data } = await apiClient.get<ComplaintDTO[]>('/profiles/complaints');
-        return data;
-    },
+export const complaintService = {
+  // Create a new complaint with up to 5 files
+  createComplaint: async (data: ComplaintCreateDto, files: File[]): Promise<ComplaintDto> => {
+    const formData = new FormData();
+    formData.append('data', JSON.stringify(data));
+    
+    if (files && files.length > 0) {
+      if (files.length > 5) throw new Error('Maximum 5 files allowed.');
+      files.forEach((file) => {
+        formData.append('files', file);
+      });
+    }
 
-    getMine: async (): Promise<ComplaintDTO[]> => {
-        const { data } = await apiClient.get<ComplaintDTO[]>('/profiles/complaints/my-complaints');
-        return data;
-    },
+    const token = localStorage.getItem(config.tokenKey);
+    const response = await axios.post<ComplaintDto>(`${config.apiBaseUrl}/v1${COMPLAINTS_API}`, formData, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    return response.data;
+  },
 
-    create: async (payload: { subject: string; description: string; targetCommitteeId: string }): Promise<ComplaintDTO> => {
-        const { data } = await apiClient.post<ComplaintDTO>('/profiles/complaints', payload);
-        return data;
-    },
+  // Get all complaints for the currently authenticated user (volunteer or other)
+  getMyComplaints: async (): Promise<ComplaintDto[]> => {
+    const response = await api.get<ComplaintDto[]>(`${COMPLAINTS_API}/my-complaints`);
+    return response.data;
+  },
 
-    updateStatus: async (id: string, newStatus: string): Promise<string> => {
-        const { data } = await apiClient.put<string>(`/profiles/complaints/${id}/status?newStatus=${newStatus}`);
-        return data;
-    },
+  // Get all complaints for a specific committee (for committee officials)
+  getComplaintsByCommittee: async (committeeId: string): Promise<ComplaintDto[]> => {
+    const response = await api.get<ComplaintDto[]>(`${COMPLAINTS_API}/committee/${committeeId}`);
+    return response.data;
+  },
+
+  // Get all complaints across the system (strictly for National President)
+  getAllComplaints: async (): Promise<ComplaintDto[]> => {
+    const response = await api.get<ComplaintDto[]>(`${COMPLAINTS_API}/all`);
+    return response.data;
+  },
+
+  // Update complaint status (with optional immediate response message)
+  updateStatus: async (complaintId: string, payload: ComplaintStatusUpdateDto): Promise<ComplaintDto> => {
+    const response = await api.put<ComplaintDto>(`${COMPLAINTS_API}/${complaintId}/status`, payload);
+    return response.data;
+  },
+
+  // Add an official response to the complaint
+  addResponse: async (complaintId: string, message: string): Promise<ComplaintDto> => {
+    const response = await api.post<ComplaintDto>(`${COMPLAINTS_API}/${complaintId}/responses`, { message });
+    return response.data;
+  },
 };
 
 export default complaintService;

@@ -8,8 +8,8 @@ import { motion } from 'framer-motion';
 import AuthVisual from '@/components/auth/AuthVisual';
 import PasswordStrength from '@/components/auth/PasswordStrength';
 import authService from '@/services/authService';
-import committeeService from '@/services/committeeService';
-import type { Committee, UserType } from '@/types';
+import apiClient from '@/services/api';
+import type { UserType } from '@/types';
 
 const gouvernorats = [
     'Tunis', 'Ariana', 'Ben Arous', 'Manouba', 'Nabeul', 'Zaghouan',
@@ -33,7 +33,7 @@ const RegisterPage: React.FC = () => {
     const [acceptTerms, setAcceptTerms] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
-    const [committees, setCommittees] = useState<Committee[]>([]);
+    const [committees, setCommittees] = useState<{id: string; name: string; type: string}[]>([]);
 
     // Form fields
     const [firstName, setFirstName] = useState('');
@@ -43,10 +43,12 @@ const RegisterPage: React.FC = () => {
     const [phone, setPhone] = useState('');
     const [selectedCommittee, setSelectedCommittee] = useState('');
 
-    // Fetch real committees on mount
+    // Fetch real committees on mount — utilise l'endpoint public /onboarding/public/committees/all
     useEffect(() => {
-        committeeService.getAll()
-            .then(setCommittees)
+        apiClient.get<{id: string; name: string; type: string; region: string}[]>(
+            '/onboarding/public/committees/all'
+        )
+            .then(res => setCommittees(res.data))
             .catch(() => { /* committees will be empty, user can still type */ });
     }, []);
 
