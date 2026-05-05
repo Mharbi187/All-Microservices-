@@ -1,90 +1,108 @@
 /**
- * Affichage des Métriques CPR en temps réel
- * BPM, Profondeur, Qualité de relâchement
+ * Metrics Display Component
+ * ==========================
+ * Displays real-time CPR metrics from the pipeline.
+ * Driven by data from RulesEngine / CPRAnalysisService.
  */
 
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
-export default function MetricsDisplay({ metrics, protocol }) {
+const STATUS_COLORS = {
+    GOOD: '#22C55E',
+    TOO_SLOW: '#F97316',
+    TOO_FAST: '#EF4444',
+    TOO_SHALLOW: '#F97316',
+    TOO_DEEP: '#EF4444',
+    ACCEPTABLE: '#EAB308',
+    POOR: '#EF4444',
+    WAITING: '#888',
+};
+
+export default function MetricsDisplay({ metrics }) {
     if (!metrics) return null;
 
     return (
         <View style={styles.container}>
             {/* BPM */}
-            <View style={styles.metricCard}>
-                <Text style={styles.metricLabel}>BPM</Text>
-                <Text style={[styles.metricValue, { color: metrics.bpmColor }]}>
+            <View style={styles.row}>
+                <Text style={styles.label}>BPM</Text>
+                <Text style={[styles.value, { color: STATUS_COLORS[metrics.bpmStatus] || '#FFF' }]}>
                     {metrics.bpm > 0 ? metrics.bpm : '--'}
                 </Text>
-                <Text style={styles.metricTarget}>
-                    {protocol.minBPM}-{protocol.maxBPM}
+                <Text style={[styles.status, { color: STATUS_COLORS[metrics.bpmStatus] || '#888' }]}>
+                    {metrics.bpmStatus === 'GOOD' ? '✓ 100-120' :
+                        metrics.bpmStatus === 'TOO_SLOW' ? '↑ Trop lent' :
+                            metrics.bpmStatus === 'TOO_FAST' ? '↓ Trop rapide' : 'En attente'}
                 </Text>
-                <View style={[styles.statusIndicator, { backgroundColor: metrics.bpmColor }]} />
             </View>
 
-            {/* Profondeur */}
-            <View style={styles.metricCard}>
-                <Text style={styles.metricLabel}>PROFONDEUR</Text>
-                <Text style={[styles.metricValue, { color: '#3B82F6' }]}>
-                    {metrics.avgDepth > 0 ? `${(metrics.avgDepth / 10).toFixed(1)}` : '--'}
-                </Text>
-                <Text style={styles.metricTarget}>
-                    {protocol.minDepthCm}-{protocol.maxDepthCm} cm
-                </Text>
-                <View style={[styles.statusIndicator, { backgroundColor: '#3B82F6' }]} />
-            </View>
+            {/* Depth */}
+            {metrics.depthCm != null && (
+                <View style={styles.row}>
+                    <Text style={styles.label}>Profondeur</Text>
+                    <Text style={[styles.value, { color: STATUS_COLORS[metrics.depthStatus] || '#FFF' }]}>
+                        {metrics.depthCm} cm
+                    </Text>
+                    <Text style={[styles.status, { color: STATUS_COLORS[metrics.depthStatus] || '#888' }]}>
+                        {metrics.depthStatus === 'GOOD' ? '✓' :
+                            metrics.depthStatus === 'TOO_SHALLOW' ? '↓ Plus profond' :
+                                metrics.depthStatus === 'TOO_DEEP' ? '↑ Moins profond' : ''}
+                    </Text>
+                </View>
+            )}
 
-            {/* Relâchement */}
-            <View style={styles.metricCard}>
-                <Text style={styles.metricLabel}>RELÂCHEMENT</Text>
-                <Text style={[styles.metricValue, { color: metrics.recoilColor }]}>
-                    {metrics.recoilQuality > 0 ? `${metrics.recoilQuality}%` : '--'}
-                </Text>
-                <Text style={styles.metricTarget}>≥90%</Text>
-                <View style={[styles.statusIndicator, { backgroundColor: metrics.recoilColor }]} />
-            </View>
+            {/* Recoil */}
+            {metrics.recoilQuality > 0 && (
+                <View style={styles.row}>
+                    <Text style={styles.label}>Relâchement</Text>
+                    <Text style={[styles.value, { color: STATUS_COLORS[metrics.recoilStatus] || '#FFF' }]}>
+                        {metrics.recoilQuality}%
+                    </Text>
+                </View>
+            )}
+
+            {/* Elbow angle */}
+            {metrics.elbowAngle != null && (
+                <View style={styles.row}>
+                    <Text style={styles.label}>Angle coude</Text>
+                    <Text style={[styles.value, { color: metrics.elbowAngle >= 160 ? '#22C55E' : '#F97316' }]}>
+                        {metrics.elbowAngle}°
+                    </Text>
+                </View>
+            )}
         </View>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-    },
-    metricCard: {
         backgroundColor: 'rgba(0,0,0,0.7)',
         borderRadius: 12,
-        padding: 12,
+        padding: 10,
+    },
+    row: {
+        flexDirection: 'row',
         alignItems: 'center',
-        minWidth: 100,
-        position: 'relative',
-        overflow: 'hidden',
+        justifyContent: 'space-between',
+        paddingVertical: 4,
     },
-    metricLabel: {
-        color: '#94A3B8',
-        fontSize: 10,
-        fontWeight: '600',
-        marginBottom: 4,
+    label: {
+        color: '#AAA',
+        fontSize: 12,
+        flex: 1,
     },
-    metricValue: {
-        fontSize: 28,
+    value: {
+        color: '#FFF',
+        fontSize: 16,
         fontWeight: 'bold',
-        fontVariant: ['tabular-nums'],
+        fontFamily: 'monospace',
+        minWidth: 60,
+        textAlign: 'right',
     },
-    metricTarget: {
-        color: '#64748B',
-        fontSize: 10,
-        marginTop: 4,
-    },
-    statusIndicator: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: 3,
+    status: {
+        fontSize: 11,
+        marginLeft: 8,
+        minWidth: 80,
     },
 });

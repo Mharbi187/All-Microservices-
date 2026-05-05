@@ -1,217 +1,245 @@
 /**
- * Pose Frame Processor
- * =====================
- * Processeur de frames pour la détection de pose en temps réel
- * Compatible avec expo-camera et react-native-vision-camera
- * 
- * Ce module gère:
- * - Capture des frames à intervalle régulier
- * - Simulation ML Kit (pour dev sans module natif)
- * - Interface unifiée pour la détection de pose
+ * Pose Frame Processor — Real pipeline orchestrator
+ * ===================================================
+ * Captures frames from the camera and sends them to the backend
+ * for ML inference (MediaPipe + YOLO). Receives pose data and metrics,
+ * then runs them through CPRAnalysisService + RulesEngine for feedback.
+ *
+ * No simulation stubs — this processes real camera data.
  */
 
-import { mlKitPoseService } from './MLKitPoseService';
 import { cprAnalysisService } from './CPRAnalysisService';
+import { backendAPI } from './BackendAPIService';
+import { rulesEngine } from './RulesEngine';
 
-// Configuration du frame processor
+// ─── CONFIG ───────────────────────────────────────────────────────────────────
+
 const FRAME_CONFIG = {
-    // Intervalle entre analyses (ms) - 10 FPS optimal pour CPR
-    PROCESS_INTERVAL_MS: 100,
+    // Frame capture interval (ms) — 2 FPS to avoid overwhelming backend
+    CAPTURE_INTERVAL_MS: 500,
 
-    // Mode de détection
-    USE_ML_KIT_NATIVE: false, // true quand ML Kit natif disponible
-    USE_SIMULATION: true, // Simulation pour développement
+    // Photo quality for base64 encoding (0-1) — lower = smaller payload
+    CAPTURE_QUALITY: 0.3,
 
-    // Dimensions attendues
-    FRAME_WIDTH: 640,
-    FRAME_HEIGHT: 480,
+    // Max time to wait for backend response before skipping
+    BACKEND_TIMEOUT_MS: 3000,
 };
 
-/**
- * Classe pour traiter les frames de la caméra
- */
+// ─── SERVICE ──────────────────────────────────────────────────────────────────
+
 class PoseFrameProcessor {
     constructor() {
+        this.cameraRef = null;
         this.isProcessing = false;
-        this.lastProcessTime = 0;
-        this.onPoseDetected = null;
+        this.isRunning = false;
+        this.intervalId = null;
+
+        // Callbacks
         this.onMetricsUpdate = null;
+        this.onConnectionStatus = null;
+        this.onError = null;
 
-        // Simulation de mouvement CPR
-        this.simulationPhase = 0;
-        this.simulationActive = false;
+        // Stats
+        this.framesSent = 0;
+        this.framesProcessed = 0;
+        this.avgLatencyMs = 0;
+        this.lastProcessTime = 0;
+        this.consecutiveErrors = 0;
     }
 
     /**
-     * Configure les callbacks
+     * Configure callbacks for the frame processor.
      */
-    setCallbacks({ onPoseDetected, onMetricsUpdate }) {
-        this.onPoseDetected = onPoseDetected;
+    setCallbacks({ onMetricsUpdate, onConnectionStatus, onError }) {
         this.onMetricsUpdate = onMetricsUpdate;
+        this.onConnectionStatus = onConnectionStatus;
+        this.onError = onError;
     }
 
     /**
-     * Traite une frame de la caméra
-     * @param {Object} frame - Données de la frame (photo base64 ou tensor)
-     * @returns {Object} Résultats de détection et métriques CPR
+     * Set the camera reference for frame capture.
      */
-    async processFrame(frame) {
-        const now = Date.now();
+    setCameraRef(ref) {
+        this.cameraRef = ref;
+    }
 
-        // Limiter le taux de traitement
-        if (now - this.lastProcessTime < FRAME_CONFIG.PROCESS_INTERVAL_MS) {
-            return null;
+    /**
+     * Start the real-time frame processing loop.
+     * Captures frames from camera → sends to backend → evaluates with RulesEngine.
+     */
+    start() {
+        if (this.isRunning) return;
+        this.isRunning = true;
+        this.consecutiveErrors = 0;
+
+        console.log('[FrameProcessor] Starting real pipeline at', FRAME_CONFIG.CAPTURE_INTERVAL_MS, 'ms interval');
+
+        this.intervalId = setInterval(() => {
+            this._processNextFrame();
+        }, FRAME_CONFIG.CAPTURE_INTERVAL_MS);
+    }
+
+    /**
+     * Stop the frame processing loop.
+     */
+    stop() {
+        this.isRunning = false;
+        if (this.intervalId) {
+            clearInterval(this.intervalId);
+            this.intervalId = null;
         }
+        this.isProcessing = false;
+        console.log('[FrameProcessor] Stopped. Sent:', this.framesSent, 'Processed:', this.framesProcessed);
+    }
 
-        this.lastProcessTime = now;
+    /**
+     * Process the next camera frame.
+     * Skips if the previous frame is still being processed (backpressure).
+     */
+    async _processNextFrame() {
+        // Skip if previous frame still processing (backpressure control)
+        if (this.isProcessing) return;
+        if (!this.cameraRef?.current) return;
+
         this.isProcessing = true;
+        const startTime = Date.now();
 
         try {
-            let poseResult;
-
-            if (FRAME_CONFIG.USE_ML_KIT_NATIVE && frame.landmarks) {
-                // Mode ML Kit natif
-                poseResult = mlKitPoseService.processPoseLandmarks(frame.landmarks);
-            } else if (FRAME_CONFIG.USE_SIMULATION) {
-                // Mode simulation pour développement
-                poseResult = this._simulatePoseDetection();
-            } else {
-                // Fallback: pas de détection
-                poseResult = { detected: false };
+            // ── 1. Capture frame from camera ──
+            // Expo CameraView uses takePictureAsync
+            let photo = null;
+            try {
+                photo = await this.cameraRef.current.takePictureAsync({
+                    base64: true,
+                    quality: FRAME_CONFIG.CAPTURE_QUALITY,
+                    skipProcessing: true,
+                });
+            } catch (captureErr) {
+                // Camera might not be ready yet
+                console.log('[FrameProcessor] Capture failed:', captureErr.message);
+                this.isProcessing = false;
+                return;
             }
 
-            // Notifier la détection de pose
-            if (this.onPoseDetected && poseResult.detected) {
-                this.onPoseDetected(poseResult);
+            if (!photo?.base64) {
+                this.isProcessing = false;
+                return;
             }
 
-            // Analyser les métriques CPR si mains détectées en position
-            let cprMetrics = null;
-            if (poseResult.detected && poseResult.handsTogether && poseResult.handsPosition) {
-                cprMetrics = cprAnalysisService.analyzeFrame(
-                    poseResult.handsPosition,
-                    now
-                );
+            this.framesSent++;
 
+            // ── 2. Send to backend for ML processing ──
+            let backendResponse;
+            try {
+                backendResponse = await backendAPI.processFrame(photo.base64);
+            } catch (netErr) {
+                this._handleBackendError({ error: netErr.message });
+                this.isProcessing = false;
+                return;
+            }
+
+            const latency = Date.now() - startTime;
+
+            // ── 3. Update latency stats ──
+            this.framesProcessed++;
+            this.avgLatencyMs = ((this.framesProcessed - 1) * this.avgLatencyMs + latency) / this.framesProcessed;
+
+            if (backendResponse.success) {
+                this.consecutiveErrors = 0;
+
+                // ── 4. Process backend metrics through RulesEngine ──
+                const analysis = cprAnalysisService.processBackendMetrics(backendResponse);
+
+                // ── 5. Deliver results ──
                 if (this.onMetricsUpdate) {
-                    this.onMetricsUpdate(cprMetrics);
+                    this.onMetricsUpdate({
+                        ...analysis,
+                        latencyMs: latency,
+                        avgLatencyMs: Math.round(this.avgLatencyMs),
+                        framesProcessed: this.framesProcessed,
+                    });
+                }
+
+                if (this.onConnectionStatus) {
+                    this.onConnectionStatus({
+                        connected: true,
+                        latencyMs: latency,
+                        avgLatencyMs: Math.round(this.avgLatencyMs),
+                    });
+                }
+            } else {
+                // Backend returned an error but connection worked
+                this.consecutiveErrors++;
+                console.log('[FrameProcessor] Backend error:', backendResponse.error);
+
+                // Still update connection status as "connected but erroring"
+                if (this.onConnectionStatus) {
+                    this.onConnectionStatus({
+                        connected: true, // Connection works, just processing failed
+                        latencyMs: latency,
+                        error: backendResponse.error,
+                    });
                 }
             }
-
-            return {
-                pose: poseResult,
-                cpr: cprMetrics,
-                timestamp: now
-            };
-
         } catch (error) {
-            console.warn('Frame processing error:', error);
-            return null;
+            this._handleBackendError({ error: error.message });
         } finally {
             this.isProcessing = false;
         }
     }
 
     /**
-     * Simulation de détection de pose (pour développement)
-     * Simule un mouvement de compression CPR
+     * Handle backend errors with graceful degradation.
      */
-    _simulatePoseDetection() {
-        if (!this.simulationActive) {
-            return { detected: false };
+    _handleBackendError(response) {
+        this.consecutiveErrors++;
+
+        if (this.onConnectionStatus) {
+            this.onConnectionStatus({
+                connected: false,
+                error: response.error || 'Connection lost',
+                consecutiveErrors: this.consecutiveErrors,
+            });
         }
 
-        // Avancer la phase de simulation
-        this.simulationPhase += 0.15; // ~100-120 BPM
+        if (this.onError && this.consecutiveErrors >= 3) {
+            this.onError({
+                type: 'connection_lost',
+                message: 'Backend connection lost. Check server and WiFi.',
+                consecutiveErrors: this.consecutiveErrors,
+            });
+        }
+    }
 
-        // Simuler le mouvement vertical des mains (compression)
-        const baseY = FRAME_CONFIG.FRAME_HEIGHT / 2;
-        const amplitude = 40; // pixels de mouvement
-        const wristY = baseY + Math.sin(this.simulationPhase) * amplitude;
-
-        // Position centrale des mains
-        const handsPosition = {
-            x: FRAME_CONFIG.FRAME_WIDTH / 2,
-            y: wristY
-        };
-
-        // Simuler également les landmarks
-        const simulatedLandmarks = this._createSimulatedLandmarks(handsPosition);
-
+    /**
+     * Get processing statistics.
+     */
+    getStats() {
         return {
-            detected: true,
-            handsTogether: true,
-            handsPosition: handsPosition,
-            handDistance: 20,
-            confidence: 0.95,
-            landmarks: simulatedLandmarks,
-            isSimulation: true
+            framesSent: this.framesSent,
+            framesProcessed: this.framesProcessed,
+            avgLatencyMs: Math.round(this.avgLatencyMs),
+            consecutiveErrors: this.consecutiveErrors,
+            isRunning: this.isRunning,
+            isProcessing: this.isProcessing,
         };
     }
 
     /**
-     * Créer des landmarks simulés pour tests
-     */
-    _createSimulatedLandmarks(handsCenter) {
-        const cx = FRAME_CONFIG.FRAME_WIDTH / 2;
-        const cy = FRAME_CONFIG.FRAME_HEIGHT / 2;
-
-        return {
-            leftWrist: { x: handsCenter.x - 10, y: handsCenter.y, confidence: 0.95 },
-            rightWrist: { x: handsCenter.x + 10, y: handsCenter.y, confidence: 0.95 },
-            leftElbow: { x: cx - 80, y: cy - 50, confidence: 0.9 },
-            rightElbow: { x: cx + 80, y: cy - 50, confidence: 0.9 },
-            leftShoulder: { x: cx - 100, y: cy - 100, confidence: 0.9 },
-            rightShoulder: { x: cx + 100, y: cy - 100, confidence: 0.9 }
-        };
-    }
-
-    /**
-     * Démarrer la simulation (pour développement)
-     */
-    startSimulation() {
-        this.simulationActive = true;
-        this.simulationPhase = 0;
-        console.log('Pose simulation started');
-    }
-
-    /**
-     * Arrêter la simulation
-     */
-    stopSimulation() {
-        this.simulationActive = false;
-        console.log('Pose simulation stopped');
-    }
-
-    /**
-     * Activer le mode ML Kit natif
-     */
-    enableMLKitNative() {
-        FRAME_CONFIG.USE_ML_KIT_NATIVE = true;
-        FRAME_CONFIG.USE_SIMULATION = false;
-    }
-
-    /**
-     * Activer le mode simulation
-     */
-    enableSimulation() {
-        FRAME_CONFIG.USE_ML_KIT_NATIVE = false;
-        FRAME_CONFIG.USE_SIMULATION = true;
-    }
-
-    /**
-     * Réinitialiser le processeur
+     * Reset all state.
      */
     reset() {
-        this.isProcessing = false;
-        this.lastProcessTime = 0;
-        this.simulationPhase = 0;
-        mlKitPoseService.reset();
+        this.stop();
+        this.framesSent = 0;
+        this.framesProcessed = 0;
+        this.avgLatencyMs = 0;
+        this.consecutiveErrors = 0;
         cprAnalysisService.reset();
     }
 }
 
-// Export singleton
+// ─── SINGLETON ────────────────────────────────────────────────────────────────
+
 export const poseFrameProcessor = new PoseFrameProcessor();
 export { FRAME_CONFIG };
 export default poseFrameProcessor;

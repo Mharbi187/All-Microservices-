@@ -1,144 +1,88 @@
 /**
- * Barre de Progression des Compressions
- * Affiche la progression vers le prochain cycle (30 ou 15 compressions)
+ * Compression Progress Component
+ * ================================
+ * Shows 30:2 cycle progress bar and compression/ventilation tracking.
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 
-const { width } = Dimensions.get('window');
+export default function CompressionProgress({ count = 0, target = 30, cycle = 0, ventilationTarget = 2 }) {
+    const progress = Math.min(1, count / target);
+    const progressPercent = Math.round(progress * 100);
 
-export default function CompressionProgress({ current, target, cycleCount }) {
-    const progress = Math.min(current / target, 1);
-    const progressWidth = (width - 40) * progress;
+    // Color transitions: blue → green as you approach target
+    const barColor = progress >= 1 ? '#22C55E' : progress > 0.8 ? '#3B82F6' : '#6366F1';
 
     return (
         <View style={styles.container}>
-            {/* Compteur de cycles */}
-            <View style={styles.cycleCounter}>
-                <Text style={styles.cycleLabel}>CYCLES</Text>
-                <Text style={styles.cycleValue}>{cycleCount}</Text>
+            {/* Progress bar */}
+            <View style={styles.track}>
+                <View style={[styles.fill, { width: `${progressPercent}%`, backgroundColor: barColor }]} />
             </View>
 
-            {/* Barre de progression */}
-            <View style={styles.progressContainer}>
-                <View style={styles.progressTrack}>
-                    <View
-                        style={[
-                            styles.progressFill,
-                            { width: progressWidth }
-                        ]}
-                    />
-                </View>
+            {/* Info row */}
+            <View style={styles.infoRow}>
+                <Text style={styles.countText}>
+                    {count}/{target} compressions
+                </Text>
+                <Text style={styles.cycleText}>
+                    Cycle {cycle} • Ratio {target}:{ventilationTarget}
+                </Text>
+            </View>
 
-                {/* Indicateur de compression actuel */}
-                <View style={styles.compressionInfo}>
-                    <Text style={styles.compressionText}>
-                        {current}/{target} compressions
+            {/* Ventilation reminder when cycle complete */}
+            {progress >= 1 && (
+                <View style={styles.ventAlert}>
+                    <Text style={styles.ventText}>
+                        💨 {ventilationTarget} ventilations maintenant !
                     </Text>
-
-                    {/* Indication phase suivante */}
-                    {current >= target && (
-                        <Text style={styles.nextPhaseText}>
-                            → 2 VENTILATIONS
-                        </Text>
-                    )}
                 </View>
-            </View>
-
-            {/* Indicateur de progression visuel */}
-            <View style={styles.dotsContainer}>
-                {Array.from({ length: Math.min(target, 30) }).map((_, i) => (
-                    <View
-                        key={i}
-                        style={[
-                            styles.dot,
-                            i < current && styles.dotFilled,
-                            i === current - 1 && styles.dotCurrent
-                        ]}
-                    />
-                ))}
-            </View>
+            )}
         </View>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
-        paddingHorizontal: 20,
-        paddingVertical: 12,
         backgroundColor: 'rgba(0,0,0,0.7)',
-        marginHorizontal: 20,
-        borderRadius: 16,
-        marginBottom: 12,
+        borderRadius: 10,
+        padding: 10,
     },
-    cycleCounter: {
-        position: 'absolute',
-        top: 12,
-        right: 16,
-        alignItems: 'center',
-    },
-    cycleLabel: {
-        color: '#64748B',
-        fontSize: 10,
-        fontWeight: '600',
-    },
-    cycleValue: {
-        color: '#22C55E',
-        fontSize: 24,
-        fontWeight: 'bold',
-    },
-    progressContainer: {
-        marginBottom: 12,
-    },
-    progressTrack: {
+    track: {
         height: 8,
-        backgroundColor: '#334155',
+        backgroundColor: 'rgba(255,255,255,0.15)',
         borderRadius: 4,
         overflow: 'hidden',
     },
-    progressFill: {
+    fill: {
         height: '100%',
-        backgroundColor: '#22C55E',
         borderRadius: 4,
     },
-    compressionInfo: {
+    infoRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'center',
-        marginTop: 8,
+        marginTop: 6,
     },
-    compressionText: {
-        color: '#FFFFFF',
-        fontSize: 14,
-        fontWeight: '600',
-    },
-    nextPhaseText: {
-        color: '#F59E0B',
+    countText: {
+        color: '#FFF',
         fontSize: 12,
         fontWeight: 'bold',
     },
-    dotsContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'center',
-        gap: 4,
+    cycleText: {
+        color: '#AAA',
+        fontSize: 11,
     },
-    dot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: '#334155',
+    ventAlert: {
+        marginTop: 6,
+        backgroundColor: 'rgba(59,130,246,0.8)',
+        paddingVertical: 6,
+        borderRadius: 6,
     },
-    dotFilled: {
-        backgroundColor: '#22C55E',
-    },
-    dotCurrent: {
-        backgroundColor: '#22C55E',
-        shadowColor: '#22C55E',
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.8,
-        shadowRadius: 4,
-        elevation: 4,
+    ventText: {
+        color: '#FFF',
+        fontSize: 13,
+        fontWeight: 'bold',
+        textAlign: 'center',
     },
 });

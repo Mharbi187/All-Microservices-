@@ -1,484 +1,519 @@
 /**
- * Service d'Analyse CPR
- * Calcul du BPM, profondeur de compression, et qualité de relâchement
- * 
- * Conforme aux protocoles Croissant Rouge / Croix-Rouge Internationale
- * AHA/ERC 2021 Guidelines
+ * CPR Analysis Service — Rewritten for real pipeline
+ * ====================================================
+ * All thresholds come from RulesEngine (rcp_rules.json).
+ * Accepts real landmark data from backend or on-device pose detection.
+ * Implements torso-normalized biomechanical metrics.
  */
 
-// Protocoles médicaux par catégorie de victime
-export const MEDICAL_PROTOCOLS = {
-    ADULT: {
-        id: 'ADULT',
-        name: 'Adulte',
-        nameAr: 'بالغ',
-        compressionRatio: 30,
-        ventilationRatio: 2,
-        minBPM: 100,
-        maxBPM: 120,
-        optimalBPM: 110,
-        minDepthCm: 5.0,
-        maxDepthCm: 6.0,
-        technique: 'TWO_HANDS',
-        techniqueDesc: 'Deux mains, talon sur talon',
-        techniqueDescAr: 'يدين، كعب فوق كعب',
-        icon: '👨'
-    },
+import { rulesEngine } from './RulesEngine';
 
-    CHILD: {
-        id: 'CHILD',
-        name: 'Enfant (1-Puberté)',
-        nameAr: 'طفل',
-        compressionRatio: 15, // Pour 2 secouristes
-        compressionRatioSingle: 30, // Pour 1 secouriste
-        ventilationRatio: 2,
-        minBPM: 100,
-        maxBPM: 120,
-        optimalBPM: 110,
-        minDepthCm: 5.0,
-        maxDepthCm: 5.5,
-        technique: 'ONE_OR_TWO_HANDS',
-        techniqueDesc: 'Une ou deux mains selon taille',
-        techniqueDescAr: 'يد واحدة أو اثنتين حسب الحجم',
-        icon: '👦'
-    },
+// ─── ANALYSIS STATE ───────────────────────────────────────────────────────────
 
-    INFANT: {
-        id: 'INFANT',
-        name: 'Nourrisson (<1 an)',
-        nameAr: 'رضيع',
-        compressionRatio: 15,
-        compressionRatioSingle: 30,
-        ventilationRatio: 2,
-        minBPM: 100,
-        maxBPM: 120,
-        optimalBPM: 110,
-        minDepthCm: 4.0,
-        maxDepthCm: 4.5,
-        technique: 'TWO_FINGERS',
-        techniqueDesc: 'Deux doigts ou pouces encerclants',
-        techniqueDescAr: 'إصبعان أو إبهامان محيطان',
-        icon: '👶',
-        initialVentilations: 5 // Toujours 5 insufflations pour nourrisson
-    },
-
-    PREGNANCY: {
-        id: 'PREGNANCY',
-        name: 'Femme enceinte (>20 sem.)',
-        nameAr: 'امرأة حامل',
-        compressionRatio: 30,
-        ventilationRatio: 2,
-        minBPM: 100,
-        maxBPM: 120,
-        optimalBPM: 110,
-        minDepthCm: 5.0,
-        maxDepthCm: 6.0,
-        technique: 'TWO_HANDS_MODIFIED',
-        techniqueDesc: 'Deux mains + déplacement utérin gauche',
-        techniqueDescAr: 'يدين + إزاحة الرحم لليسار',
-        icon: '🤰',
-        specialWarning: 'DÉPLACER L\'UTÉRUS VERS LA GAUCHE',
-        specialWarningAr: 'إزاحة الرحم نحو اليسار'
-    },
-
-    DROWNING: {
-        id: 'DROWNING',
-        name: 'Noyade',
-        nameAr: 'غرق',
-        compressionRatio: 30,
-        ventilationRatio: 2,
-        minBPM: 100,
-        maxBPM: 120,
-        optimalBPM: 110,
-        minDepthCm: 5.0,
-        maxDepthCm: 6.0,
-        technique: 'TWO_HANDS',
-        icon: '🌊',
-        initialVentilations: 5, // 5 insufflations initiales AVANT compressions
-        specialWarning: '5 INSUFFLATIONS INITIALES D\'ABORD',
-        specialWarningAr: '5 نفخات أولية أولاً'
-    },
-
-    TRAUMA: {
-        id: 'TRAUMA',
-        name: 'Traumatisme rachis',
-        nameAr: 'إصابة العمود الفقري',
-        compressionRatio: 30,
-        ventilationRatio: 2,
-        minBPM: 100,
-        maxBPM: 120,
-        optimalBPM: 110,
-        minDepthCm: 5.0,
-        maxDepthCm: 6.0,
-        technique: 'TWO_HANDS',
-        icon: '🦴',
-        specialWarning: 'NE PAS BASCULER LA TÊTE - Subluxation mandibulaire',
-        specialWarningAr: 'لا تميل الرأس - رفع الفك فقط'
-    }
-};
-
-// Thresholds pour l'analyse
-const ANALYSIS_CONFIG = {
-    // Fenêtre de temps pour calcul BPM (secondes)
-    BPM_WINDOW_SEC: 10,
-
-    // Nombre minimum de compressions pour BPM valide
-    MIN_COMPRESSIONS_FOR_BPM: 3,
-
-    // Seuils de mouvement (pixels)
-    MIN_COMPRESSION_MOVEMENT: 20,
-    MAX_COMPRESSION_MOVEMENT: 150,
-
-    // Temps entre compressions (ms)
-    MIN_COMPRESSION_INTERVAL_MS: 400,  // Max 150 BPM
-    MAX_COMPRESSION_INTERVAL_MS: 750,  // Min 80 BPM
-
-    // Seuil de relâchement
-    RECOIL_THRESHOLD_PERCENT: 85,
-
-    // Taille du buffer historique
-    HISTORY_SIZE: 30
-};
+const STATE = { IDLE: 'IDLE', COMPRESSING: 'COMPRESSING', RELEASING: 'RELEASING' };
 
 class CPRAnalysisService {
     constructor() {
-        // Historique des positions Y des mains
-        this.yPositionHistory = [];
-
-        // Timestamps des compressions détectées
-        this.compressionTimestamps = [];
-
-        // État actuel
-        this.currentState = 'IDLE'; // IDLE, COMPRESSING, RELEASING
-        this.compressionCount = 0;
-        this.ventilationCount = 0;
-        this.cycleCount = 0;
-
-        // Métriques calculées
-        this.currentBPM = 0;
-        this.avgDepth = 0;
-        this.recoilQuality = 0;
-
-        // Protocole actif
-        this.activeProtocol = MEDICAL_PROTOCOLS.ADULT;
+        this.victimType = 'adult';
         this.rescuerCount = 1;
-
-        // Position baseline
-        this.baselineY = null;
-        this.lowestY = null;
-    }
-
-    /**
-     * Définit le protocole actif
-     */
-    setProtocol(protocolId) {
-        this.activeProtocol = MEDICAL_PROTOCOLS[protocolId] || MEDICAL_PROTOCOLS.ADULT;
         this.reset();
     }
 
-    /**
-     * Définit le nombre de secouristes
-     */
+    // ══════════════════════════════════════════════════════════════════════════
+    //  CONFIGURATION
+    // ══════════════════════════════════════════════════════════════════════════
+
+    setVictimType(type) {
+        this.victimType = type;
+        this.reset();
+    }
+
     setRescuerCount(count) {
         this.rescuerCount = count;
     }
 
+    setLanguage(lang) {
+        rulesEngine.setLanguage(lang);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  MAIN ANALYSIS — called for each processed frame
+    // ══════════════════════════════════════════════════════════════════════════
+
     /**
-     * Analyse une frame avec les données de position des mains
-     * @param {Object} handsPosition - Position {x, y} du centre des mains
-     * @param {number} timestamp - Timestamp en ms
+     * Analyze a frame with pose data.
+     *
+     * @param {Object} poseData — Either from backend or on-device:
+     *   {
+     *     landmarks: { leftWrist, rightWrist, leftElbow, rightElbow,
+     *                  leftShoulder, rightShoulder, leftHip, rightHip, nose },
+     *     handsPosition: { x, y },
+     *     handsTogether: boolean,
+     *     confidence: number,
+     *     frameWidth: number,
+     *     frameHeight: number,
+     *   }
+     * @param {number} timestamp — ms
+     * @returns {Object} Full analysis result with metrics, errors, guidance
      */
-    analyzeFrame(handsPosition, timestamp = Date.now()) {
-        if (!handsPosition) {
-            return this.getMetrics();
+    analyzeFrame(poseData, timestamp = Date.now()) {
+        if (!poseData || !poseData.handsPosition) {
+            return this._idleResult(timestamp);
         }
 
-        const y = handsPosition.y;
+        const lm = poseData.landmarks || {};
+        const y = poseData.handsPosition.y;
 
-        // Initialiser baseline si premier frame
+        // ── Compute torso height (shoulder midpoint → hip midpoint) ──
+        const torsoHeight = this._computeTorsoHeight(lm);
+
+        // ── Initialize baseline on first frame ──
         if (this.baselineY === null) {
             this.baselineY = y;
         }
 
-        // Ajouter à l'historique
-        this.yPositionHistory.push({ y, timestamp });
+        // ── Track position ──
+        this.yHistory.push({ y, timestamp });
+        if (this.yHistory.length > 60) this.yHistory.shift();
 
-        // Limiter la taille de l'historique
-        if (this.yPositionHistory.length > ANALYSIS_CONFIG.HISTORY_SIZE) {
-            this.yPositionHistory.shift();
-        }
+        // ── Track X variance for lateral movement detection ──
+        this.xHistory.push(poseData.handsPosition.x);
+        if (this.xHistory.length > 20) this.xHistory.shift();
 
-        // Détecter les états de compression
-        this.detectCompressionState(y, timestamp);
+        // ── State machine for compression detection ──
+        this._detectCompressionState(y, timestamp, torsoHeight);
 
-        // Calculer les métriques
-        this.calculateMetrics();
+        // ── Compute elbow angle ──
+        const elbowAngle = this._computeElbowAngle(lm);
 
-        return this.getMetrics();
-    }
+        // ── Compute shoulder-wrist alignment ──
+        const shoulderMidX = this._midX(lm.leftShoulder, lm.rightShoulder);
+        const wristMidX = this._midX(lm.leftWrist, lm.rightWrist);
+        const shoulderY = this._midY(lm.leftShoulder, lm.rightShoulder);
+        const hipY = this._midY(lm.leftHip, lm.rightHip);
 
-    /**
-     * Détecte l'état de compression (machine à états)
-     */
-    detectCompressionState(y, timestamp) {
-        const movement = y - this.baselineY;
+        // ── Compute X variance ──
+        const wristXVariance = this._computeVariance(this.xHistory);
 
-        switch (this.currentState) {
-            case 'IDLE':
-                // Début de compression (mouvement vers le bas)
-                if (movement > ANALYSIS_CONFIG.MIN_COMPRESSION_MOVEMENT) {
-                    this.currentState = 'COMPRESSING';
-                    this.lowestY = y;
-                }
-                break;
+        // ── Compute depth as % of torso height ──
+        const depthPixels = this.lastDepthPixels;
+        const depthTorsoPct = torsoHeight > 0 ? (depthPixels / torsoHeight) * 100 : null;
+        const depthCm = this._estimateDepthCm(depthTorsoPct, this.victimType);
 
-            case 'COMPRESSING':
-                // Continuer à suivre le point le plus bas
-                if (y > this.lowestY) {
-                    this.lowestY = y;
-                }
-                // Début de relâchement (mouvement vers le haut)
-                if (y < this.lowestY - 10) {
-                    this.currentState = 'RELEASING';
-                }
-                break;
+        // ── Compute recoil ──
+        const recoilPercent = this.recoilQuality;
 
-            case 'RELEASING':
-                // Vérifier si relâchement complet
-                const recoilPercent = this.calculateRecoil(y);
+        // ── Time since last compression ──
+        const lastCompTime = this.compressionTimestamps[this.compressionTimestamps.length - 1] || timestamp;
+        const timeSinceLastCompression = (timestamp - lastCompTime) / 1000;
 
-                if (recoilPercent >= ANALYSIS_CONFIG.RECOIL_THRESHOLD_PERCENT) {
-                    // Compression valide complète
-                    this.registerCompression(timestamp);
-                    this.currentState = 'IDLE';
-                    this.baselineY = y;
-                } else if (y > this.baselineY + 5) {
-                    // Nouvelle compression sans relâchement complet
-                    this.registerCompression(timestamp, false);
-                    this.currentState = 'COMPRESSING';
-                    this.lowestY = y;
-                }
-                break;
-        }
-    }
+        // ── Build metrics for error evaluation ──
+        const metricsForRules = {
+            rate: this.currentBPM,
+            depthTorsoPct,
+            elbowAngle,
+            wristY: y,
+            shoulderY,
+            hipY,
+            torsoHeight,
+            shoulderMidX,
+            wristMidX,
+            frameWidth: poseData.frameWidth || 640,
+            wristXVariance,
+            recoilPercent,
+            timeSinceLastCompression,
+        };
 
-    /**
-     * Enregistre une compression
-     */
-    registerCompression(timestamp, fullRecoil = true) {
-        // Vérifier intervalle minimum (anti-rebond)
-        const lastTimestamp = this.compressionTimestamps[this.compressionTimestamps.length - 1];
-        if (lastTimestamp && timestamp - lastTimestamp < ANALYSIS_CONFIG.MIN_COMPRESSION_INTERVAL_MS) {
-            return;
-        }
+        // ── Evaluate error conditions from rcp_rules.json ──
+        const errors = rulesEngine.evaluateErrors(metricsForRules, this.victimType);
 
-        this.compressionTimestamps.push(timestamp);
-        this.compressionCount++;
+        // ── Determine action ──
+        const action = this._determineAction(errors, poseData);
 
-        // Calculer profondeur
-        const depth = this.lowestY - this.baselineY;
-        this.avgDepth = (this.avgDepth * (this.compressionCount - 1) + depth) / this.compressionCount;
+        // ── Get ratio info ──
+        const ratio = rulesEngine.getCompressionVentilationRatio(this.victimType, this.rescuerCount);
+        const cycleTarget = ratio.compressions;
 
-        // Qualité de relâchement
-        if (fullRecoil) {
-            this.recoilQuality = (this.recoilQuality * (this.compressionCount - 1) + 100) / this.compressionCount;
-        } else {
-            this.recoilQuality = (this.recoilQuality * (this.compressionCount - 1) + 50) / this.compressionCount;
-        }
+        // ── Guidance message ──
+        const feedbackMessage = this._generateFeedback(errors, metricsForRules);
 
-        // Vérifier fin de cycle
-        const ratio = this.getCompressionRatio();
-        if (this.compressionCount >= ratio) {
-            this.cycleCount++;
-            // Pour simplifier, on reset le compteur (ventilations gérées séparément)
-            this.compressionCount = 0;
-        }
-
-        // Nettoyer les vieux timestamps
-        const cutoff = timestamp - (ANALYSIS_CONFIG.BPM_WINDOW_SEC * 1000);
-        this.compressionTimestamps = this.compressionTimestamps.filter(t => t > cutoff);
-    }
-
-    /**
-     * Calcule le pourcentage de relâchement
-     */
-    calculateRecoil(currentY) {
-        if (!this.lowestY || !this.baselineY) return 0;
-
-        const totalMovement = this.lowestY - this.baselineY;
-        if (totalMovement <= 0) return 100;
-
-        const returnMovement = this.lowestY - currentY;
-        return Math.min(100, (returnMovement / totalMovement) * 100);
-    }
-
-    /**
-     * Calcule les métriques CPR
-     */
-    calculateMetrics() {
-        // Calculer BPM
-        if (this.compressionTimestamps.length >= ANALYSIS_CONFIG.MIN_COMPRESSIONS_FOR_BPM) {
-            const recentTimestamps = this.compressionTimestamps.slice(-10);
-            if (recentTimestamps.length > 1) {
-                const totalTime = recentTimestamps[recentTimestamps.length - 1] - recentTimestamps[0];
-                const compressionCount = recentTimestamps.length - 1;
-                const avgInterval = totalTime / compressionCount;
-                this.currentBPM = Math.round(60000 / avgInterval);
-            }
-        }
-    }
-
-    /**
-     * Obtient le ratio de compression selon protocole et nombre de secouristes
-     */
-    getCompressionRatio() {
-        if (this.rescuerCount === 2 && this.activeProtocol.compressionRatio) {
-            return this.activeProtocol.compressionRatio;
-        }
-        return this.activeProtocol.compressionRatioSingle || this.activeProtocol.compressionRatio;
-    }
-
-    /**
-     * Obtient toutes les métriques actuelles
-     */
-    getMetrics() {
-        const protocol = this.activeProtocol;
-
-        // Évaluation qualité BPM
-        let bpmStatus = 'WAITING';
-        let bpmColor = '#888888';
-        if (this.currentBPM > 0) {
-            if (this.currentBPM >= protocol.minBPM && this.currentBPM <= protocol.maxBPM) {
-                bpmStatus = 'GOOD';
-                bpmColor = '#22C55E'; // Vert
-            } else if (this.currentBPM < protocol.minBPM) {
-                bpmStatus = 'TOO_SLOW';
-                bpmColor = '#F97316'; // Orange
-            } else {
-                bpmStatus = 'TOO_FAST';
-                bpmColor = '#EF4444'; // Rouge
-            }
-        }
-
-        // Évaluation qualité relâchement
-        let recoilStatus = 'WAITING';
-        let recoilColor = '#888888';
-        if (this.compressionCount > 0) {
-            if (this.recoilQuality >= 90) {
-                recoilStatus = 'GOOD';
-                recoilColor = '#22C55E';
-            } else if (this.recoilQuality >= 70) {
-                recoilStatus = 'ACCEPTABLE';
-                recoilColor = '#F59E0B';
-            } else {
-                recoilStatus = 'POOR';
-                recoilColor = '#EF4444';
-            }
-        }
-
+        // ── Build structured output per rcp_rules.json output_schema ──
         return {
-            // Valeurs brutes
+            // Raw values
             bpm: this.currentBPM,
-            compressionCount: this.compressionCount,
+            compressionCount: this.totalCompressions,
+            cycleCompressions: this.cycleCompressions,
             cycleCount: this.cycleCount,
-            recoilQuality: Math.round(this.recoilQuality),
-            avgDepth: Math.round(this.avgDepth),
+            recoilQuality: Math.round(recoilPercent),
+            depthPct: depthTorsoPct ? Math.round(depthTorsoPct * 10) / 10 : null,
+            depthCm: depthCm ? Math.round(depthCm * 10) / 10 : null,
+            elbowAngle: elbowAngle ? Math.round(elbowAngle) : null,
 
-            // Statuts
-            bpmStatus,
-            bpmColor,
-            recoilStatus,
-            recoilColor,
+            // Status evaluations (from rules, not hardcoded)
+            bpmStatus: this._bpmStatus(this.currentBPM),
+            depthStatus: this._depthStatus(depthTorsoPct),
+            recoilStatus: recoilPercent >= 85 ? 'GOOD' : recoilPercent >= 70 ? 'ACCEPTABLE' : 'POOR',
 
-            // Progression du cycle
-            cycleProgress: this.compressionCount / this.getCompressionRatio(),
-            cycleTarget: this.getCompressionRatio(),
+            // Errors from rcp_rules.json
+            errors,
+            hasErrors: errors.length > 0,
+            criticalErrors: errors.filter(e => e.severity === 'CRITICAL'),
 
-            // Protocole actif
-            protocol: this.activeProtocol,
+            // Cycle progress
+            cycleProgress: this.cycleCompressions / cycleTarget,
+            cycleTarget,
+            ventilationTarget: ratio.ventilations,
 
-            // Guide
-            guidance: this.getGuidance()
+            // Action
+            action,
+            state: this.currentState,
+
+            // Guidance
+            feedbackMessage,
+            guidance: errors.length > 0
+                ? errors.map(e => ({ type: e.severity, text: e.correction }))
+                : [{ type: 'POSITIVE', text: feedbackMessage }],
+
+            // Meta
+            victimType: this.victimType,
+            language: rulesEngine.language,
+            confidence: poseData.confidence || 0,
+            timestamp: new Date(timestamp).toISOString(),
         };
     }
 
-    /**
-     * Génère les messages de guidance
-     */
-    getGuidance() {
-        const messages = [];
-        const protocol = this.activeProtocol;
+    // ══════════════════════════════════════════════════════════════════════════
+    //  COMPRESSION STATE MACHINE
+    // ══════════════════════════════════════════════════════════════════════════
 
-        // Message de bienvenue spécial
-        if (protocol.specialWarning) {
-            messages.push({
-                type: 'WARNING',
-                text: protocol.specialWarning,
-                textAr: protocol.specialWarningAr,
-                priority: 1
-            });
-        }
+    _detectCompressionState(y, timestamp, torsoHeight) {
+        const movement = y - this.baselineY;
+        const minMovement = torsoHeight > 0 ? torsoHeight * 0.02 : 15;
 
-        // Guidance BPM
-        if (this.currentBPM > 0) {
-            if (this.currentBPM < protocol.minBPM) {
-                messages.push({
-                    type: 'CORRECTION',
-                    text: 'Plus vite! Augmentez le rythme',
-                    textAr: 'أسرع! زد السرعة',
-                    priority: 2
-                });
-            } else if (this.currentBPM > protocol.maxBPM) {
-                messages.push({
-                    type: 'CORRECTION',
-                    text: 'Ralentissez légèrement',
-                    textAr: 'أبطئ قليلاً',
-                    priority: 2
-                });
-            } else {
-                messages.push({
-                    type: 'POSITIVE',
-                    text: 'Excellent rythme! Continuez',
-                    textAr: 'إيقاع ممتاز! استمر',
-                    priority: 3
-                });
+        switch (this.currentState) {
+            case STATE.IDLE:
+                if (Math.abs(movement) > minMovement) {
+                    this.currentState = STATE.COMPRESSING;
+                    this.lowestY = y;
+                    this.peakY = this.baselineY;
+                }
+                break;
+
+            case STATE.COMPRESSING:
+                // Track the extreme point (direction depends on camera orientation)
+                if (Math.abs(y - this.baselineY) > Math.abs(this.lowestY - this.baselineY)) {
+                    this.lowestY = y;
+                }
+                // Detect reversal → releasing
+                const compressionDepth = Math.abs(this.lowestY - this.baselineY);
+                const returnedAmount = Math.abs(y - this.lowestY);
+                if (returnedAmount > compressionDepth * 0.3 && compressionDepth > minMovement) {
+                    this.currentState = STATE.RELEASING;
+                    this.lastDepthPixels = compressionDepth;
+                }
+                break;
+
+            case STATE.RELEASING: {
+                const totalMovement = Math.abs(this.lowestY - this.baselineY);
+                const returnMovement = Math.abs(y - this.lowestY);
+                const recoil = totalMovement > 0 ? (returnMovement / totalMovement) * 100 : 100;
+
+                if (recoil >= 80) {
+                    // Full compression + recoil cycle complete
+                    this._registerCompression(timestamp, true, torsoHeight);
+                    this.currentState = STATE.IDLE;
+                    this.baselineY = y;
+                } else if (Math.abs(y - this.baselineY) > minMovement &&
+                    ((y > this.baselineY) !== (this.lowestY > this.baselineY))) {
+                    // New compression without full recoil
+                    this._registerCompression(timestamp, false, torsoHeight);
+                    this.currentState = STATE.COMPRESSING;
+                    this.lowestY = y;
+                }
+                break;
             }
         }
-
-        // Guidance relâchement
-        if (this.recoilQuality > 0 && this.recoilQuality < 80) {
-            messages.push({
-                type: 'CORRECTION',
-                text: 'Relâchez complètement le thorax',
-                textAr: 'اترك الصدر يرتفع كاملاً',
-                priority: 2
-            });
-        }
-
-        // Tri par priorité
-        messages.sort((a, b) => a.priority - b.priority);
-
-        return messages;
     }
 
+    _registerCompression(timestamp, fullRecoil, torsoHeight) {
+        // Anti-bounce: min 300ms between compressions
+        const last = this.compressionTimestamps[this.compressionTimestamps.length - 1];
+        if (last && timestamp - last < 300) return;
+
+        this.compressionTimestamps.push(timestamp);
+        this.totalCompressions++;
+        this.cycleCompressions++;
+
+        // Update running average recoil quality
+        const recoilValue = fullRecoil ? 100 : 50;
+        const n = this.totalCompressions;
+        this.recoilQuality = ((n - 1) * this.recoilQuality + recoilValue) / n;
+
+        // Calculate BPM from recent timestamps
+        this._calculateBPM();
+
+        // Check cycle completion
+        const ratio = rulesEngine.getCompressionVentilationRatio(this.victimType, this.rescuerCount);
+        if (this.cycleCompressions >= ratio.compressions) {
+            this.cycleCount++;
+            this.cycleCompressions = 0;
+        }
+
+        // Keep only last 15 seconds of timestamps
+        const cutoff = timestamp - 15000;
+        this.compressionTimestamps = this.compressionTimestamps.filter(t => t > cutoff);
+    }
+
+    _calculateBPM() {
+        const ts = this.compressionTimestamps;
+        if (ts.length < 3) { this.currentBPM = 0; return; }
+
+        const recent = ts.slice(-12);
+        if (recent.length < 2) { this.currentBPM = 0; return; }
+
+        const totalTime = recent[recent.length - 1] - recent[0];
+        const intervals = recent.length - 1;
+        if (totalTime <= 0) { this.currentBPM = 0; return; }
+
+        this.currentBPM = Math.round((intervals / totalTime) * 60000);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  BIOMECHANICAL CALCULATIONS
+    // ══════════════════════════════════════════════════════════════════════════
+
+    _computeTorsoHeight(lm) {
+        const sY = this._midY(lm.leftShoulder, lm.rightShoulder);
+        const hY = this._midY(lm.leftHip, lm.rightHip);
+        if (sY == null || hY == null) return 0;
+        return Math.abs(hY - sY);
+    }
+
+    _computeElbowAngle(lm) {
+        // Calculate angle at elbow: shoulder → elbow → wrist
+        const angles = [];
+        if (lm.leftShoulder && lm.leftElbow && lm.leftWrist) {
+            angles.push(this._angleBetween(lm.leftShoulder, lm.leftElbow, lm.leftWrist));
+        }
+        if (lm.rightShoulder && lm.rightElbow && lm.rightWrist) {
+            angles.push(this._angleBetween(lm.rightShoulder, lm.rightElbow, lm.rightWrist));
+        }
+        if (angles.length === 0) return null;
+        return angles.reduce((a, b) => a + b, 0) / angles.length;
+    }
+
+    _angleBetween(a, b, c) {
+        // Angle at point b formed by points a-b-c
+        if (!a || !b || !c) return 180;
+        const ba = { x: a.x - b.x, y: a.y - b.y };
+        const bc = { x: c.x - b.x, y: c.y - b.y };
+        const dot = ba.x * bc.x + ba.y * bc.y;
+        const magBA = Math.sqrt(ba.x * ba.x + ba.y * ba.y);
+        const magBC = Math.sqrt(bc.x * bc.x + bc.y * bc.y);
+        if (magBA === 0 || magBC === 0) return 180;
+        const cosAngle = Math.max(-1, Math.min(1, dot / (magBA * magBC)));
+        return (Math.acos(cosAngle) * 180) / Math.PI;
+    }
+
+    _estimateDepthCm(depthTorsoPct, victimType) {
+        if (depthTorsoPct == null) return null;
+        // Average adult torso height ≈ 45cm, child ≈ 30cm, infant ≈ 18cm
+        const torsoHeightCm = { adult: 45, child: 30, infant: 18, pregnant: 45 };
+        const tcm = torsoHeightCm[victimType] || 45;
+        return (depthTorsoPct / 100) * tcm;
+    }
+
+    _midX(a, b) {
+        if (!a || !b) return null;
+        return (a.x + b.x) / 2;
+    }
+
+    _midY(a, b) {
+        if (!a || !b) return null;
+        return (a.y + b.y) / 2;
+    }
+
+    _computeVariance(arr) {
+        if (arr.length < 2) return 0;
+        const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
+        return arr.reduce((sum, v) => sum + (v - mean) ** 2, 0) / arr.length;
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  FEEDBACK GENERATION (from rcp_rules.json)
+    // ══════════════════════════════════════════════════════════════════════════
+
+    _bpmStatus(bpm) {
+        if (bpm <= 0) return 'WAITING';
+        const [min, max] = rulesEngine.getRateRange(this.victimType);
+        if (bpm < min) return 'TOO_SLOW';
+        if (bpm > max) return 'TOO_FAST';
+        return 'GOOD';
+    }
+
+    _depthStatus(depthPct) {
+        if (depthPct == null) return 'WAITING';
+        const [min, max] = rulesEngine.getDepthTorsoPercent(this.victimType);
+        if (depthPct < min) return 'TOO_SHALLOW';
+        if (depthPct > max) return 'TOO_DEEP';
+        return 'GOOD';
+    }
+
+    _generateFeedback(errors, metrics) {
+        if (errors.length > 0) {
+            // Return highest-severity correction
+            return errors[0].correction;
+        }
+        if (metrics.rate >= rulesEngine.getRateRange(this.victimType)[0] &&
+            metrics.rate <= rulesEngine.getRateRange(this.victimType)[1]) {
+            return rulesEngine.getPositiveFeedback('good_compression');
+        }
+        return '';
+    }
+
+    _determineAction(errors, poseData) {
+        if (!poseData.handsTogether) return 'idle';
+        if (errors.some(e => e.severity === 'CRITICAL')) return 'incorrect';
+        if (this.currentState === STATE.COMPRESSING) return 'compression';
+        if (this.currentState === STATE.RELEASING) return 'compression';
+        return 'compression';
+    }
+
+    _idleResult(timestamp) {
+        return {
+            bpm: 0, compressionCount: 0, cycleCompressions: 0, cycleCount: 0,
+            recoilQuality: 0, depthPct: null, depthCm: null, elbowAngle: null,
+            bpmStatus: 'WAITING', depthStatus: 'WAITING', recoilStatus: 'WAITING',
+            errors: [], hasErrors: false, criticalErrors: [],
+            cycleProgress: 0, cycleTarget: 30, ventilationTarget: 2,
+            action: 'idle', state: STATE.IDLE,
+            feedbackMessage: '', guidance: [],
+            victimType: this.victimType, language: rulesEngine.language,
+            confidence: 0, timestamp: new Date(timestamp).toISOString(),
+        };
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  BACKEND RESPONSE PROCESSING
+    // ══════════════════════════════════════════════════════════════════════════
+
     /**
-     * Réinitialise les compteurs
+     * Process metrics received from the Python backend.
+     * The backend provides bpm, depth, recoil, compression_count.
+     * We run them through our RulesEngine for error evaluation + feedback.
      */
+    processBackendMetrics(backendResponse, timestamp = Date.now()) {
+        if (!backendResponse?.success) return this._idleResult(timestamp);
+
+        const m = backendResponse.metrics || {};
+        const bpm = m.bpm || 0;
+        const depthCm = m.depth_cm || 0;
+        const recoilQuality = m.recoil_quality || 0;
+        const compressionCount = m.compression_count || 0;
+        const elapsedTime = m.elapsed_time || 0;
+        const armAngle = m.arm_angle || null;
+        const handsTogether = m.hands_together || false;
+        const backendVictimType = m.victim_type || null;
+        const victimConfidence = m.victim_confidence || 0;
+        const depthTorsoPctBackend = m.depth_torso_pct || 0;
+        const timeSinceLastCompression = m.time_since_last_compression || 0;
+
+        // Update internal state from backend
+        this.currentBPM = bpm;
+        this.totalCompressions = compressionCount;
+        this.recoilQuality = recoilQuality;
+
+        // Auto-update victim type from classifier if confident enough
+        if (backendVictimType && victimConfidence >= 0.7) {
+            this.victimType = backendVictimType;
+        }
+
+        // Use backend's torso-normalized depth if available, else estimate
+        const depthTorsoPct = depthTorsoPctBackend > 0 ? depthTorsoPctBackend : (() => {
+            const torsoHeightCm = { adult: 45, child: 30, infant: 18, pregnant: 45 };
+            const tcm = torsoHeightCm[this.victimType] || 45;
+            return (depthCm / tcm) * 100;
+        })();
+
+        // Build metrics for rule evaluation (now with real data from YOLOv8)
+        const metricsForRules = {
+            rate: bpm,
+            depthTorsoPct,
+            recoilPercent: recoilQuality,
+            timeSinceLastCompression,
+            elbowAngle: armAngle,
+            // Landmark-level checks need raw keypoints (not in summary)
+            wristY: null,
+            shoulderY: null,
+            hipY: null,
+            torsoHeight: null,
+            shoulderMidX: null,
+            wristMidX: null,
+            frameWidth: null,
+            wristXVariance: null,
+        };
+
+        const errors = rulesEngine.evaluateErrors(metricsForRules, this.victimType);
+        const ratio = rulesEngine.getCompressionVentilationRatio(this.victimType, this.rescuerCount);
+        const cycleTarget = ratio.compressions;
+        const cycleCompressions = compressionCount % cycleTarget;
+        const feedbackMessage = this._generateFeedback(errors, metricsForRules);
+
+        return {
+            bpm,
+            compressionCount,
+            cycleCompressions,
+            cycleCount: Math.floor(compressionCount / cycleTarget),
+            recoilQuality: Math.round(recoilQuality),
+            depthPct: Math.round(depthTorsoPct * 10) / 10,
+            depthCm: Math.round(depthCm * 10) / 10,
+            elbowAngle: armAngle,
+            bpmStatus: this._bpmStatus(bpm),
+            depthStatus: this._depthStatus(depthTorsoPct),
+            recoilStatus: recoilQuality >= 85 ? 'GOOD' : recoilQuality >= 70 ? 'ACCEPTABLE' : 'POOR',
+            errors,
+            hasErrors: errors.length > 0,
+            criticalErrors: errors.filter(e => e.severity === 'CRITICAL'),
+            cycleProgress: cycleCompressions / cycleTarget,
+            cycleTarget,
+            ventilationTarget: ratio.ventilations,
+            action: compressionCount > 0 ? 'compression' : 'idle',
+            state: this.currentState,
+            feedbackMessage,
+            guidance: errors.length > 0
+                ? errors.map(e => ({ type: e.severity, text: e.correction }))
+                : [{ type: 'POSITIVE', text: feedbackMessage }],
+            backendGuidance: backendResponse.guidance || null,
+            victimType: this.victimType,
+            language: rulesEngine.language,
+            confidence: 1.0,
+            elapsedTime,
+            timestamp: new Date(timestamp).toISOString(),
+        };
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  RESET
+    // ══════════════════════════════════════════════════════════════════════════
+
     reset() {
-        this.yPositionHistory = [];
+        this.yHistory = [];
+        this.xHistory = [];
         this.compressionTimestamps = [];
-        this.currentState = 'IDLE';
-        this.compressionCount = 0;
-        this.ventilationCount = 0;
+        this.currentState = STATE.IDLE;
+        this.totalCompressions = 0;
+        this.cycleCompressions = 0;
         this.cycleCount = 0;
         this.currentBPM = 0;
-        this.avgDepth = 0;
         this.recoilQuality = 0;
+        this.lastDepthPixels = 0;
         this.baselineY = null;
         this.lowestY = null;
+        this.peakY = null;
     }
 }
 
-// Singleton
+// ─── SINGLETON ────────────────────────────────────────────────────────────────
+
 export const cprAnalysisService = new CPRAnalysisService();
 export default CPRAnalysisService;

@@ -1,15 +1,8 @@
 /**
- * Écran CPR Principal - Assistance en temps réel
- * ===============================================
- * Architecture Hybride:
- * - ML Kit Pose Detection (OFFLINE - principal)
- * - Backend Python (OPTIONNEL - analyse avancée si WiFi)
- * 
- * Fonctionnalités:
- * - Détection de pose temps réel sur le téléphone
- * - Calcul BPM et profondeur des compressions
- * - Feedback vocal et haptique
- * - Fonctionne 100% hors ligne
+ * CPR Screen — Real-time CPR Assistance
+ * =======================================
+ * Full pipeline: Camera → Backend (MediaPipe+YOLO) → RulesEngine → Feedback
+ * No simulation stubs. All data is real.
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -20,333 +13,267 @@ import {
     Dimensions,
     TouchableOpacity,
     Alert,
-    Vibration,
     Platform,
-    Switch
+    TextInput,
+    ActivityIndicator,
+    ScrollView,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Speech from 'expo-speech';
 import * as Haptics from 'expo-haptics';
 
 // Services
-import { MEDICAL_PROTOCOLS, cprAnalysisService } from '../services/CPRAnalysisService';
+import { cprAnalysisService } from '../services/CPRAnalysisService';
 import { backendAPI } from '../services/BackendAPIService';
 import { poseFrameProcessor } from '../services/PoseFrameProcessor';
-import { mlKitPoseService } from '../services/MLKitPoseService';
+import { rulesEngine } from '../services/RulesEngine';
 
 // Components
-import VictimTypeSelector from '../components/VictimTypeSelector';
 import MetricsDisplay from '../components/MetricsDisplay';
 import GuidanceOverlay from '../components/GuidanceOverlay';
 import CompressionProgress from '../components/CompressionProgress';
 
 const { width, height } = Dimensions.get('window');
 
-// Modes de détection
-const DETECTION_MODES = {
-    OFFLINE: 'offline',      // ML Kit sur téléphone
-    BACKEND: 'backend',      // Serveur Python
-    SIMULATION: 'simulation' // Simulation pour dev
+// Severity colors from rcp_rules.json
+const SEVERITY_COLORS = {
+    CRITICAL: '#EF4444',
+    HIGH: '#F97316',
+    MEDIUM: '#EAB308',
+    POSITIVE: '#22C55E',
 };
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  MAIN COMPONENT
+// ═══════════════════════════════════════════════════════════════════════════════
 
 export default function CPRScreen({ route, navigation }) {
     const { rescuerCount = 1 } = route.params || {};
 
-    // État caméra - SDK 52 hook
+    // Camera
     const [permission, requestPermission] = useCameraPermissions();
     const [cameraReady, setCameraReady] = useState(false);
     const cameraRef = useRef(null);
 
-    // État CPR
+    // Connection
+    const [phase, setPhase] = useState('SETUP'); // SETUP | CONNECTING | READY | ACTIVE
+    const [serverIP, setServerIP] = useState('');
+    const [connectionStatus, setConnectionStatus] = useState(null);
+    const [serverVersion, setServerVersion] = useState('');
+
+    // CPR session
     const [isActive, setIsActive] = useState(false);
-    const [selectedProtocol, setSelectedProtocol] = useState('ADULT');
+    const [victimType, setVictimType] = useState('adult');
     const [metrics, setMetrics] = useState(null);
-    const [showSelector, setShowSelector] = useState(false);
-
-    // État détection
-    const [detectionMode, setDetectionMode] = useState(DETECTION_MODES.OFFLINE);
-    const [poseDetected, setPoseDetected] = useState(false);
-    const [handsPosition, setHandsPosition] = useState(null);
-
-    // État Backend (optionnel)
-    const [useBackendAnalysis, setUseBackendAnalysis] = useState(false);
-    const [backendConnected, setBackendConnected] = useState(false);
-    const [backendGuidance, setBackendGuidance] = useState(null);
 
     // Timer
     const [elapsedTime, setElapsedTime] = useState(0);
     const timerRef = useRef(null);
-    const analysisIntervalRef = useRef(null);
 
-    // ========================================
-    // INITIALISATION
-    // ========================================
+    // Voice guidance cooldown
+    const lastSpeechRef = useRef(0);
+    const lastSpokenMsgRef = useRef('');
+
+    // ──────────────────────────────────────────────────────────────────────────
+    //  INITIALIZATION
+    // ──────────────────────────────────────────────────────────────────────────
 
     useEffect(() => {
-        initializeServices();
-
-        return () => {
-            cleanup();
-        };
-    }, []);
-
-    const initializeServices = async () => {
-        // Initialiser ML Kit Pose Service
-        await mlKitPoseService.initialize();
-
-        // Configurer CPR Analysis
-        cprAnalysisService.setRescuerCount(rescuerCount);
-        cprAnalysisService.setProtocol(selectedProtocol);
-
-        // Configurer les callbacks du frame processor
-        poseFrameProcessor.setCallbacks({
-            onPoseDetected: handlePoseDetected,
-            onMetricsUpdate: handleMetricsUpdate
+        // Load saved server URL
+        backendAPI.loadServerUrl().then(url => {
+            if (url) {
+                const ip = url.replace('http://', '').replace(':5000', '');
+                setServerIP(ip);
+            }
         });
 
-        // Vérifier connexion backend (optionnel)
-        checkBackendConnection();
+        // Configure services
+        cprAnalysisService.setRescuerCount(rescuerCount);
+        cprAnalysisService.setVictimType(victimType);
+
+        return () => cleanup();
+    }, []);
+
+    const cleanup = () => {
+        poseFrameProcessor.stop();
+        poseFrameProcessor.reset();
+        if (timerRef.current) clearInterval(timerRef.current);
+        Speech.stop();
+        if (backendAPI.hasActiveSession()) {
+            backendAPI.endSession();
+        }
     };
 
-    // Vérifier si le backend Python est disponible
-    const checkBackendConnection = async () => {
-        try {
-            await backendAPI.loadServerUrl();
-            const health = await backendAPI.checkHealth();
-            setBackendConnected(health.connected);
+    // ──────────────────────────────────────────────────────────────────────────
+    //  SERVER CONNECTION
+    // ──────────────────────────────────────────────────────────────────────────
 
+    const connectToServer = async () => {
+        if (!serverIP.trim()) {
+            Alert.alert('Erreur', 'Entrez l\'adresse IP du serveur');
+            return;
+        }
+
+        setPhase('CONNECTING');
+        const url = `http://${serverIP.trim()}:5000`;
+        await backendAPI.setServerUrl(url);
+
+        try {
+            const health = await backendAPI.checkHealth();
             if (health.connected) {
-                console.log('Backend Python disponible:', health.version);
+                setServerVersion(health.version || '');
+                setConnectionStatus({ connected: true });
+                setPhase('READY');
             } else {
-                console.log('Mode offline activé (pas de backend)');
+                Alert.alert('Connexion échouée',
+                    'Serveur non trouvé. Vérifiez:\n• Le serveur Python est lancé\n• Même réseau WiFi\n• IP correcte');
+                setPhase('SETUP');
             }
         } catch (error) {
-            console.log('Backend non disponible, mode offline');
-            setBackendConnected(false);
+            Alert.alert('Erreur', error.message);
+            setPhase('SETUP');
         }
     };
 
-    const cleanup = async () => {
-        if (timerRef.current) clearInterval(timerRef.current);
-        if (analysisIntervalRef.current) clearInterval(analysisIntervalRef.current);
+    // ──────────────────────────────────────────────────────────────────────────
+    //  CPR SESSION CONTROL
+    // ──────────────────────────────────────────────────────────────────────────
 
-        poseFrameProcessor.stopSimulation();
-        poseFrameProcessor.reset();
-        Speech.stop();
-
-        // Fermer session backend si active
-        if (backendAPI.hasActiveSession()) {
-            await backendAPI.endSession();
+    const startCPR = async () => {
+        // Create backend session
+        const result = await backendAPI.createSession(victimType.toUpperCase(), rescuerCount);
+        if (!result.success) {
+            Alert.alert('Erreur', 'Impossible de créer la session: ' + (result.error || ''));
+            return;
         }
-    };
 
-    // ========================================
-    // GESTION DE LA POSE
-    // ========================================
-
-    const handlePoseDetected = (poseResult) => {
-        setPoseDetected(poseResult.detected);
-
-        if (poseResult.handsPosition) {
-            setHandsPosition(poseResult.handsPosition);
-        }
-    };
-
-    const handleMetricsUpdate = (newMetrics) => {
-        setMetrics(newMetrics);
-
-        // Feedback pour compression
-        if (newMetrics.compressionCount !== metrics?.compressionCount) {
-            provideFeedback(newMetrics);
-        }
-    };
-
-    // ========================================
-    // CONTRÔLE CPR
-    // ========================================
-
-    const toggleActive = () => {
-        if (isActive) {
-            stopAssistance();
-        } else {
-            startAssistance();
-        }
-    };
-
-    const startAssistance = async () => {
-        setIsActive(true);
+        // Reset services
+        cprAnalysisService.setVictimType(victimType);
         cprAnalysisService.reset();
-        poseFrameProcessor.reset();
-        setElapsedTime(0);
         setMetrics(null);
+        setElapsedTime(0);
+        setIsActive(true);
+        setPhase('ACTIVE');
 
-        // Annonce vocale
-        speakGuidance('Assistance RCP démarrée. Placez vos mains et commencez les compressions.');
+        // Configure frame processor
+        poseFrameProcessor.setCameraRef(cameraRef);
+        poseFrameProcessor.setCallbacks({
+            onMetricsUpdate: handleMetricsUpdate,
+            onConnectionStatus: handleConnectionUpdate,
+            onError: handlePipelineError,
+        });
 
-        // Créer session backend si connecté et activé
-        if (useBackendAnalysis && backendConnected) {
-            const result = await backendAPI.createSession(selectedProtocol, rescuerCount);
-            if (!result.success) {
-                console.log('Session backend échouée, mode offline');
-                setUseBackendAnalysis(false);
-            }
-        }
+        // Start real-time processing
+        poseFrameProcessor.start();
 
-        // Démarrer le timer
+        // Start timer
         timerRef.current = setInterval(() => {
             setElapsedTime(prev => prev + 1);
         }, 1000);
 
-        // Démarrer le traitement des frames
-        startFrameProcessing();
+        // Voice announcement
+        speak(rulesEngine.language === 'ar'
+            ? 'بدأت المساعدة. ضع يديك وابدأ الضغط'
+            : 'Assistance démarrée. Placez vos mains et commencez');
     };
 
-    const stopAssistance = async () => {
+    const stopCPR = async () => {
+        poseFrameProcessor.stop();
+        if (timerRef.current) clearInterval(timerRef.current);
+        Speech.stop();
+
+        const stats = poseFrameProcessor.getStats();
         setIsActive(false);
-        await cleanup();
+        setPhase('READY');
 
-        speakGuidance('Assistance arrêtée.');
+        // End backend session
+        await backendAPI.endSession();
 
-        // Afficher résumé
-        if (metrics) {
-            Alert.alert(
-                'Session terminée',
-                `Durée: ${formatTime(elapsedTime)}\n` +
-                `Compressions: ${metrics.compressionCount || 0}\n` +
-                `BPM moyen: ${metrics.bpm ? metrics.bpm.toFixed(0) : '-'}\n` +
-                `Mode: ${detectionMode === DETECTION_MODES.OFFLINE ? 'Offline' : 'Backend'}`,
-                [{ text: 'OK' }]
-            );
-        }
+        // Show summary
+        Alert.alert(
+            'Session terminée',
+            `Durée: ${formatTime(elapsedTime)}\n` +
+            `Compressions: ${metrics?.compressionCount || 0}\n` +
+            `BPM: ${metrics?.bpm || '-'}\n` +
+            `Images traitées: ${stats.framesProcessed}\n` +
+            `Latence moyenne: ${stats.avgLatencyMs}ms`,
+            [{ text: 'OK' }]
+        );
     };
 
-    // ========================================
-    // TRAITEMENT DES FRAMES
-    // ========================================
+    // ──────────────────────────────────────────────────────────────────────────
+    //  CALLBACKS FROM PIPELINE
+    // ──────────────────────────────────────────────────────────────────────────
 
-    const startFrameProcessing = () => {
-        // Mode de détection selon configuration
-        if (detectionMode === DETECTION_MODES.SIMULATION) {
-            // Mode simulation pour développement
-            poseFrameProcessor.enableSimulation();
-            poseFrameProcessor.startSimulation();
-        } else {
-            // Mode ML Kit offline
-            poseFrameProcessor.enableMLKitNative();
+    const handleMetricsUpdate = useCallback((newMetrics) => {
+        setMetrics(newMetrics);
+
+        // Haptic feedback on each new compression
+        if (Platform.OS !== 'web' && newMetrics.compressionCount > 0) {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => { });
         }
 
-        // Intervalle de traitement des frames
-        analysisIntervalRef.current = setInterval(async () => {
-            if (detectionMode === DETECTION_MODES.SIMULATION) {
-                // Traitement en simulation
-                await poseFrameProcessor.processFrame({});
-            } else if (detectionMode === DETECTION_MODES.BACKEND && useBackendAnalysis && cameraRef.current) {
-                // Traitement via backend Python
-                await processFrameWithBackend();
-            } else {
-                // Traitement ML Kit local
-                await processFrameLocally();
-            }
-        }, 100); // 10 FPS
-    };
-
-    // Traitement local (ML Kit)
-    const processFrameLocally = async () => {
-        try {
-            if (!cameraRef.current) return;
-
-            // En production avec ML Kit natif, les landmarks viennent du frame processor
-            // Pour l'instant, on simule
-            const result = await poseFrameProcessor.processFrame({});
-
-            if (result && result.cpr) {
-                setMetrics(result.cpr);
-            }
-        } catch (error) {
-            console.warn('Erreur traitement local:', error);
-        }
-    };
-
-    // Traitement via Backend Python (optionnel)
-    const processFrameWithBackend = async () => {
-        try {
-            if (!cameraRef.current) return;
-
-            const photo = await cameraRef.current.takePictureAsync({
-                base64: true,
-                quality: 0.5,
-                skipProcessing: true
-            });
-
-            if (photo && photo.base64) {
-                const result = await backendAPI.processFrame(photo.base64);
-
-                if (result.success) {
-                    const newMetrics = {
-                        bpm: result.metrics.bpm,
-                        compressionCount: result.metrics.compression_count,
-                        depthCm: result.metrics.depth_cm,
-                        recoilQuality: result.metrics.recoil_quality,
-                        cycleCount: Math.floor(result.metrics.compression_count / 30),
-                        cycleTarget: 30,
-                        guidance: result.guidance ? [result.guidance] : []
-                    };
-
-                    setMetrics(newMetrics);
-                    setBackendGuidance(result.guidance);
-
-                    if (newMetrics.compressionCount !== metrics?.compressionCount) {
-                        provideFeedback(newMetrics);
-                    }
-                } else if (result.offline) {
-                    // Basculer en mode offline
-                    setDetectionMode(DETECTION_MODES.OFFLINE);
-                    setUseBackendAnalysis(false);
-                }
-            }
-        } catch (error) {
-            console.warn('Erreur backend:', error);
-        }
-    };
-
-    // ========================================
-    // FEEDBACK
-    // ========================================
-
-    const provideFeedback = (newMetrics) => {
-        // Haptic
-        if (Platform.OS !== 'web') {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        }
-
-        // Guidance vocale périodique
-        const guidance = newMetrics.guidance?.[0];
-        if (guidance && newMetrics.compressionCount % 10 === 0) {
-            const text = typeof guidance === 'string' ? guidance : guidance.text_fr || guidance.text;
-            if (text) speakGuidance(text);
-        }
-
-        // Guidance BPM
-        if (newMetrics.compressionCount % 15 === 0 && newMetrics.bpm > 0) {
-            if (newMetrics.bpm < 100) {
-                speakGuidance('Plus vite');
-            } else if (newMetrics.bpm > 120) {
-                speakGuidance('Ralentissez');
+        // Voice guidance — throttled to avoid overlapping
+        const now = Date.now();
+        if (now - lastSpeechRef.current > 4000) {
+            const msg = pickVoiceMessage(newMetrics);
+            if (msg && msg !== lastSpokenMsgRef.current) {
+                const lang = rulesEngine.language === 'ar' ? 'ar-SA' : 'fr-FR';
+                Speech.speak(msg, { language: lang, pitch: 1.0, rate: 1.1 });
+                lastSpeechRef.current = now;
+                lastSpokenMsgRef.current = msg;
             }
         }
+    }, []);
+
+    const handleConnectionUpdate = useCallback((status) => {
+        setConnectionStatus(status);
+    }, []);
+
+    const handlePipelineError = useCallback((error) => {
+        console.warn('[CPRScreen] Pipeline error:', error);
+    }, []);
+
+    // ──────────────────────────────────────────────────────────────────────────
+    //  VOICE FEEDBACK
+    // ──────────────────────────────────────────────────────────────────────────
+
+    const pickVoiceMessage = (m) => {
+        if (!m) return null;
+
+        // Priority 1: Critical errors from RulesEngine
+        if (m.criticalErrors?.length > 0) {
+            return m.criticalErrors[0].correction;
+        }
+
+        // Priority 2: High severity errors
+        const highErrors = m.errors?.filter(e => e.severity === 'HIGH') || [];
+        if (highErrors.length > 0) {
+            return highErrors[0].correction;
+        }
+
+        // Priority 3: Backend guidance (trilingual — always available)
+        if (m.backendGuidance) {
+            const lang = rulesEngine.language;
+            return m.backendGuidance[`text_${lang}`] || m.backendGuidance.text_fr || m.backendGuidance.text_en || '';
+        }
+
+        // Priority 4: BPM guidance
+        if (m.bpmStatus === 'TOO_SLOW') return 'Plus vite!';
+        if (m.bpmStatus === 'TOO_FAST') return 'Ralentissez!';
+
+        return null;
     };
 
-    const speakGuidance = (text) => {
-        Speech.speak(text, {
-            language: 'fr-FR',
-            pitch: 1.0,
-            rate: 1.1
-        });
+    const speak = (text) => {
+        if (!text) return;
+        const lang = rulesEngine.language === 'ar' ? 'ar-SA' : 'fr-FR';
+        Speech.speak(text, { language: lang, pitch: 1.0, rate: 1.1 });
     };
 
-    // ========================================
-    // UTILITIES
-    // ========================================
+    // ──────────────────────────────────────────────────────────────────────────
+    //  UTILITIES
+    // ──────────────────────────────────────────────────────────────────────────
 
     const formatTime = (seconds) => {
         const mins = Math.floor(seconds / 60);
@@ -354,354 +281,257 @@ export default function CPRScreen({ route, navigation }) {
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
-    const handleProtocolChange = (protocol) => {
-        setSelectedProtocol(protocol);
-        cprAnalysisService.setProtocol(protocol);
-        setShowSelector(false);
-    };
+    const victimTypes = rulesEngine.getVictimTypes();
 
-    // Toggle mode simulation/offline
-    const toggleDetectionMode = () => {
-        if (detectionMode === DETECTION_MODES.SIMULATION) {
-            setDetectionMode(DETECTION_MODES.OFFLINE);
-            poseFrameProcessor.stopSimulation();
-        } else {
-            setDetectionMode(DETECTION_MODES.SIMULATION);
-            if (isActive) {
-                poseFrameProcessor.startSimulation();
-            }
-        }
-    };
+    // ══════════════════════════════════════════════════════════════════════════
+    //  RENDER
+    // ══════════════════════════════════════════════════════════════════════════
 
-    // ========================================
-    // RENDER
-    // ========================================
-
-    // Vérification permissions caméra
+    // ── Permission check ──
     if (!permission) {
-        return (
-            <View style={styles.container}>
-                <Text style={styles.text}>Chargement...</Text>
-            </View>
-        );
+        return <View style={styles.container}><ActivityIndicator size="large" color="#DC2626" /></View>;
     }
-
     if (!permission.granted) {
         return (
-            <View style={styles.container}>
-                <Text style={styles.text}>Permission caméra requise</Text>
-                <Text style={styles.subText}>
-                    L'accès à la caméra est nécessaire pour la détection de pose CPR
-                </Text>
-                <TouchableOpacity style={styles.button} onPress={requestPermission}>
-                    <Text style={styles.buttonText}>Autoriser la caméra</Text>
+            <View style={styles.center}>
+                <Text style={styles.title}>📷 Permission caméra requise</Text>
+                <Text style={styles.subtitle}>Nécessaire pour la détection de pose CPR</Text>
+                <TouchableOpacity style={styles.btnPrimary} onPress={requestPermission}>
+                    <Text style={styles.btnText}>Autoriser la caméra</Text>
                 </TouchableOpacity>
             </View>
         );
     }
 
+    // ── SETUP phase: server connection ──
+    if (phase === 'SETUP' || phase === 'CONNECTING') {
+        return (
+            <View style={styles.center}>
+                <Text style={styles.title}>🖥️ Connexion au serveur</Text>
+                <Text style={styles.subtitle}>
+                    Lancez le serveur Python puis entrez son IP
+                </Text>
+                <Text style={styles.hint}>python api_server.py</Text>
+
+                <View style={styles.ipRow}>
+                    <Text style={styles.ipPrefix}>http://</Text>
+                    <TextInput
+                        style={styles.ipInput}
+                        value={serverIP}
+                        onChangeText={setServerIP}
+                        placeholder="192.168.1.X"
+                        placeholderTextColor="#666"
+                        keyboardType="numeric"
+                        autoCorrect={false}
+                    />
+                    <Text style={styles.ipSuffix}>:5000</Text>
+                </View>
+
+                <TouchableOpacity
+                    style={[styles.btnPrimary, phase === 'CONNECTING' && styles.btnDisabled]}
+                    onPress={connectToServer}
+                    disabled={phase === 'CONNECTING'}
+                >
+                    {phase === 'CONNECTING'
+                        ? <ActivityIndicator color="#FFF" />
+                        : <Text style={styles.btnText}>Connecter</Text>
+                    }
+                </TouchableOpacity>
+            </View>
+        );
+    }
+
+    // ── READY / ACTIVE phase: camera + CPR ──
     return (
         <View style={styles.container}>
-            {/* Caméra */}
+            {/* Camera */}
             <CameraView
                 ref={cameraRef}
                 style={styles.camera}
                 facing="back"
+                mute={true}
                 onCameraReady={() => setCameraReady(true)}
             >
-                {/* Overlay de statut */}
+                {/* ── Top status bar ── */}
                 <View style={styles.statusBar}>
-                    <View style={styles.statusItem}>
-                        <View style={[
-                            styles.statusDot,
-                            {
-                                backgroundColor: detectionMode === DETECTION_MODES.SIMULATION ? '#FFD700' :
-                                    poseDetected ? '#00FF00' : '#FF0000'
-                            }
-                        ]} />
+                    <View style={[styles.statusPill, { backgroundColor: connectionStatus?.connected ? 'rgba(34,197,94,0.8)' : 'rgba(239,68,68,0.8)' }]}>
                         <Text style={styles.statusText}>
-                            {detectionMode === DETECTION_MODES.SIMULATION ? 'SIMULATION' :
-                                poseDetected ? 'POSE DÉTECTÉE' : 'RECHERCHE...'}
+                            {connectionStatus?.connected
+                                ? `● CONNECTÉ ${connectionStatus.latencyMs ? `${connectionStatus.latencyMs}ms` : ''}`
+                                : '● DÉCONNECTÉ'}
                         </Text>
                     </View>
 
-                    <View style={styles.statusItem}>
-                        <View style={[
-                            styles.statusDot,
-                            { backgroundColor: backendConnected ? '#00FF00' : '#888' }
-                        ]} />
-                        <Text style={styles.statusText}>
-                            {detectionMode === DETECTION_MODES.OFFLINE ? 'OFFLINE' :
-                                backendConnected ? 'BACKEND' : 'LOCAL'}
-                        </Text>
-                    </View>
+                    {isActive && (
+                        <View style={styles.statusPill}>
+                            <Text style={styles.timerText}>{formatTime(elapsedTime)}</Text>
+                        </View>
+                    )}
                 </View>
 
-                {/* Indicateur de position des mains */}
-                {handsPosition && isActive && (
-                    <View style={[
-                        styles.handsIndicator,
-                        {
-                            left: handsPosition.x - 25,
-                            top: handsPosition.y - 25
-                        }
-                    ]}>
-                        <View style={styles.handsCircle} />
+                {/* ── Error banners (from RulesEngine) ── */}
+                {isActive && metrics?.errors?.length > 0 && (
+                    <View style={styles.errorBanner}>
+                        {metrics.errors.slice(0, 2).map((err, i) => (
+                            <View key={i} style={[styles.errorRow, { backgroundColor: `${SEVERITY_COLORS[err.severity]}CC` }]}>
+                                <Text style={styles.errorSeverity}>
+                                    {err.severity === 'CRITICAL' ? '🔴' : err.severity === 'HIGH' ? '🟠' : '🟡'} {err.severity}
+                                </Text>
+                                <Text style={styles.errorText}>{err.correction}</Text>
+                            </View>
+                        ))}
                     </View>
                 )}
 
-                {/* Métriques */}
+                {/* ── Positive feedback ── */}
+                {isActive && metrics && metrics.errors?.length === 0 && metrics.bpmStatus === 'GOOD' && (
+                    <View style={styles.positiveBanner}>
+                        <Text style={styles.positiveText}>
+                            ✅ {rulesEngine.getPositiveFeedback('good_compression')}
+                        </Text>
+                    </View>
+                )}
+
+                {/* ── Metrics overlay ── */}
                 {isActive && metrics && (
                     <View style={styles.metricsOverlay}>
-                        <MetricsDisplay metrics={metrics} />
+                        {/* BPM */}
+                        <View style={[styles.metricCard, { borderLeftColor: metrics.bpmStatus === 'GOOD' ? '#22C55E' : metrics.bpmStatus === 'TOO_SLOW' ? '#F97316' : metrics.bpmStatus === 'TOO_FAST' ? '#EF4444' : '#888' }]}>
+                            <Text style={styles.metricValue}>{metrics.bpm || '--'}</Text>
+                            <Text style={styles.metricLabel}>BPM</Text>
+                        </View>
+
+                        {/* Compressions */}
+                        <View style={[styles.metricCard, { borderLeftColor: '#3B82F6' }]}>
+                            <Text style={styles.metricValue}>{metrics.compressionCount || 0}</Text>
+                            <Text style={styles.metricLabel}>Comp.</Text>
+                        </View>
+
+                        {/* Depth */}
+                        <View style={[styles.metricCard, { borderLeftColor: metrics.depthStatus === 'GOOD' ? '#22C55E' : '#F97316' }]}>
+                            <Text style={styles.metricValue}>{metrics.depthCm || '--'}</Text>
+                            <Text style={styles.metricLabel}>cm</Text>
+                        </View>
+
+                        {/* Recoil */}
+                        <View style={[styles.metricCard, { borderLeftColor: metrics.recoilStatus === 'GOOD' ? '#22C55E' : '#EF4444' }]}>
+                            <Text style={styles.metricValue}>{metrics.recoilQuality || '--'}%</Text>
+                            <Text style={styles.metricLabel}>Recoil</Text>
+                        </View>
                     </View>
                 )}
 
-                {/* Timer */}
-                {isActive && (
-                    <View style={styles.timerContainer}>
-                        <Text style={styles.timer}>{formatTime(elapsedTime)}</Text>
-                    </View>
-                )}
-
-                {/* Guidance */}
-                {isActive && backendGuidance && (
-                    <GuidanceOverlay guidance={backendGuidance} />
-                )}
-
-                {/* Progress */}
+                {/* ── Cycle progress bar ── */}
                 {isActive && metrics && (
-                    <View style={styles.progressContainer}>
-                        <CompressionProgress
-                            count={metrics.compressionCount || 0}
-                            target={metrics.cycleTarget || 30}
-                            cycle={metrics.cycleCount || 0}
-                        />
+                    <View style={styles.cycleBar}>
+                        <View style={styles.cycleTrack}>
+                            <View style={[styles.cycleFill, { width: `${Math.min(100, (metrics.cycleProgress || 0) * 100)}%` }]} />
+                        </View>
+                        <Text style={styles.cycleText}>
+                            {metrics.cycleCompressions || 0}/{metrics.cycleTarget || 30} — Cycle {metrics.cycleCount || 0}
+                        </Text>
                     </View>
                 )}
-
             </CameraView>
 
-            {/* Contrôles en bas */}
-            <View style={styles.controlsContainer}>
-                {/* Mode Toggle */}
-                <View style={styles.modeToggle}>
-                    <Text style={styles.modeLabel}>
-                        Mode: {detectionMode === DETECTION_MODES.SIMULATION ? '🧪 Simulation' : '📱 Offline'}
-                    </Text>
-                    <Switch
-                        value={detectionMode === DETECTION_MODES.SIMULATION}
-                        onValueChange={toggleDetectionMode}
-                        trackColor={{ false: '#767577', true: '#FFD700' }}
-                        thumbColor={detectionMode === DETECTION_MODES.SIMULATION ? '#FFA500' : '#f4f3f4'}
-                    />
-                </View>
+            {/* ── Bottom controls ── */}
+            <View style={styles.controls}>
+                {/* Victim type selector (disabled during active session) */}
+                {!isActive && (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.victimScroll}>
+                        {victimTypes.map(type => (
+                            <TouchableOpacity
+                                key={type}
+                                style={[styles.victimChip, victimType === type && styles.victimChipActive]}
+                                onPress={() => {
+                                    setVictimType(type);
+                                    cprAnalysisService.setVictimType(type);
+                                }}
+                            >
+                                <Text style={[styles.victimChipText, victimType === type && styles.victimChipTextActive]}>
+                                    {type === 'adult' ? '👨 Adulte' : type === 'child' ? '👦 Enfant' : type === 'infant' ? '👶 Nourrisson' : '🤰 Enceinte'}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
+                )}
 
-                {/* Sélecteur de protocole */}
+                {/* Main button */}
                 <TouchableOpacity
-                    style={styles.protocolButton}
-                    onPress={() => setShowSelector(true)}
-                    disabled={isActive}
+                    style={[styles.mainBtn, isActive ? styles.stopBtn : styles.startBtn]}
+                    onPress={isActive ? stopCPR : startCPR}
                 >
-                    <Text style={styles.protocolButtonText}>
-                        {MEDICAL_PROTOCOLS[selectedProtocol]?.icon} {MEDICAL_PROTOCOLS[selectedProtocol]?.name}
-                    </Text>
-                </TouchableOpacity>
-
-                {/* Bouton principal */}
-                <TouchableOpacity
-                    style={[
-                        styles.mainButton,
-                        isActive ? styles.stopButton : styles.startButton
-                    ]}
-                    onPress={toggleActive}
-                >
-                    <Text style={styles.mainButtonText}>
+                    <Text style={styles.mainBtnText}>
                         {isActive ? '⏹ ARRÊTER' : '▶️ DÉMARRER CPR'}
                     </Text>
                 </TouchableOpacity>
             </View>
-
-            {/* Modal sélecteur */}
-            {showSelector && (
-                <VictimTypeSelector
-                    visible={showSelector}
-                    onSelect={handleProtocolChange}
-                    onClose={() => setShowSelector(false)}
-                    currentProtocol={selectedProtocol}
-                />
-            )}
         </View>
     );
 }
 
-// ========================================
-// STYLES
-// ========================================
+// ═══════════════════════════════════════════════════════════════════════════════
+//  STYLES
+// ═══════════════════════════════════════════════════════════════════════════════
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#000',
-    },
-    camera: {
-        flex: 1,
-    },
+    container: { flex: 1, backgroundColor: '#000' },
+    center: { flex: 1, backgroundColor: '#111', justifyContent: 'center', alignItems: 'center', padding: 30 },
+    camera: { flex: 1 },
 
-    // Status Bar
-    statusBar: {
-        position: 'absolute',
-        top: 50,
-        left: 0,
-        right: 0,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        paddingHorizontal: 20,
-    },
-    statusItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: 'rgba(0,0,0,0.6)',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 20,
-    },
-    statusDot: {
-        width: 10,
-        height: 10,
-        borderRadius: 5,
-        marginRight: 8,
-    },
-    statusText: {
-        color: '#FFF',
-        fontSize: 12,
-        fontWeight: 'bold',
-    },
+    // Text
+    title: { color: '#FFF', fontSize: 22, fontWeight: 'bold', marginBottom: 10 },
+    subtitle: { color: '#AAA', fontSize: 14, textAlign: 'center', marginBottom: 20 },
+    hint: { color: '#666', fontSize: 12, fontFamily: 'monospace', backgroundColor: '#222', padding: 8, borderRadius: 6, marginBottom: 25 },
 
-    // Hands Indicator
-    handsIndicator: {
-        position: 'absolute',
-        width: 50,
-        height: 50,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    handsCircle: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: 'rgba(0, 255, 255, 0.4)',
-        borderWidth: 3,
-        borderColor: '#00FFFF',
-    },
+    // IP Input
+    ipRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
+    ipPrefix: { color: '#888', fontSize: 16 },
+    ipSuffix: { color: '#888', fontSize: 16 },
+    ipInput: { backgroundColor: '#222', color: '#FFF', fontSize: 18, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 8, minWidth: 160, textAlign: 'center', borderWidth: 1, borderColor: '#444', marginHorizontal: 4 },
 
-    // Metrics Overlay
-    metricsOverlay: {
-        position: 'absolute',
-        top: 100,
-        left: 10,
-        right: 10,
-    },
+    // Buttons
+    btnPrimary: { backgroundColor: '#DC2626', paddingVertical: 14, paddingHorizontal: 40, borderRadius: 12 },
+    btnDisabled: { opacity: 0.5 },
+    btnText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' },
 
-    // Timer
-    timerContainer: {
-        position: 'absolute',
-        top: 100,
-        right: 20,
-        backgroundColor: 'rgba(0,0,0,0.7)',
-        paddingHorizontal: 15,
-        paddingVertical: 8,
-        borderRadius: 10,
-    },
-    timer: {
-        color: '#FFF',
-        fontSize: 24,
-        fontWeight: 'bold',
-        fontFamily: 'monospace',
-    },
+    // Status bar
+    statusBar: { position: 'absolute', top: 50, left: 15, right: 15, flexDirection: 'row', justifyContent: 'space-between' },
+    statusPill: { backgroundColor: 'rgba(0,0,0,0.7)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
+    statusText: { color: '#FFF', fontSize: 11, fontWeight: 'bold' },
+    timerText: { color: '#FFF', fontSize: 18, fontWeight: 'bold', fontFamily: 'monospace' },
 
-    // Progress
-    progressContainer: {
-        position: 'absolute',
-        bottom: 180,
-        left: 20,
-        right: 20,
-    },
+    // Error banners
+    errorBanner: { position: 'absolute', top: 95, left: 10, right: 10 },
+    errorRow: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, marginBottom: 4 },
+    errorSeverity: { color: '#FFF', fontSize: 10, fontWeight: 'bold' },
+    errorText: { color: '#FFF', fontSize: 13, fontWeight: '600', marginTop: 2 },
+
+    // Positive banner
+    positiveBanner: { position: 'absolute', top: 95, left: 10, right: 10, backgroundColor: 'rgba(34,197,94,0.85)', paddingHorizontal: 12, paddingVertical: 10, borderRadius: 8 },
+    positiveText: { color: '#FFF', fontSize: 14, fontWeight: '600', textAlign: 'center' },
+
+    // Metrics
+    metricsOverlay: { position: 'absolute', bottom: 180, left: 10, right: 10, flexDirection: 'row', justifyContent: 'space-around' },
+    metricCard: { backgroundColor: 'rgba(0,0,0,0.75)', borderRadius: 10, padding: 10, alignItems: 'center', minWidth: 70, borderLeftWidth: 3 },
+    metricValue: { color: '#FFF', fontSize: 22, fontWeight: 'bold', fontFamily: 'monospace' },
+    metricLabel: { color: '#AAA', fontSize: 10, marginTop: 2 },
+
+    // Cycle bar
+    cycleBar: { position: 'absolute', bottom: 145, left: 15, right: 15 },
+    cycleTrack: { height: 6, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 3, overflow: 'hidden' },
+    cycleFill: { height: '100%', backgroundColor: '#3B82F6', borderRadius: 3 },
+    cycleText: { color: '#AAA', fontSize: 11, textAlign: 'center', marginTop: 4 },
 
     // Controls
-    controlsContainer: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        backgroundColor: 'rgba(0,0,0,0.8)',
-        padding: 20,
-        paddingBottom: 40,
-    },
-    modeToggle: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 15,
-        paddingHorizontal: 10,
-    },
-    modeLabel: {
-        color: '#FFF',
-        fontSize: 14,
-    },
-    protocolButton: {
-        backgroundColor: '#333',
-        padding: 12,
-        borderRadius: 10,
-        alignItems: 'center',
-        marginBottom: 15,
-    },
-    protocolButtonText: {
-        color: '#FFF',
-        fontSize: 16,
-    },
-    mainButton: {
-        padding: 18,
-        borderRadius: 15,
-        alignItems: 'center',
-    },
-    startButton: {
-        backgroundColor: '#DC2626',
-    },
-    stopButton: {
-        backgroundColor: '#666',
-    },
-    mainButtonText: {
-        color: '#FFF',
-        fontSize: 20,
-        fontWeight: 'bold',
-    },
-
-    // Permission screens
-    text: {
-        color: '#FFF',
-        fontSize: 20,
-        textAlign: 'center',
-        marginTop: 100,
-    },
-    subText: {
-        color: '#AAA',
-        fontSize: 14,
-        textAlign: 'center',
-        marginTop: 10,
-        paddingHorizontal: 40,
-    },
-    button: {
-        backgroundColor: '#DC2626',
-        padding: 15,
-        borderRadius: 10,
-        marginTop: 30,
-        marginHorizontal: 50,
-    },
-    buttonText: {
-        color: '#FFF',
-        fontSize: 16,
-        textAlign: 'center',
-        fontWeight: 'bold',
-    },
+    controls: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.9)', padding: 15, paddingBottom: 35 },
+    victimScroll: { marginBottom: 12 },
+    victimChip: { backgroundColor: '#333', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, marginRight: 8 },
+    victimChipActive: { backgroundColor: '#DC2626' },
+    victimChipText: { color: '#AAA', fontSize: 13 },
+    victimChipTextActive: { color: '#FFF', fontWeight: 'bold' },
+    mainBtn: { paddingVertical: 16, borderRadius: 14, alignItems: 'center' },
+    startBtn: { backgroundColor: '#DC2626' },
+    stopBtn: { backgroundColor: '#555' },
+    mainBtnText: { color: '#FFF', fontSize: 18, fontWeight: 'bold' },
 });

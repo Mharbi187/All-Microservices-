@@ -1,0 +1,697 @@
+{
+  "_meta": {
+    "version": "3.0",
+    "date": "2026-04-11",
+    "sources": [
+      "AHA (American Heart Association) Guidelines 2020/2025",
+      "ERC (European Resuscitation Council) Guidelines 2021",
+      "IFRC (International Federation of Red Cross) 2020"
+    ],
+    "keypoint_model": "MediaPipe Pose (33 landmarks)",
+    "notes": "All angle thresholds are in degrees. All distances are normalized to torso height. Trilingual feedback: AR, EN, FR. Default language: Arabic",
+    "languages_supported": [
+      "ar",
+      "en",
+      "fr"
+    ],
+    "default_language": "ar"
+  },
+  "landmark_mapping": {
+    "LEFT_SHOULDER": 11,
+    "RIGHT_SHOULDER": 12,
+    "LEFT_ELBOW": 13,
+    "RIGHT_ELBOW": 14,
+    "LEFT_WRIST": 15,
+    "RIGHT_WRIST": 16,
+    "LEFT_HIP": 23,
+    "RIGHT_HIP": 24,
+    "NOSE": 0,
+    "LEFT_EAR": 7,
+    "RIGHT_EAR": 8,
+    "LEFT_KNEE": 25,
+    "RIGHT_KNEE": 26,
+    "LEFT_ANKLE": 27,
+    "RIGHT_ANKLE": 28
+  },
+  "victim_types": {
+    "adult": {
+      "description": {
+        "ar": "العمر >= 8 سنوات (بداية البلوغ) أو حجم الجسم يقدر في نطاق البالغين",
+        "en": "Age >= 8 years (puberty onset) or body size estimated adult-range",
+        "fr": "Âge >= 8 ans (début de la puberté) ou taille corporelle estimée dans la fourchette adulte"
+      },
+      "detection_cue": {
+        "ar": "عرض الكتفين / ارتفاع الجذع > 0.55",
+        "en": "shoulder_width / torso_height > 0.55",
+        "fr": "largeur_épaules / hauteur_torse > 0.55"
+      }
+    },
+    "child": {
+      "description": {
+        "ar": "العمر 1-8 سنوات",
+        "en": "Age 1-8 years",
+        "fr": "Âge 1-8 ans"
+      },
+      "detection_cue": {
+        "ar": "عرض الكتفين / ارتفاع الجذع بين 0.40 و 0.55",
+        "en": "shoulder_width / torso_height between 0.40 and 0.55",
+        "fr": "largeur_épaules / hauteur_torse entre 0.40 et 0.55"
+      }
+    },
+    "infant": {
+      "description": {
+        "ar": "العمر < سنة واحدة",
+        "en": "Age < 1 year",
+        "fr": "Âge < 1 an"
+      },
+      "detection_cue": {
+        "ar": "تم اكتشاف تقنية الإصبعين أو جسم الضحية صغير جدًا مقارنة بالمنقذ",
+        "en": "Two-finger technique detected OR victim body very small relative to rescuer",
+        "fr": "Technique à deux doigts détectée OU corps de la victime très petit par rapport au sauveteur"
+      }
+    },
+    "pregnant": {
+      "description": {
+        "ar": "مريضة حامل بشكل واضح",
+        "en": "Visibly pregnant patient",
+        "fr": "Patiente visiblement enceinte"
+      },
+      "detection_cue": {
+        "ar": "إدخال يدوي أو مخرجات نموذج التصنيف (لا يمكن اكتشافها عبر الوضعية فقط)",
+        "en": "Manual input or classification model output (cannot reliably detect via pose alone)",
+        "fr": "Saisie manuelle ou sortie du modèle de classification (non détectable uniquement par la pose)"
+      }
+    }
+  },
+  "rules": {
+    "adult": {
+      "compression": {
+        "hands_position": {
+          "rule": {
+            "ar": "يجب وضع كلا المعصمين على النصف السفلي من عظمة القص (وسط الصدر)",
+            "en": "Both wrists must be positioned over the lower half of the sternum (center of chest)",
+            "fr": "Les deux poignets doivent être positionnés sur la moitié inférieure du sternum (centre de la poitrine)"
+          },
+          "keypoints": [
+            "LEFT_WRIST",
+            "RIGHT_WRIST"
+          ],
+          "reference_keypoints": [
+            "LEFT_SHOULDER",
+            "RIGHT_SHOULDER",
+            "LEFT_HIP",
+            "RIGHT_HIP"
+          ],
+          "condition": "wrist_x is between shoulder midpoint x ± 15% torso_width AND wrist_y is between shoulder_y + 40% torso_height AND shoulder_y + 60% torso_height",
+          "tolerance_percent": 15,
+          "medical_source": "AHA 2020: Place heel of hand on lower half of sternum"
+        },
+        "arm_angle": {
+          "rule": {
+            "ar": "يجب أن تكون الذراعين مستقيمتين (المرفقين ممدودين) أثناء الضغطات",
+            "en": "Arms must be straight (elbows extended) during compressions",
+            "fr": "Les bras doivent être droits (coudes tendus) pendant les compressions"
+          },
+          "keypoints": [
+            "SHOULDER",
+            "ELBOW",
+            "WRIST"
+          ],
+          "condition": "elbow_angle >= 160 degrees",
+          "threshold_degrees": 160,
+          "medical_source": "ERC 2021: Lock elbows, keep arms straight"
+        },
+        "body_position": {
+          "rule": {
+            "ar": "يجب أن تكون أكتاف المنقذ مباشرة فوق اليدين (محاذاة عمودية)",
+            "en": "Rescuer shoulders must be directly above hands (vertical alignment)",
+            "fr": "Les épaules du sauveteur doivent être directement au-dessus des mains (alignement vertical)"
+          },
+          "keypoints": [
+            "LEFT_SHOULDER",
+            "RIGHT_SHOULDER",
+            "LEFT_WRIST",
+            "RIGHT_WRIST"
+          ],
+          "condition": "abs(shoulder_midpoint_x - wrist_midpoint_x) < 10% frame_width",
+          "tolerance_percent": 10,
+          "medical_source": "AHA 2020: Position shoulders directly over hands"
+        },
+        "depth": {
+          "rule": {
+            "ar": "يجب أن يكون عمق الضغط 5 سم على الأقل ولا يزيد عن 6 سم",
+            "en": "Compression depth must be at least 5 cm (2 inches) and no more than 6 cm",
+            "fr": "La profondeur de compression doit être d'au moins 5 cm et pas plus de 6 cm"
+          },
+          "detection_method": "Measure vertical wrist displacement between up and down phases",
+          "proxy_condition": "wrist_vertical_displacement >= 3.5% torso_height AND <= 6% torso_height",
+          "depth_cm_range": [
+            5,
+            6
+          ],
+          "medical_source": "AHA 2020: At least 2 inches (5 cm), max 2.4 inches (6 cm)"
+        },
+        "rate": {
+          "rule": {
+            "ar": "يجب أن يكون معدل الضغط 100-120 في الدقيقة",
+            "en": "Compression rate must be 100-120 per minute",
+            "fr": "La fréquence des compressions doit être de 100-120 par minute"
+          },
+          "detection_method": "Count compression cycles (down+up) within a rolling 6-second window, multiply by 10",
+          "range_per_minute": [
+            100,
+            120
+          ],
+          "medical_source": "AHA 2020 / ERC 2021: Rate of 100-120/min"
+        },
+        "recoil": {
+          "rule": {
+            "ar": "السماح بارتداد كامل للصدر بين الضغطات",
+            "en": "Allow full chest recoil between compressions",
+            "fr": "Permettre un retour thoracique complet entre les compressions"
+          },
+          "detection_method": "Wrist must return to baseline_y (±10%) between compressions",
+          "condition": "abs(wrist_y_up - baseline_wrist_y) < 10% compression_depth",
+          "medical_source": "AHA 2020: Allow complete chest recoil, do not lean on chest"
+        },
+        "movement_pattern": {
+          "rule": {
+            "ar": "يجب أن تكون الضغطات عمودية ومتكررة وليست جانبية",
+            "en": "Compressions must be vertical and repetitive, not lateral",
+            "fr": "Les compressions doivent être verticales et répétitives, non latérales"
+          },
+          "condition": "wrist_x_variance < 5% frame_width during compression cycle",
+          "medical_source": "ERC 2021: Compress vertically, avoid rocking"
+        }
+      },
+      "ventilation": {
+        "head_tilt_chin_lift": {
+          "rule": {
+            "ar": "يجب إمالة الرأس للخلف (حركة إمالة الرأس ورفع الذقن)",
+            "en": "Head must be tilted back (head-tilt chin-lift maneuver)",
+            "fr": "La tête doit être inclinée vers l'arrière (manœuvre tête-inclinaison menton-soulèvement)"
+          },
+          "keypoints": [
+            "NOSE",
+            "LEFT_EAR",
+            "RIGHT_EAR",
+            "LEFT_SHOULDER",
+            "RIGHT_SHOULDER"
+          ],
+          "condition": "nose_y < ear_midpoint_y (nose is higher than ears in frame) AND angle(nose, ear_midpoint, shoulder_midpoint) > 120 degrees",
+          "medical_source": "AHA 2020: Open airway with head-tilt chin-lift"
+        },
+        "face_proximity": {
+          "rule": {
+            "ar": "وجه المنقذ قريب من فم الضحية أثناء التهوية",
+            "en": "Rescuer face close to victim mouth during ventilation",
+            "fr": "Visage du sauveteur proche de la bouche de la victime pendant la ventilation"
+          },
+          "detection_method": "Distance between rescuer nose and victim estimated mouth position < 15% torso_height",
+          "medical_source": "AHA 2020: Seal mouth-to-mouth or use barrier device"
+        },
+        "no_compression_during_ventilation": {
+          "rule": {
+            "ar": "يجب إيقاف الضغطات مؤقتًا أثناء التهوية (لمنقذ واحد، إنعاش قلبي رئوي قياسي)",
+            "en": "Compressions must pause during ventilation (for single rescuer, standard CPR)",
+            "fr": "Les compressions doivent faire une pause pendant la ventilation (pour un seul sauveteur, RCP standard)"
+          },
+          "condition": "wrist_y_variance < 1% during detected ventilation phase",
+          "medical_source": "AHA 2020: 30:2 ratio — pause compressions for breaths"
+        },
+        "ratio": {
+          "rule": {
+            "ar": "30 ضغطة يتبعها 2 تهوية",
+            "en": "30 compressions followed by 2 ventilations",
+            "fr": "30 compressions suivies de 2 ventilations"
+          },
+          "cycle_compressions": 30,
+          "cycle_ventilations": 2,
+          "medical_source": "AHA 2020 / ERC 2021: Universal 30:2 for single rescuer (adult)"
+        }
+      },
+      "pause_detection": {
+        "rule": {
+          "ar": "كشف التوقفات في الضغطات التي تتجاوز 10 ثوانٍ",
+          "en": "Detect pauses in compressions exceeding 10 seconds",
+          "fr": "Détecter les pauses dans les compressions dépassant 10 secondes"
+        },
+        "condition": "time_since_last_compression > 10 seconds",
+        "alert": {
+          "ar": "حرج: قلل المقاطعات! استأنف الضغطات فورًا.",
+          "en": "CRITICAL: Minimize interruptions! Resume compressions immediately.",
+          "fr": "CRITIQUE : Minimisez les interruptions ! Reprenez les compressions immédiatement."
+        },
+        "medical_source": "AHA 2020: Minimize interruptions, max 10 seconds for any pause"
+      }
+    },
+    "child": {
+      "compression": {
+        "hands_position": {
+          "rule": {
+            "ar": "يد واحدة أو اثنتين على النصف السفلي من عظمة القص",
+            "en": "One or two hands on the lower half of the sternum",
+            "fr": "Une ou deux mains sur la moitié inférieure du sternum"
+          },
+          "condition": "Same as adult but ONE hand acceptable",
+          "medical_source": "AHA 2020: Use one or two hands depending on child size"
+        },
+        "depth": {
+          "rule": {
+            "ar": "ثلث قطر الصدر الأمامي الخلفي تقريبًا، حوالي 5 سم",
+            "en": "Approximately one-third AP diameter of chest, about 5 cm (2 inches)",
+            "fr": "Environ un tiers du diamètre antéropostérieur de la poitrine, environ 5 cm"
+          },
+          "proxy_condition": "wrist_vertical_displacement >= 3% torso_height AND <= 5% torso_height",
+          "depth_cm": 5,
+          "medical_source": "AHA 2020: About 2 inches (5 cm) or 1/3 AP diameter"
+        },
+        "rate": {
+          "range_per_minute": [
+            100,
+            120
+          ],
+          "medical_source": "Same as adult"
+        },
+        "arm_angle": {
+          "threshold_degrees": 155,
+          "note": {
+            "ar": "مرونة أكبر قليلاً لتقنية اليد الواحدة",
+            "en": "Slightly more flexible for one-hand technique",
+            "fr": "Légèrement plus flexible pour la technique à une main"
+          }
+        }
+      },
+      "ventilation": {
+        "ratio": {
+          "single_rescuer": {
+            "compressions": 30,
+            "ventilations": 2
+          },
+          "two_rescuers": {
+            "compressions": 15,
+            "ventilations": 2
+          },
+          "medical_source": "AHA 2020: 30:2 single rescuer, 15:2 two rescuers"
+        }
+      }
+    },
+    "infant": {
+      "compression": {
+        "technique": {
+          "rule": {
+            "ar": "تقنية الإصبعين (منقذ واحد) أو تقنية الإبهامين المحيطتين (منقذين)",
+            "en": "Two-finger technique (single rescuer) or two-thumb encircling technique (two rescuers)",
+            "fr": "Technique à deux doigts (sauveteur seul) ou technique d'encerclement à deux pouces (deux sauveteurs)"
+          },
+          "detection_method": "If only wrist/finger landmarks visible near infant chest, classify as infant CPR",
+          "medical_source": "AHA 2020: Two-finger or two-thumb encircling hands"
+        },
+        "depth": {
+          "rule": {
+            "ar": "حوالي 1.5 بوصة (4 سم) أو ثلث القطر الأمامي الخلفي",
+            "en": "Approximately 1.5 inches (4 cm) or 1/3 AP diameter",
+            "fr": "Environ 1,5 pouce (4 cm) ou 1/3 du diamètre antéropostérieur"
+          },
+          "depth_cm": 4,
+          "medical_source": "AHA 2020: About 1.5 inches (4 cm)"
+        },
+        "rate": {
+          "range_per_minute": [
+            100,
+            120
+          ],
+          "medical_source": "Same as adult and child"
+        },
+        "location": {
+          "rule": {
+            "ar": "أسفل خط الحلمة مباشرة على عظمة القص",
+            "en": "Just below the nipple line on the sternum",
+            "fr": "Juste en dessous de la ligne des mamelons sur le sternum"
+          },
+          "medical_source": "AHA 2020: Center of chest, just below nipple line"
+        }
+      },
+      "ventilation": {
+        "technique": {
+          "rule": {
+            "ar": "تغطية فم الرضيع وأنفه بفم المنقذ",
+            "en": "Cover infant mouth AND nose with rescuer mouth",
+            "fr": "Couvrir la bouche ET le nez du nourrisson avec la bouche du sauveteur"
+          },
+          "medical_source": "AHA 2020: Mouth-to-mouth-and-nose for infants"
+        },
+        "ratio": {
+          "single_rescuer": {
+            "compressions": 30,
+            "ventilations": 2
+          },
+          "two_rescuers": {
+            "compressions": 15,
+            "ventilations": 2
+          }
+        }
+      }
+    },
+    "pregnant": {
+      "compression": {
+        "position_modification": {
+          "rule": {
+            "ar": "إزاحة الرحم يدويًا لليسار أو إمالة جانبية يسرى 15-30 درجة",
+            "en": "Manual left uterine displacement or 15-30 degree left lateral tilt",
+            "fr": "Déplacement manuel de l'utérus vers la gauche ou inclinaison latérale gauche de 15 à 30 degrés"
+          },
+          "detection_method": "Detect if victim torso is tilted (hip_y asymmetry > threshold)",
+          "medical_source": "AHA 2020: Perform manual LUD during CPR in pregnancy"
+        },
+        "hands_position": "Same as adult",
+        "depth": "Same as adult (5-6 cm)",
+        "rate": "Same as adult (100-120/min)"
+      },
+      "special": {
+        "perimortem_cesarean": {
+          "rule": {
+            "ar": "إذا لم يتم استعادة الدورة الدموية التلقائية خلال 5 دقائق، فكر في الولادة القيصرية بعد الوفاة",
+            "en": "If no ROSC within 5 minutes, consider perimortem cesarean delivery",
+            "fr": "Si pas de RACS dans les 5 minutes, envisager une césarienne périnatale"
+          },
+          "detection_method": "Alert after 5 minutes of continuous CPR without improvement",
+          "medical_source": "AHA 2020: Consider delivery within 5 minutes of arrest"
+        }
+      }
+    }
+  },
+  "error_conditions": {
+    "hands_too_high": {
+      "description": {
+        "ar": "اليدان في وضع مرتفع جدًا على الجزء العلوي من الصدر أو الرقبة",
+        "en": "Hands positioned on upper chest or neck area",
+        "fr": "Mains positionnées sur le haut de la poitrine ou la zone du cou"
+      },
+      "condition": "wrist_y < shoulder_y + 20% torso_height",
+      "severity": "CRITICAL",
+      "correction": {
+        "ar": "حرك اليدين إلى أسفل نحو منتصف الصدر",
+        "en": "Move hands lower to the center of the chest",
+        "fr": "Déplacez les mains plus bas vers le centre de la poitrine"
+      }
+    },
+    "hands_too_low": {
+      "description": {
+        "ar": "اليدان منخفضتان جدًا على البطن",
+        "en": "Hands positioned on abdomen",
+        "fr": "Mains positionnées sur l'abdomen"
+      },
+      "condition": "wrist_y > hip_y",
+      "severity": "CRITICAL",
+      "correction": {
+        "ar": "ارفع اليدين إلى النصف السفلي من عظمة القص",
+        "en": "Move hands up to the lower half of the sternum",
+        "fr": "Déplacez les mains vers le haut sur la moitié inférieure du sternum"
+      }
+    },
+    "arms_bent": {
+      "description": {
+        "ar": "ثني المرفقين أثناء الضغطات يقلل الفعالية",
+        "en": "Elbows bent during compressions reducing effectiveness",
+        "fr": "Coudes pliés pendant les compressions, ce qui réduit l'efficacité"
+      },
+      "condition": "elbow_angle < 140 degrees",
+      "severity": "HIGH",
+      "correction": {
+        "ar": "افرد ذراعيك تمامًا ولا تثنِ مرفقيك",
+        "en": "Lock elbows and keep arms straight",
+        "fr": "Verrouillez les coudes et gardez les bras tendus"
+      }
+    },
+    "shoulders_not_aligned": {
+      "description": {
+        "ar": "المنقذ يميل إلى جانب واحد",
+        "en": "Rescuer leaning to one side",
+        "fr": "Sauveteur penché d'un côté"
+      },
+      "condition": "abs(shoulder_midpoint_x - wrist_midpoint_x) > 15% frame_width",
+      "severity": "MEDIUM",
+      "correction": {
+        "ar": "اجعل كتفيك مباشرة فوق يديك",
+        "en": "Position shoulders directly over hands",
+        "fr": "Positionnez les épaules directement au-dessus des mains"
+      }
+    },
+    "too_shallow": {
+      "description": {
+        "ar": "عمق الضغط غير كافٍ",
+        "en": "Compression depth insufficient",
+        "fr": "Profondeur de compression insuffisante"
+      },
+      "condition": "depth < 3.5% torso_height for adult",
+      "severity": "HIGH",
+      "correction": {
+        "ar": "اضغط بعمق أكبر — على الأقل 5 سم",
+        "en": "Press deeper — at least 5 cm (2 inches)",
+        "fr": "Appuyez plus profondément — au moins 5 cm"
+      }
+    },
+    "too_deep": {
+      "description": {
+        "ar": "عمق الضغط مفرط (خطر الإصابة)",
+        "en": "Compression depth excessive (risk of injury)",
+        "fr": "Profondeur de compression excessive (risque de blessure)"
+      },
+      "condition": "depth > 6% torso_height for adult",
+      "severity": "MEDIUM",
+      "correction": {
+        "ar": "قلل العمق — بحد أقصى 6 سم",
+        "en": "Reduce depth — maximum 6 cm (2.4 inches)",
+        "fr": "Réduisez la profondeur — maximum 6 cm"
+      }
+    },
+    "too_slow": {
+      "description": {
+        "ar": "معدل الضغط أقل من 100 في الدقيقة",
+        "en": "Compression rate below 100 per minute",
+        "fr": "Fréquence des compressions inférieure à 100 par minute"
+      },
+      "condition": "rate < 100",
+      "severity": "HIGH",
+      "correction": {
+        "ar": "أسرع! استهدف 100-120 ضغطة في الدقيقة",
+        "en": "Faster! Target 100-120 compressions per minute",
+        "fr": "Plus vite ! Visez 100-120 compressions par minute"
+      }
+    },
+    "too_fast": {
+      "description": {
+        "ar": "معدل الضغط أعلى من 120 في الدقيقة",
+        "en": "Compression rate above 120 per minute",
+        "fr": "Fréquence des compressions supérieure à 120 par minute"
+      },
+      "condition": "rate > 120",
+      "severity": "MEDIUM",
+      "correction": {
+        "ar": "أبطئ قليلاً — المعدل الأمثل هو 100-120 في الدقيقة",
+        "en": "Slow down slightly — optimal rate is 100-120 per minute",
+        "fr": "Ralentissez légèrement — la fréquence optimale est de 100-120 par minute"
+      }
+    },
+    "incomplete_recoil": {
+      "description": {
+        "ar": "عدم السماح بارتداد كامل للصدر (الاتكاء على الصدر)",
+        "en": "Not allowing full chest recoil (leaning on chest)",
+        "fr": "Pas de retour thoracique complet (appui sur la poitrine)"
+      },
+      "condition": "wrist_up_y significantly lower than baseline",
+      "severity": "HIGH",
+      "correction": {
+        "ar": "اسمح للصدر بالارتداد الكامل بين الضغطات — لا تتكئ عليه",
+        "en": "Release completely between compressions — do not lean on chest",
+        "fr": "Relâchez complètement entre les compressions — ne vous appuyez pas sur la poitrine"
+      }
+    },
+    "excessive_pause": {
+      "description": {
+        "ar": "توقف في الضغطات يتجاوز 10 ثوانٍ",
+        "en": "Pause in compressions exceeding 10 seconds",
+        "fr": "Pause dans les compressions dépassant 10 secondes"
+      },
+      "condition": "time_since_last_compression > 10",
+      "severity": "CRITICAL",
+      "correction": {
+        "ar": "استأنف الضغطات فورًا! تجنب التوقف",
+        "en": "RESUME COMPRESSIONS IMMEDIATELY! Minimize interruptions.",
+        "fr": "REPRENEZ LES COMPRESSIONS IMMÉDIATEMENT ! Minimisez les interruptions."
+      }
+    },
+    "lateral_movement": {
+      "description": {
+        "ar": "حركة اليدين جانبيًا بدلاً من الضغط العمودي",
+        "en": "Hands moving sideways instead of vertical compression",
+        "fr": "Mains se déplaçant latéralement au lieu d'une compression verticale"
+      },
+      "condition": "wrist_x_variance > 5% frame_width during compression cycle",
+      "severity": "MEDIUM",
+      "correction": {
+        "ar": "اضغط مباشرة لأسفل — تجنب التأرجح جانبيًا",
+        "en": "Compress straight down — avoid side-to-side rocking",
+        "fr": "Compressez verticalement — évitez le balancement latéral"
+      }
+    }
+  },
+  "feedback_messages": {
+    "good_compression": {
+      "ar": "ضغط جيد! حافظ على هذا العمق والمعدل.",
+      "en": "Good compression! Maintain this depth and rate.",
+      "fr": "Bonne compression ! Maintenez cette profondeur et cette fréquence."
+    },
+    "good_recoil": {
+      "ar": "ارتداد جيد! استمر في تخفيف الضغط بالكامل.",
+      "en": "Good recoil! Keep releasing completely.",
+      "fr": "Bon retour ! Continuez à relâcher complètement."
+    },
+    "ventilation_detected": {
+      "ar": "تم اكتشاف التهوية. فتح جيد للمجرى الهوائي.",
+      "en": "Ventilation detected. Good airway opening.",
+      "fr": "Ventilation détectée. Bonne ouverture des voies respiratoires."
+    },
+    "resume_compressions": {
+      "ar": "استأنف الضغطات الآن",
+      "en": "Resume compressions now",
+      "fr": "Reprenez les compressions maintenant"
+    },
+    "victim_type_detected": {
+      "ar": "تم اكتشاف الضحية كـ: {type}",
+      "en": "Victim detected as: {type}",
+      "fr": "Victime détectée comme : {type}"
+    },
+    "switch_to_two_hands": {
+      "ar": "استخدم كلتا اليدين للحصول على ضغطات أعمق",
+      "en": "Consider using two hands for deeper compressions",
+      "fr": "Envisagez d'utiliser deux mains pour des compressions plus profondes"
+    }
+  },
+  "multi_rescuer": {
+    "detection": {
+      "rule": {
+        "ar": "اكتشاف هياكل عظمية متعددة في الإطار باستخدام MediaPipe متعدد الوضعيات",
+        "en": "Detect multiple skeletons in frame using MediaPipe multi-pose",
+        "fr": "Détecter plusieurs squelettes dans l'image en utilisant MediaPipe multi-pose"
+      },
+      "method": "If 2+ pose detections AND both are near the victim → classify as two-rescuer CPR",
+      "ignore_rule": {
+        "ar": "يتم تجاهل الأشخاص الواقفين بشكل مستقيم دون تفاعل مع الضحية",
+        "en": "Persons standing upright with no interaction with victim are ignored",
+        "fr": "Les personnes debout sans interaction avec la victime sont ignorées"
+      }
+    },
+    "two_rescuer_adult": {
+      "ratio": {
+        "compressions": 30,
+        "ventilations": 2
+      },
+      "note": {
+        "ar": "منقذ يضغط، والآخر يهوي. التبديل كل دقيقتين.",
+        "en": "One rescuer compresses, other ventilates. Switch every 2 minutes.",
+        "fr": "Un sauveteur comprime, l'autre ventile. Alternez toutes les 2 minutes."
+      }
+    },
+    "two_rescuer_child_infant": {
+      "ratio": {
+        "compressions": 15,
+        "ventilations": 2
+      },
+      "medical_source": "AHA 2020: 15:2 for two-rescuer pediatric CPR"
+    },
+    "handoff_alert": {
+      "condition": "same_rescuer_compressing_time > 120 seconds",
+      "alert": {
+        "ar": "بدّل الضاغط الآن لتجنب الإرهاق (كل دقيقتين / 5 دورات)",
+        "en": "Switch compressors now to avoid fatigue (every 2 minutes / 5 cycles)",
+        "fr": "Changez de compresseur maintenant pour éviter la fatigue (toutes les 2 minutes / 5 cycles)"
+      }
+    }
+  },
+  "language_config": {
+    "detection_method": "auto_detect_from_system_locale",
+    "default_language": "ar",
+    "fallback_language": "ar",
+    "locale_mapping": {
+      "ar_SA": "ar",
+      "ar_EG": "ar",
+      "ar_DZ": "ar",
+      "ar_MA": "ar",
+      "ar_AE": "ar",
+      "ar_LB": "ar",
+      "ar_JO": "ar",
+      "ar_KW": "ar",
+      "ar_QA": "ar",
+      "ar_BH": "ar",
+      "ar_OM": "ar",
+      "ar_YE": "ar",
+      "ar_SY": "ar",
+      "en_US": "en",
+      "en_GB": "en",
+      "en_CA": "en",
+      "en_AU": "en",
+      "fr_FR": "fr",
+      "fr_CA": "fr",
+      "fr_BE": "fr",
+      "fr_CH": "fr"
+    },
+    "rtl_languages": [
+      "ar"
+    ],
+    "text_direction": {
+      "ar": "RTL",
+      "en": "LTR",
+      "fr": "LTR"
+    }
+  },
+  "robustness": {
+    "low_visibility": {
+      "condition": "Average frame brightness < 40 (0-255 scale)",
+      "action": {
+        "ar": "تحذير: إضاءة منخفضة. النتائج قد تكون غير موثوقة.",
+        "en": "Warning: Low lighting. Results may be unreliable.",
+        "fr": "Attention : Faible éclairage. Les résultats peuvent être peu fiables."
+      }
+    },
+    "partial_occlusion": {
+      "condition": "Key landmarks (wrists, shoulders, elbows) visibility < 0.5",
+      "action": {
+        "ar": "تحذير: الجسم محجوب جزئيًا. اضبط زاوية الكاميرا.",
+        "en": "Warning: Body partially occluded. Adjust camera angle.",
+        "fr": "Attention : Corps partiellement occulté. Ajustez l'angle de la caméra."
+      }
+    },
+    "rapid_movement": {
+      "condition": "Landmark position change > 20% frame between consecutive frames",
+      "action": "Apply temporal smoothing (exponential moving average, alpha=0.3)"
+    },
+    "multiple_persons": {
+      "condition": "More than 2 poses detected",
+      "action": {
+        "ar": "تحديد المنقذ من خلال القرب من الشخص المستلقي على الأرض، وتجاهل المارة",
+        "en": "Identify rescuer by proximity to ground-level person, ignore bystanders",
+        "fr": "Identifiez le sauveteur par proximité avec la personne au sol, ignorez les spectateurs"
+      }
+    }
+  },
+  "output_schema": {
+    "victim_type": "adult | child | infant | pregnant",
+    "action": "compression | ventilation | pause | incorrect | idle",
+    "sub_action": "string (e.g., 'arms_bent', 'too_slow')",
+    "corrections": [
+      "list of correction messages in detected language"
+    ],
+    "confidence": "0.0 - 1.0",
+    "compression_count": "integer",
+    "rate_per_minute": "float",
+    "elbow_angle": "float (degrees)",
+    "depth_estimate_pct": "float (% of torso height)",
+    "depth_cm": "float (estimated centimeters)",
+    "recoil_percent": "float (% of full release)",
+    "timestamp": "ISO 8601",
+    "language": "ar | en | fr",
+    "feedback_message": "string (localized feedback text)"
+  }
+}

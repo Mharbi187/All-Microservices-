@@ -1,110 +1,67 @@
 /**
- * Overlay de Guidance - Messages de correction/encouragement
+ * Guidance Overlay Component
+ * ===========================
+ * Shows real-time guidance messages from the RulesEngine.
+ * Messages have severity-based styling.
  */
 
-import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 
-const COLORS = {
-    CORRECTION: '#F59E0B',  // Orange
-    WARNING: '#EF4444',     // Rouge
-    POSITIVE: '#22C55E',    // Vert
-    INFO: '#3B82F6'         // Bleu
-};
-
-const ICONS = {
-    CORRECTION: '⚡',
-    WARNING: '⚠️',
-    POSITIVE: '✓',
-    INFO: 'ℹ️'
+const SEVERITY_STYLES = {
+    CRITICAL: { bg: 'rgba(239,68,68,0.9)', icon: '🔴' },
+    HIGH: { bg: 'rgba(249,115,22,0.85)', icon: '🟠' },
+    MEDIUM: { bg: 'rgba(234,179,8,0.85)', icon: '🟡' },
+    WARNING: { bg: 'rgba(249,115,22,0.85)', icon: '⚠️' },
+    POSITIVE: { bg: 'rgba(34,197,94,0.85)', icon: '✅' },
+    info: { bg: 'rgba(59,130,246,0.85)', icon: 'ℹ️' },
+    success: { bg: 'rgba(34,197,94,0.85)', icon: '✅' },
+    warning: { bg: 'rgba(249,115,22,0.85)', icon: '⚠️' },
 };
 
 export default function GuidanceOverlay({ guidance }) {
-    const fadeAnim = useRef(new Animated.Value(0)).current;
-    const scaleAnim = useRef(new Animated.Value(0.9)).current;
-
-    useEffect(() => {
-        // Animation d'entrée
-        Animated.parallel([
-            Animated.timing(fadeAnim, {
-                toValue: 1,
-                duration: 200,
-                useNativeDriver: true,
-            }),
-            Animated.spring(scaleAnim, {
-                toValue: 1,
-                friction: 8,
-                tension: 40,
-                useNativeDriver: true,
-            }),
-        ]).start();
-
-        // Animation de sortie après 3 secondes
-        const timeout = setTimeout(() => {
-            Animated.timing(fadeAnim, {
-                toValue: 0.7,
-                duration: 500,
-                useNativeDriver: true,
-            }).start();
-        }, 3000);
-
-        return () => clearTimeout(timeout);
-    }, [guidance]);
-
     if (!guidance) return null;
 
-    const color = COLORS[guidance.type] || COLORS.INFO;
-    const icon = ICONS[guidance.type] || '•';
+    // Handle both array format and single object format
+    const items = Array.isArray(guidance) ? guidance : [guidance];
+    if (items.length === 0) return null;
 
     return (
-        <Animated.View
-            style={[
-                styles.container,
-                {
-                    backgroundColor: `${color}22`,
-                    borderColor: color,
-                    opacity: fadeAnim,
-                    transform: [{ scale: scaleAnim }]
-                }
-            ]}
-        >
-            <Text style={styles.icon}>{icon}</Text>
-            <View style={styles.textContainer}>
-                <Text style={[styles.text, { color }]}>{guidance.text}</Text>
-                {guidance.textAr && (
-                    <Text style={[styles.textAr, { color }]}>{guidance.textAr}</Text>
-                )}
-            </View>
-        </Animated.View>
+        <View style={styles.container}>
+            {items.slice(0, 2).map((item, i) => {
+                const type = item.type || item.severity || 'info';
+                const style = SEVERITY_STYLES[type] || SEVERITY_STYLES.info;
+                const text = item.text || item.text_fr || item.correction || '';
+
+                if (!text) return null;
+
+                return (
+                    <View key={i} style={[styles.banner, { backgroundColor: style.bg }]}>
+                        <Text style={styles.text}>{style.icon} {text}</Text>
+                    </View>
+                );
+            })}
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 24,
-        paddingVertical: 16,
-        borderRadius: 16,
-        borderWidth: 2,
-        marginHorizontal: 20,
-        maxWidth: 350,
+        position: 'absolute',
+        top: 95,
+        left: 10,
+        right: 10,
     },
-    icon: {
-        fontSize: 28,
-        marginRight: 16,
-    },
-    textContainer: {
-        flex: 1,
+    banner: {
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        borderRadius: 10,
+        marginBottom: 5,
     },
     text: {
-        fontSize: 18,
-        fontWeight: 'bold',
-    },
-    textAr: {
+        color: '#FFF',
         fontSize: 14,
-        marginTop: 4,
-        textAlign: 'right',
-        opacity: 0.9,
+        fontWeight: '600',
+        textAlign: 'center',
     },
 });

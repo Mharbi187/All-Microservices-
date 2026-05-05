@@ -33,13 +33,14 @@ from flask_cors import CORS
 import cv2
 import numpy as np
 
-# Import CPR Detection
+# Import CPR Detection (YOLOv8-powered)
 try:
-    from run_cpr_detection import CPRDetector, MEDIAPIPE_AVAILABLE
-    DETECTOR_AVAILABLE = True
-except ImportError:
-    from cpr_vision_system import CPRAssistant
-    DETECTOR_AVAILABLE = True
+    from run_cpr_detection import CPRDetector, YOLO_AVAILABLE
+    DETECTOR_AVAILABLE = YOLO_AVAILABLE
+except ImportError as e:
+    print(f"Warning: Cannot import CPRDetector: {e}")
+    DETECTOR_AVAILABLE = False
+    YOLO_AVAILABLE = False
 
 
 # ============================================
@@ -48,6 +49,25 @@ except ImportError:
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for mobile app
+
+# Handle numpy types in JSON serialization
+from flask.json.provider import DefaultJSONProvider
+
+class NumpyJSONProvider(DefaultJSONProvider):
+    def default(self, obj):
+        if isinstance(obj, (np.integer,)):
+            return int(obj)
+        if isinstance(obj, (np.floating,)):
+            return float(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        if isinstance(obj, np.bool_):
+            return bool(obj)
+        return super().default(obj)
+
+app.json_provider_class = NumpyJSONProvider
+app.json = NumpyJSONProvider(app)
+app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB for large base64 frames
 
 # Global session storage
 sessions = {}
@@ -92,7 +112,7 @@ class CPRSession:
             'duration_seconds': time.time() - self.created_at.timestamp(),
             'compression_count': self.detector.compression_count,
             'current_bpm': self.detector.current_bpm,
-            'avg_depth_cm': self.detector._get_avg_depth_cm()
+            'avg_depth_cm': float(np.mean(self.detector.depths_px)) if self.detector.depths_px else 0
         }
     
     def reset(self):
@@ -115,8 +135,9 @@ def health_check():
     return jsonify({
         'status': 'healthy',
         'server': 'CPR Assistant API',
-        'version': '1.0.0',
-        'mediapipe_available': MEDIAPIPE_AVAILABLE if 'MEDIAPIPE_AVAILABLE' in dir() else False,
+        'version': '2.0.0-yolo',
+        'yolo_available': YOLO_AVAILABLE,
+        'detector_available': DETECTOR_AVAILABLE,
         'active_sessions': len(sessions),
         'timestamp': datetime.now().isoformat()
     })
@@ -218,14 +239,22 @@ def process_frame(session_id):
                 'bpm': round(metrics.get('bpm', 0), 1),
                 'compression_count': metrics.get('compression_count', 0),
                 'depth_cm': round(metrics.get('depth_cm', 0), 1),
+                'depth_torso_pct': round(metrics.get('depth_torso_pct', 0), 1),
                 'recoil_quality': round(metrics.get('recoil_quality', 100), 0),
-                'elapsed_time': round(metrics.get('elapsed_time', 0), 1)
+                'elapsed_time': round(metrics.get('elapsed_time', 0), 1),
+                'arm_angle': metrics.get('arm_angle'),
+                'hands_together': metrics.get('hands_together', False),
+                'victim_type': metrics.get('victim_type', 'adult'),
+                'victim_confidence': metrics.get('victim_confidence', 0),
+                'time_since_last_compression': metrics.get('time_since_last_compression', 0),
             },
             'guidance': guidance,
-            # 'processed_frame': processed_base64  # Uncomment if needed
         })
     
     except Exception as e:
+        import traceback
+        print(f"  [ERROR] /process: {e}")
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -333,33 +362,66 @@ def get_protocols():
 def generate_guidance(metrics: dict) -> dict:
     """Generate guidance message based on metrics."""
     bpm = metrics.get('bpm', 0)
-    depth = metrics.get('depth_cm', 0)
-    
-    # BPM guidance
+    arm_angle = metrics.get('arm_angle')
+    depth_cm = metrics.get('depth_cm', 0)
+    pause = metrics.get('time_since_last_compression', 0)
+
+    # Priority 1: Arm angle
+    if arm_angle is not None and arm_angle < 150:
+        return {
+            'type': 'critical',
+            'text_fr': 'Gardez les bras tendus!',
+            'text_ar': 'أبقِ ذراعيك مستقيمتين!',
+            'text_en': 'Keep arms straight!'
+        }
+
+    # Priority 2: Excessive pause
+    if pause > 10 and bpm > 0:
+        return {
+            'type': 'critical',
+            'text_fr': 'Reprenez les compressions immédiatement!',
+            'text_ar': 'استأنف الضغط فوراً!',
+            'text_en': 'Resume compressions immediately!'
+        }
+
+    # Priority 3: BPM
     if bpm <= 0:
         return {
             'type': 'info',
             'text_fr': 'Positionnez vos mains et commencez les compressions',
-            'text_ar': 'ضع يديك وابدأ الضغط'
+            'text_ar': 'ضع يديك وابدأ الضغط',
+            'text_en': 'Position your hands and start compressions'
         }
     elif bpm < 100:
         return {
             'type': 'warning',
             'text_fr': 'Plus vite! Augmentez le rythme',
-            'text_ar': 'أسرع! زد السرعة'
+            'text_ar': 'أسرع! زد السرعة',
+            'text_en': 'Faster! Increase the rate'
         }
     elif bpm > 120:
         return {
             'type': 'warning',
             'text_fr': 'Ralentissez légèrement',
-            'text_ar': 'أبطئ قليلاً'
+            'text_ar': 'أبطئ قليلاً',
+            'text_en': 'Slow down slightly'
         }
-    else:
+
+    # Priority 4: Depth
+    if depth_cm > 0 and depth_cm < 5:
         return {
-            'type': 'success',
-            'text_fr': 'Excellent! Bon rythme',
-            'text_ar': 'ممتاز! إيقاع جيد'
+            'type': 'warning',
+            'text_fr': 'Appuyez plus fort! Profondeur insuffisante',
+            'text_ar': 'اضغط أقوى! العمق غير كافٍ',
+            'text_en': 'Push harder! Depth insufficient'
         }
+
+    return {
+        'type': 'success',
+        'text_fr': 'Excellent! Bon rythme',
+        'text_ar': 'ممتاز! إيقاع جيد',
+        'text_en': 'Excellent! Good rhythm'
+    }
 
 
 # ============================================
