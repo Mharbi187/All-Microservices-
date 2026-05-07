@@ -11,6 +11,33 @@ from collections import deque
 
 
 # ============================================
+# PIPELINE HELPERS (used by layer6_logic.py)
+# ============================================
+
+def mid(a: float, b: float) -> float:
+    """Midpoint of two scalar values."""
+    return (a + b) / 2.0
+
+
+def angle(a: dict, b: dict, c: dict) -> float:
+    """
+    Angle at vertex B (degrees) formed by vectors BA and BC.
+    Each point is a landmark dict with 'x' and 'y' keys (normalized 0.0–1.0).
+
+    Returns 180.0 for degenerate cases (zero-length vector) to indicate
+    a straight line — conservative choice that won't trigger 'arms_bent'.
+    """
+    ba = np.array([a["x"] - b["x"], a["y"] - b["y"]])
+    bc = np.array([c["x"] - b["x"], c["y"] - b["y"]])
+    mag_ba = np.linalg.norm(ba)
+    mag_bc = np.linalg.norm(bc)
+    if mag_ba < 1e-9 or mag_bc < 1e-9:
+        return 180.0  # Degenerate: return straight-arm value — safe default
+    cos_angle = np.clip(np.dot(ba, bc) / (mag_ba * mag_bc), -1.0, 1.0)
+    return float(np.degrees(np.arccos(cos_angle)))
+
+
+# ============================================
 # GEOMETRIC CALCULATIONS
 # ============================================
 

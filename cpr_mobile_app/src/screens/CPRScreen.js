@@ -17,13 +17,13 @@ import {
     TextInput,
     ActivityIndicator,
     ScrollView,
+    Image,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Speech from 'expo-speech';
 import * as Haptics from 'expo-haptics';
 
 // Services
-import { cprAnalysisService } from '../services/CPRAnalysisService';
 import { backendAPI } from '../services/BackendAPIService';
 import { poseFrameProcessor } from '../services/PoseFrameProcessor';
 import { rulesEngine } from '../services/RulesEngine';
@@ -87,10 +87,6 @@ export default function CPRScreen({ route, navigation }) {
             }
         });
 
-        // Configure services
-        cprAnalysisService.setRescuerCount(rescuerCount);
-        cprAnalysisService.setVictimType(victimType);
-
         return () => cleanup();
     }, []);
 
@@ -147,9 +143,6 @@ export default function CPRScreen({ route, navigation }) {
             return;
         }
 
-        // Reset services
-        cprAnalysisService.setVictimType(victimType);
-        cprAnalysisService.reset();
         setMetrics(null);
         setElapsedTime(0);
         setIsActive(true);
@@ -182,19 +175,22 @@ export default function CPRScreen({ route, navigation }) {
         if (timerRef.current) clearInterval(timerRef.current);
         Speech.stop();
 
+        // Wait briefly for any inflight frame processing to complete
+        await new Promise(r => setTimeout(r, 300));
+
         const stats = poseFrameProcessor.getStats();
         setIsActive(false);
         setPhase('READY');
 
-        // End backend session
+        // End backend session (safe now — no more inflight frames)
         await backendAPI.endSession();
 
         // Show summary
         Alert.alert(
             'Session terminée',
             `Durée: ${formatTime(elapsedTime)}\n` +
-            `Compressions: ${metrics?.compressionCount || 0}\n` +
-            `BPM: ${metrics?.bpm || '-'}\n` +
+            `Compressions: ${metrics?.metrics?.compression_count || 0}\n` +
+            `BPM: ${metrics?.metrics?.bpm || '-'}\n` +
             `Images traitées: ${stats.framesProcessed}\n` +
             `Latence moyenne: ${stats.avgLatencyMs}ms`,
             [{ text: 'OK' }]
@@ -209,7 +205,7 @@ export default function CPRScreen({ route, navigation }) {
         setMetrics(newMetrics);
 
         // Haptic feedback on each new compression
-        if (Platform.OS !== 'web' && newMetrics.compressionCount > 0) {
+        if (Platform.OS !== 'web' && newMetrics?.metrics && newMetrics.metrics.compression_count > 0) {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => { });
         }
 
@@ -239,30 +235,13 @@ export default function CPRScreen({ route, navigation }) {
     // ──────────────────────────────────────────────────────────────────────────
 
     const pickVoiceMessage = (m) => {
-        if (!m) return null;
+        if (!m || !m.ui_commands || m.ui_commands.length === 0) return null;
 
-        // Priority 1: Critical errors from RulesEngine
-        if (m.criticalErrors?.length > 0) {
-            return m.criticalErrors[0].correction;
-        }
+        // Priority 1: Pick the first (most critical) command from the backend array
+        const cmd = m.ui_commands[0];
 
-        // Priority 2: High severity errors
-        const highErrors = m.errors?.filter(e => e.severity === 'HIGH') || [];
-        if (highErrors.length > 0) {
-            return highErrors[0].correction;
-        }
-
-        // Priority 3: Backend guidance (trilingual — always available)
-        if (m.backendGuidance) {
-            const lang = rulesEngine.language;
-            return m.backendGuidance[`text_${lang}`] || m.backendGuidance.text_fr || m.backendGuidance.text_en || '';
-        }
-
-        // Priority 4: BPM guidance
-        if (m.bpmStatus === 'TOO_SLOW') return 'Plus vite!';
-        if (m.bpmStatus === 'TOO_FAST') return 'Ralentissez!';
-
-        return null;
+        const lang = rulesEngine.language || 'fr';
+        return cmd[`text_${lang}`] || cmd.text_fr || cmd.text_en;
     };
 
     const speak = (text) => {
@@ -347,11 +326,24 @@ export default function CPRScreen({ route, navigation }) {
             {/* Camera */}
             <CameraView
                 ref={cameraRef}
-                style={styles.camera}
+                style={StyleSheet.absoluteFillObject}
                 facing="back"
                 mute={true}
                 onCameraReady={() => setCameraReady(true)}
-            >
+            />
+
+            {/* Annotated Frame Overlay from Backend */}
+            {isActive && metrics?.frame_annotated && (
+                <Image
+                    source={{ uri: `data:image/jpeg;base64,${metrics.frame_annotated}` }}
+                    style={StyleSheet.absoluteFillObject}
+                    resizeMode="cover"
+                    pointerEvents="none"
+                />
+            )}
+
+            {/* Overlays Container */}
+            <View style={[StyleSheet.absoluteFillObject, { paddingBottom: 90, zIndex: 10 }]} pointerEvents="box-none">
                 {/* ── Top status bar ── */}
                 <View style={styles.statusBar}>
                     <View style={[styles.statusPill, { backgroundColor: connectionStatus?.connected ? 'rgba(34,197,94,0.8)' : 'rgba(239,68,68,0.8)' }]}>
@@ -367,17 +359,26 @@ export default function CPRScreen({ route, navigation }) {
                             <Text style={styles.timerText}>{formatTime(elapsedTime)}</Text>
                         </View>
                     )}
+
+                    {/* Show live Victim Classification */}
+                    {isActive && metrics?.victim_type && (
+                        <View style={[styles.statusPill, { backgroundColor: '#334155' }]}>
+                            <Text style={styles.statusText}>
+                                🔍 {metrics.victim_type.toUpperCase()} ({Math.round((metrics.victim_confidence || 0) * 100)}%)
+                            </Text>
+                        </View>
+                    )}
                 </View>
 
-                {/* ── Error banners (from RulesEngine) ── */}
-                {isActive && metrics?.errors?.length > 0 && (
+                {/* ── Error banners (from ui_commands) ── */}
+                {isActive && metrics?.ui_commands?.length > 0 && (
                     <View style={styles.errorBanner}>
-                        {metrics.errors.slice(0, 2).map((err, i) => (
-                            <View key={i} style={[styles.errorRow, { backgroundColor: `${SEVERITY_COLORS[err.severity]}CC` }]}>
+                        {metrics.ui_commands.slice(0, 2).map((cmd, i) => (
+                            <View key={i} style={[styles.errorRow, { backgroundColor: `${SEVERITY_COLORS[cmd.severity] || '#EAB308'}CC` }]}>
                                 <Text style={styles.errorSeverity}>
-                                    {err.severity === 'CRITICAL' ? '🔴' : err.severity === 'HIGH' ? '🟠' : '🟡'} {err.severity}
+                                    {cmd.severity === 'CRITICAL' ? '🔴' : cmd.severity === 'HIGH' ? '🟠' : '🟡'} {cmd.severity}
                                 </Text>
-                                <Text style={styles.errorText}>{err.correction}</Text>
+                                <Text style={styles.errorText}>{cmd.text_fr || cmd.text_en}</Text>
                             </View>
                         ))}
                     </View>
@@ -393,46 +394,36 @@ export default function CPRScreen({ route, navigation }) {
                 )}
 
                 {/* ── Metrics overlay ── */}
-                {isActive && metrics && (
+                {isActive && metrics?.metrics && (
                     <View style={styles.metricsOverlay}>
                         {/* BPM */}
-                        <View style={[styles.metricCard, { borderLeftColor: metrics.bpmStatus === 'GOOD' ? '#22C55E' : metrics.bpmStatus === 'TOO_SLOW' ? '#F97316' : metrics.bpmStatus === 'TOO_FAST' ? '#EF4444' : '#888' }]}>
-                            <Text style={styles.metricValue}>{metrics.bpm || '--'}</Text>
+                        <View style={[styles.metricCard, { borderLeftColor: '#3B82F6' }]}>
+                            <Text style={styles.metricValue}>{metrics.metrics.bpm || '--'}</Text>
                             <Text style={styles.metricLabel}>BPM</Text>
                         </View>
 
                         {/* Compressions */}
                         <View style={[styles.metricCard, { borderLeftColor: '#3B82F6' }]}>
-                            <Text style={styles.metricValue}>{metrics.compressionCount || 0}</Text>
+                            <Text style={styles.metricValue}>{metrics.metrics.compression_count || 0}</Text>
                             <Text style={styles.metricLabel}>Comp.</Text>
                         </View>
 
-                        {/* Depth */}
-                        <View style={[styles.metricCard, { borderLeftColor: metrics.depthStatus === 'GOOD' ? '#22C55E' : '#F97316' }]}>
-                            <Text style={styles.metricValue}>{metrics.depthCm || '--'}</Text>
-                            <Text style={styles.metricLabel}>cm</Text>
+                        {/* Depth (normalized %) */}
+                        <View style={[styles.metricCard, { borderLeftColor: '#3B82F6' }]}>
+                            <Text style={styles.metricValue}>{metrics.metrics.depth_torso_pct ? `${Math.round(metrics.metrics.depth_torso_pct)}%` : '--'}</Text>
+                            <Text style={styles.metricLabel}>Depth</Text>
                         </View>
 
                         {/* Recoil */}
-                        <View style={[styles.metricCard, { borderLeftColor: metrics.recoilStatus === 'GOOD' ? '#22C55E' : '#EF4444' }]}>
-                            <Text style={styles.metricValue}>{metrics.recoilQuality || '--'}%</Text>
+                        <View style={[styles.metricCard, { borderLeftColor: '#3B82F6' }]}>
+                            <Text style={styles.metricValue}>{metrics.metrics.recoil_quality || '--'}%</Text>
                             <Text style={styles.metricLabel}>Recoil</Text>
                         </View>
                     </View>
                 )}
 
-                {/* ── Cycle progress bar ── */}
-                {isActive && metrics && (
-                    <View style={styles.cycleBar}>
-                        <View style={styles.cycleTrack}>
-                            <View style={[styles.cycleFill, { width: `${Math.min(100, (metrics.cycleProgress || 0) * 100)}%` }]} />
-                        </View>
-                        <Text style={styles.cycleText}>
-                            {metrics.cycleCompressions || 0}/{metrics.cycleTarget || 30} — Cycle {metrics.cycleCount || 0}
-                        </Text>
-                    </View>
-                )}
-            </CameraView>
+
+            </View>
 
             {/* ── Bottom controls ── */}
             <View style={styles.controls}>
@@ -445,7 +436,6 @@ export default function CPRScreen({ route, navigation }) {
                                 style={[styles.victimChip, victimType === type && styles.victimChipActive]}
                                 onPress={() => {
                                     setVictimType(type);
-                                    cprAnalysisService.setVictimType(type);
                                 }}
                             >
                                 <Text style={[styles.victimChipText, victimType === type && styles.victimChipTextActive]}>

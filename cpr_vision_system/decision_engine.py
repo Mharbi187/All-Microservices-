@@ -365,3 +365,74 @@ class DecisionEngine:
             runtime_config.special_scenario = scenario
             self.pre_compression_action_done = False
             self.reset_cycle()
+
+    # ══════════════════════════════════════════════════════════════════════
+    #  ADAPTER METHODS (used by CPRAssistant orchestrator)
+    # ══════════════════════════════════════════════════════════════════════
+
+    def evaluate(self, vision_metadata: Dict, signal_metrics: Dict,
+                 attention_status: Dict, victim_category: str) -> Dict:
+        """
+        Simplified evaluate interface for CPRAssistant.
+
+        Rather than requiring the full CPRGuidance dataclass pipeline,
+        this returns a simple dict with the key outputs.
+        """
+        guidelines = GUIDELINES.get(victim_category, GUIDELINES["ADULT"])
+
+        # Determine state
+        rescuer_detected = vision_metadata.get("rescuer_detected", False)
+        hands_on_chest = vision_metadata.get("hands_on_chest", False)
+
+        if not rescuer_detected:
+            return {
+                'state': SystemState.DETECTING_RESCUER,
+                'guidance': "Position yourself for CPR",
+                'alert_level': 'NORMAL'
+            }
+
+        if not hands_on_chest:
+            return {
+                'state': SystemState.DETECTING_VICTIM,
+                'guidance': "Place hands on victim's chest",
+                'alert_level': 'WARNING'
+            }
+
+        # Active CPR — assess performance
+        bpm = signal_metrics.get('current_bpm', 0)
+        guidance = "Continue CPR"
+        alert_level = "NORMAL"
+
+        if bpm > 0:
+            if bpm < guidelines.min_bpm:
+                guidance = "Compress faster"
+                alert_level = "WARNING"
+            elif bpm > guidelines.max_bpm:
+                guidance = "Slow down"
+                alert_level = "WARNING"
+            else:
+                guidance = "Good rhythm!"
+
+        # Check attention
+        if not attention_status.get('focused', True):
+            distraction = attention_status.get('distraction_duration', 0)
+            if distraction > 2.0:
+                guidance = "Stay focused on the victim"
+                alert_level = "WARNING"
+
+        return {
+            'state': SystemState.COMPRESSIONS,
+            'guidance': guidance,
+            'alert_level': alert_level
+        }
+
+    def reset(self) -> None:
+        """Reset all decision engine state."""
+        self.reset_cycle()
+        self.state = SystemState.DETECTING_RESCUER
+        self.cycle_count = 0
+
+    def set_victim_category(self, category: str) -> None:
+        """Alias for change_victim_category."""
+        self.change_victim_category(category)
+

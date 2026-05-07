@@ -50,7 +50,7 @@ else:
 # YOLOv8s-pose: auto-downloaded by ultralytics on first run
 POSE_MODEL_ID = "yolov8s-pose.pt"
 
-# Victim classifier: your custom model
+# Victim classifier: 
 CLASSIFIER_PATH = SCRIPT_DIR / "cpr_mobile_app" / "best.pt"
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -255,8 +255,8 @@ class CPRDetector:
             except Exception:
                 pass  # Non-critical — just skip skeleton drawing
 
-        # ── 5. Periodic victim classification ──
-        if self.classifier_model and (now - self.last_classify_time) > CPRConfig.CLASSIFY_INTERVAL_SEC:
+        # ── 5. Periodic victim classification (only when a person is detected) ──
+        if self.classifier_model and best_person_kps is not None and (now - self.last_classify_time) > CPRConfig.CLASSIFY_INTERVAL_SEC:
             self._classify_victim(frame)
             self.last_classify_time = now
 

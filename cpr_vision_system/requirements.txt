@@ -1,13 +1,25 @@
-# CPR Vision System - Requirements
-# Python 3.8+ required
+# CPR Vision System — Requirements
+# Python 3.11+ required
 
-# Core dependencies
-opencv-python>=4.8.0
+# ── Web server ─────────────────────────────────────────────
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+
+# ── Computer vision ────────────────────────────────────────
+opencv-python>=4.9.0
+mediapipe==0.10.9
 numpy>=1.24.0
-mediapipe>=0.10.0
 
-# Text-to-speech (optional)
-pyttsx3>=2.90
+# ── Inference ──────────────────────────────────────────────
+ultralytics>=8.2.0       # YOLO (detection + classification)
 
-# Utilities
-dataclasses-json>=0.5.0
+# ── Multi-person tracking ──────────────────────────────────
+# bytetracker>=0.1.0     # Uncomment when available on PyPI
+# Alternative: pip install git+https://github.com/ifzhang/ByteTrack.git
+
+# ── Signal processing ──────────────────────────────────────
+scipy>=1.12.0            # For any future peak detection utilities
+
+# ── Utilities ──────────────────────────────────────────────
+dataclasses-json>=0.6.0  # Config serialization
+python-multipart>=0.0.9  # FastAPI form support

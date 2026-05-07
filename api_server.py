@@ -33,12 +33,13 @@ from flask_cors import CORS
 import cv2
 import numpy as np
 
-# Import CPR Detection (YOLOv8-powered)
+# Import CPR Vision System (modular YOLOv8-powered architecture)
 try:
-    from run_cpr_detection import CPRDetector, YOLO_AVAILABLE
+    from cpr_vision_system import CPRAssistant
+    from cpr_vision_system.vision_engine import YOLO_AVAILABLE
     DETECTOR_AVAILABLE = YOLO_AVAILABLE
 except ImportError as e:
-    print(f"Warning: Cannot import CPRDetector: {e}")
+    print(f"Warning: Cannot import CPRAssistant: {e}")
     DETECTOR_AVAILABLE = False
     YOLO_AVAILABLE = False
 
@@ -75,54 +76,78 @@ session_lock = threading.Lock()
 
 
 class CPRSession:
-    """Represents a CPR assistance session."""
+    """Manages state and history for a single CPR session."""
     
-    def __init__(self, session_id: str, victim_type: str = "ADULT"):
+    def __init__(self, session_id: str, victim_type: str = "adult", rescuer_count: int = 1):
         self.session_id = session_id
         self.victim_type = victim_type
         self.created_at = datetime.now()
         self.last_activity = time.time()
-        self.detector = CPRDetector()
+        
+        # Initialize modular assistant
+        self.assistant = CPRAssistant()
+        if hasattr(self.assistant.decision_engine, 'set_victim_category'):
+            self.assistant.decision_engine.set_victim_category(victim_type)
+        else:
+            self.assistant.decision_engine.change_victim_category(victim_type)
+            
         self.frame_count = 0
         self.metrics_history = []
+        
+        # Add thread lock to prevent race conditions between /process and /end
+        self._lock = threading.Lock()
     
     def process_frame(self, frame: np.ndarray):
         """Process a video frame and return metrics."""
-        self.frame_count += 1
-        self.last_activity = time.time()
-        
-        processed_frame, metrics = self.detector.process_frame(frame)
-        
-        # Store metrics history (last 100)
-        self.metrics_history.append({
-            'timestamp': time.time(),
-            **metrics
-        })
-        if len(self.metrics_history) > 100:
-            self.metrics_history.pop(0)
-        
-        return processed_frame, metrics
+        with self._lock:
+            if not hasattr(self, 'assistant') or self.assistant is None:
+                # Session was already cleaned up
+                return frame, {'error': 'Session closed'}
+                
+            self.frame_count += 1
+            self.last_activity = time.time()
+            
+            processed_frame, metrics = self.assistant.process_frame(frame)
+            
+            # Store metrics history (last 100)
+            self.metrics_history.append({
+                'timestamp': time.time(),
+                **metrics
+            })
+            if len(self.metrics_history) > 100:
+                self.metrics_history.pop(0)
+            
+            return processed_frame, metrics
     
     def get_summary(self):
         """Get session summary."""
-        return {
-            'session_id': self.session_id,
-            'victim_type': self.victim_type,
-            'frame_count': self.frame_count,
-            'duration_seconds': time.time() - self.created_at.timestamp(),
-            'compression_count': self.detector.compression_count,
-            'current_bpm': self.detector.current_bpm,
-            'avg_depth_cm': float(np.mean(self.detector.depths_px)) if self.detector.depths_px else 0
-        }
+        with self._lock:
+            if not hasattr(self, 'assistant') or self.assistant is None:
+                return {}
+            final = self.assistant.get_final_metrics()
+            return {
+                'session_id': self.session_id,
+                'victim_type': self.victim_type,
+                'frame_count': self.frame_count,
+                'duration_seconds': time.time() - self.created_at.timestamp(),
+                'compression_count': final.get('total_compressions', 0),
+                'current_bpm': final.get('avg_bpm', 0),
+                'avg_depth_cm': final.get('avg_depth', 0)
+            }
     
     def reset(self):
         """Reset session counters."""
-        self.detector.reset()
-        self.metrics_history.clear()
+        with self._lock:
+            if self.assistant:
+                self.assistant.reset()
+            self.metrics_history.clear()
     
     def cleanup(self):
         """Release resources."""
-        self.detector.release()
+        with self._lock:
+            if self.assistant:
+                self.assistant.release()
+                self.assistant = None
 
 
 # ============================================
@@ -135,7 +160,7 @@ def health_check():
     return jsonify({
         'status': 'healthy',
         'server': 'CPR Assistant API',
-        'version': '2.0.0-yolo',
+        'version': '3.0.0-modular',
         'yolo_available': YOLO_AVAILABLE,
         'detector_available': DETECTOR_AVAILABLE,
         'active_sessions': len(sessions),
@@ -207,7 +232,10 @@ def process_frame(session_id):
     }
     """
     try:
-        if session_id not in sessions:
+        # Thread-safe session lookup
+        with session_lock:
+            session = sessions.get(session_id)
+        if session is None:
             return jsonify({'success': False, 'error': 'Session not found'}), 404
         
         data = request.get_json()
@@ -219,36 +247,51 @@ def process_frame(session_id):
         nparr = np.frombuffer(frame_data, np.uint8)
         frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
         
+        # PRE-SCALE frame immediately to 640p to strictly cap 12-MP camera feeds
+        if frame is not None:
+            height, width = frame.shape[:2]
+            if max(height, width) > 640:
+                scale = 640 / max(height, width)
+                frame = cv2.resize(frame, (int(width * scale), int(height * scale)))
+        
         if frame is None:
             return jsonify({'success': False, 'error': 'Invalid frame data'}), 400
         
         # Process frame
-        session = sessions[session_id]
         processed_frame, metrics = session.process_frame(frame)
         
         # Generate guidance message
         guidance = generate_guidance(metrics)
-        
-        # Encode processed frame (optional - for debugging)
-        # _, buffer = cv2.imencode('.jpg', processed_frame, [cv2.IMWRITE_JPEG_QUALITY, 70])
-        # processed_base64 = base64.b64encode(buffer).decode('utf-8')
+
+        # Downscale processed frame for network transfer (max 480p)
+        height, width = processed_frame.shape[:2]
+        max_dim = 480
+        if max(height, width) > max_dim:
+            scale = max_dim / max(height, width)
+            new_width = int(width * scale)
+            new_height = int(height * scale)
+            processed_frame = cv2.resize(processed_frame, (new_width, new_height))
+
+        # Encode processed frame to send back to mobile app
+        _, buffer = cv2.imencode('.jpg', processed_frame, [cv2.IMWRITE_JPEG_QUALITY, 60])
+        processed_base64 = base64.b64encode(buffer).decode('utf-8')
         
         return jsonify({
             'success': True,
             'metrics': {
-                'bpm': round(metrics.get('bpm', 0), 1),
-                'compression_count': metrics.get('compression_count', 0),
-                'depth_cm': round(metrics.get('depth_cm', 0), 1),
-                'depth_torso_pct': round(metrics.get('depth_torso_pct', 0), 1),
-                'recoil_quality': round(metrics.get('recoil_quality', 100), 0),
-                'elapsed_time': round(metrics.get('elapsed_time', 0), 1),
-                'arm_angle': metrics.get('arm_angle'),
-                'hands_together': metrics.get('hands_together', False),
-                'victim_type': metrics.get('victim_type', 'adult'),
-                'victim_confidence': metrics.get('victim_confidence', 0),
-                'time_since_last_compression': metrics.get('time_since_last_compression', 0),
+                'bpm': round(float(metrics.get('bpm', 0)), 1),
+                'compression_count': int(metrics.get('compression_count', 0)),
+                'depth_cm': round(float(metrics.get('avg_depth_cm', 0)), 1),
+                'recoil_quality': round(float(metrics.get('recoil_quality', 0)), 0),
+                'elapsed_time': round(float(metrics.get('elapsed_time', 0)), 1),
+                'hands_together': bool(metrics.get('hands_superposed', False)),
+                'victim_type': str(metrics.get('victim_type', 'adult')),
+                'victim_confidence': float(metrics.get('victim_confidence', 0)),
+                'rescuer_detected': bool(metrics.get('rescuer_detected', False)),
+                'state': str(metrics.get('state', '')),
             },
             'guidance': guidance,
+            'frame_annotated': processed_base64,
         })
     
     except Exception as e:
@@ -299,15 +342,14 @@ def reset_session(session_id):
 def end_session(session_id):
     """End and cleanup a session."""
     try:
-        if session_id not in sessions:
+        # Atomic session removal under lock
+        with session_lock:
+            session = sessions.pop(session_id, None)
+        if session is None:
             return jsonify({'success': False, 'error': 'Session not found'}), 404
         
-        session = sessions[session_id]
         summary = session.get_summary()
         session.cleanup()
-        
-        with session_lock:
-            del sessions[session_id]
         
         return jsonify({
             'success': True,
@@ -360,37 +402,38 @@ def get_protocols():
 # ============================================
 
 def generate_guidance(metrics: dict) -> dict:
-    """Generate guidance message based on metrics."""
+    """Generate trilingual guidance message based on metrics."""
     bpm = metrics.get('bpm', 0)
-    arm_angle = metrics.get('arm_angle')
-    depth_cm = metrics.get('depth_cm', 0)
-    pause = metrics.get('time_since_last_compression', 0)
+    depth_cm = metrics.get('avg_depth_cm', 0)
+    recoil = metrics.get('recoil_quality', 0)
+    rescuer_detected = metrics.get('rescuer_detected', False)
+    hands_on = metrics.get('hands_on_chest', False)
 
-    # Priority 1: Arm angle
-    if arm_angle is not None and arm_angle < 150:
+    # Priority 1: No rescuer detected
+    if not rescuer_detected:
         return {
-            'type': 'critical',
-            'text_fr': 'Gardez les bras tendus!',
-            'text_ar': 'أبقِ ذراعيك مستقيمتين!',
-            'text_en': 'Keep arms straight!'
+            'type': 'info',
+            'text_fr': 'Positionnez-vous pour le RCP',
+            'text_ar': 'تمركز للإنعاش القلبي الرئوي',
+            'text_en': 'Position yourself for CPR'
         }
 
-    # Priority 2: Excessive pause
-    if pause > 10 and bpm > 0:
+    # Priority 2: Hands not positioned
+    if not hands_on:
         return {
-            'type': 'critical',
-            'text_fr': 'Reprenez les compressions immédiatement!',
-            'text_ar': 'استأنف الضغط فوراً!',
-            'text_en': 'Resume compressions immediately!'
+            'type': 'warning',
+            'text_fr': 'Placez vos mains sur la poitrine de la victime',
+            'text_ar': 'ضع يديك على صدر الضحية',
+            'text_en': 'Place your hands on the victim\'s chest'
         }
 
-    # Priority 3: BPM
+    # Priority 3: BPM guidance
     if bpm <= 0:
         return {
             'type': 'info',
-            'text_fr': 'Positionnez vos mains et commencez les compressions',
-            'text_ar': 'ضع يديك وابدأ الضغط',
-            'text_en': 'Position your hands and start compressions'
+            'text_fr': 'Commencez les compressions',
+            'text_ar': 'ابدأ الضغط',
+            'text_en': 'Start compressions'
         }
     elif bpm < 100:
         return {
@@ -411,9 +454,18 @@ def generate_guidance(metrics: dict) -> dict:
     if depth_cm > 0 and depth_cm < 5:
         return {
             'type': 'warning',
-            'text_fr': 'Appuyez plus fort! Profondeur insuffisante',
-            'text_ar': 'اضغط أقوى! العمق غير كافٍ',
-            'text_en': 'Push harder! Depth insufficient'
+            'text_fr': 'Appuyez plus fort — au moins 5 cm',
+            'text_ar': 'اضغط بعمق أكبر — على الأقل 5 سم',
+            'text_en': 'Push harder — at least 5 cm'
+        }
+
+    # Priority 5: Recoil
+    if recoil > 0 and recoil < 70:
+        return {
+            'type': 'warning',
+            'text_fr': 'Relâchez complètement entre les compressions',
+            'text_ar': 'ارفع يديك تماماً بين الضغطات',
+            'text_en': 'Release fully between compressions'
         }
 
     return {

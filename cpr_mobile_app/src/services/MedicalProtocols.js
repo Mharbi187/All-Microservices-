@@ -1,0 +1,53 @@
+export const MEDICAL_PROTOCOLS = {
+    ADULT: {
+        id: 'ADULT',
+        name: 'Adulte',
+        nameAr: 'بالغ',
+        icon: '👨',
+        compressionRatio: 30,
+        ventilationRatio: 2,
+        minBPM: 100,
+        maxBPM: 120,
+        minDepthCm: 5,
+        maxDepthCm: 6,
+        techniqueDesc: '2 mains, bas du sternum',
+        techniqueDescAr: 'يدان، أسفل عظمة القص',
+        initialVentilations: 0,
+        specialWarning: null,
+        specialWarningAr: null
+    },
+    CHILD: {
+        id: 'CHILD',
+        name: 'Enfant (1-8 ans)',
+        nameAr: 'طفل (1-8 سنوات)',
+        icon: '👦',
+        compressionRatio: 15,
+        ventilationRatio: 2,
+        minBPM: 100,
+        maxBPM: 120,
+        minDepthCm: 5,
+        maxDepthCm: 5,
+        techniqueDesc: '1 ou 2 mains selon la taille',
+        techniqueDescAr: 'يد واحدة أو اثنتان حسب الحجم',
+        initialVentilations: 5,
+        specialWarning: 'Si seul: 1 min de RCP avant d\'appeler',
+        specialWarningAr: 'إذا كنت وحدك: دقيقة من الإنعاش قبل الاتصال'
+    },
+    INFANT: {
+        id: 'INFANT',
+        name: 'Nourrisson (<1 an)',
+        nameAr: 'رضيع (<سنة)',
+        icon: '👶',
+        compressionRatio: 15,
+        ventilationRatio: 2,
+        minBPM: 100,
+        maxBPM: 120,
+        minDepthCm: 4,
+        maxDepthCm: 4,
+        techniqueDesc: '2 doigts (ou 2 pouces) au centre',
+        techniqueDescAr: 'إصبعان في منتصف الصدر',
+        initialVentilations: 5,
+        specialWarning: 'Tête en position neutre',
+        specialWarningAr: 'الرأس في وضعية محايدة'
+    }
+};

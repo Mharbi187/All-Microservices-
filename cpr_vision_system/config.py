@@ -94,19 +94,28 @@ GUIDELINES = {
 class VisionConfig:
     """Computer vision processing parameters."""
     
-    # MediaPipe confidence thresholds
-    POSE_DETECTION_CONFIDENCE = 0.7
-    POSE_TRACKING_CONFIDENCE = 0.7
+    # YOLOv8 confidence thresholds
+    POSE_CONFIDENCE = 0.5                  # YOLOv8-pose detection confidence
+    CLASSIFIER_CONFIDENCE = 0.6            # Victim classifier confidence
+
+    # Face detection (MediaPipe FaceMesh, retained for attention monitoring)
     FACE_DETECTION_CONFIDENCE = 0.6
     FACE_TRACKING_CONFIDENCE = 0.6
     
     # Hand positioning validation
-    HAND_SUPERPOSITION_THRESHOLD_PX = 40  # Max distance to consider hands superposed
-    CHEST_ROI_EXPANSION_FACTOR = 1.2      # ROI safety margin
+    HAND_SUPERPOSITION_THRESHOLD_PX = 60   # Max distance to consider hands superposed
+    CHEST_ROI_EXPANSION_FACTOR = 1.2       # ROI safety margin
     
-    # Motion detection
+    # Motion detection — pixel-based (legacy, kept for non-pipeline code)
     MIN_COMPRESSION_DISPLACEMENT_PX = 15   # Minimum movement to count as compression
     MAX_COMPRESSION_DISPLACEMENT_PX = 150  # Maximum realistic compression movement
+
+    # Motion detection — torso-normalized (used by new signal_processor.py)
+    # Fraction of torso height that must be crossed to register a compression.
+    # 0.035 = 3.5% of torso height, matching rcp_rules.json lower bound for adult depth.
+    MIN_COMPRESSION_DISPLACEMENT_TORSO_FRAC = 0.035
+    # Absolute fallback if torso_height cannot be computed (landmark occlusion)
+    MIN_COMPRESSION_DISPLACEMENT_ABS = 0.02   # 2% of normalized frame height
     
     # Temporal parameters
     COMPRESSION_MIN_DURATION_SEC = 0.3     # Minimum time for valid compression
@@ -117,20 +126,31 @@ class VisionConfig:
     MIN_BODY_VISIBILITY = 0.6              # Minimum visibility to consider a person
     MAX_TRACKED_PERSONS = 5                # Maximum number of people to track
 
+    # Victim classification cooldown
+    CLASSIFY_INTERVAL_SEC = 3.0            # Don't re-classify every frame
+
 
 class SignalProcessing:
     """Signal processing and filtering parameters."""
-    
+
     # Moving average window for BPM smoothing
     BPM_SMOOTHING_WINDOW = 5
-    
+
     # Kalman filter parameters
-    KALMAN_PROCESS_NOISE = 0.01
-    KALMAN_MEASUREMENT_NOISE = 0.1
-    
+    KALMAN_PROCESS_NOISE = 0.1
+    KALMAN_MEASUREMENT_NOISE = 0.01
+
     # Peak detection
     PEAK_DETECTION_PROMINENCE = 0.3       # Relative prominence for peak detection
     ANTI_BOUNCE_DELAY_SEC = 0.25          # Prevent double-counting compressions
+
+    # Compression cycle duration bounds
+    COMPRESSION_MIN_DURATION_SEC = 0.20   # Faster than 300 BPM → noise spike
+    COMPRESSION_MAX_DURATION_SEC = 1.20   # Slower than 50 BPM → not CPR
+
+    # BPM calculation
+    BPM_WINDOW = 12                       # Compressions to average for BPM
+    SMOOTHING_ALPHA = 0.3                 # Exponential smoothing for BPM
 
 
 class AttentionMonitoring:
@@ -198,38 +218,36 @@ class SystemState:
 
 
 # ============================================
-# LANDMARK INDICES (MediaPipe Pose)
+# LANDMARK INDICES (COCO 17-Keypoint — YOLOv8-pose)
 # ============================================
 
 class PoseLandmarks:
-    """MediaPipe Pose landmark indices."""
+    """YOLOv8-pose COCO 17-keypoint indices."""
     
-    # Upper body
+    # Head
     NOSE = 0
-    LEFT_EYE = 2
-    RIGHT_EYE = 5
-    LEFT_EAR = 7
-    RIGHT_EAR = 8
+    LEFT_EYE = 1
+    RIGHT_EYE = 2
+    LEFT_EAR = 3
+    RIGHT_EAR = 4
     
     # Shoulders
-    LEFT_SHOULDER = 11
-    RIGHT_SHOULDER = 12
+    LEFT_SHOULDER = 5
+    RIGHT_SHOULDER = 6
     
     # Arms
-    LEFT_ELBOW = 13
-    RIGHT_ELBOW = 14
-    LEFT_WRIST = 15
-    RIGHT_WRIST = 16
+    LEFT_ELBOW = 7
+    RIGHT_ELBOW = 8
+    LEFT_WRIST = 9
+    RIGHT_WRIST = 10
     
-    # Hands
-    LEFT_PINKY = 17
-    RIGHT_PINKY = 18
-    LEFT_INDEX = 19
-    RIGHT_INDEX = 20
-    
-    # Torso
-    LEFT_HIP = 23
-    RIGHT_HIP = 24
+    # Torso / Legs
+    LEFT_HIP = 11
+    RIGHT_HIP = 12
+    LEFT_KNEE = 13
+    RIGHT_KNEE = 14
+    LEFT_ANKLE = 15
+    RIGHT_ANKLE = 16
 
 
 # ============================================

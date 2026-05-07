@@ -12,8 +12,7 @@ import {
     TouchableOpacity,
     Dimensions
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { MEDICAL_PROTOCOLS } from '../services/CPRAnalysisService';
+import { MEDICAL_PROTOCOLS } from '../services/MedicalProtocols';
 
 const { width } = Dimensions.get('window');
 

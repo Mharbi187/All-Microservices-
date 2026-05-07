@@ -314,3 +314,71 @@ class FeedbackManager:
         
         cv2.putText(frame, text, (text_x, text_y),
                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+
+    # ══════════════════════════════════════════════════════════════════════
+    #  ADAPTER METHODS (used by CPRAssistant orchestrator)
+    # ══════════════════════════════════════════════════════════════════════
+
+    def render_hud(self, frame, metrics, state, decision, guidelines):
+        """
+        Simplified HUD renderer for CPRAssistant.
+
+        Draws a compact overlay with BPM, compressions, depth, and guidance.
+        """
+        h, w = frame.shape[:2]
+        overlay = frame.copy()
+
+        # ── Panel background ──
+        cv2.rectangle(overlay, (10, 10), (310, 210), (0, 0, 0), -1)
+        cv2.addWeighted(overlay, 0.65, frame, 0.35, 0, frame)
+
+        y0 = 35
+        victim_type = metrics.get('victim_type', state) if isinstance(metrics, dict) else state
+        cv2.putText(frame, f"CPR Assistant", (20, y0),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+
+        # BPM
+        bpm = metrics.get('current_bpm', 0) if isinstance(metrics, dict) else 0
+        bpm_color = (0, 255, 0) if 100 <= bpm <= 120 else (0, 165, 255) if bpm > 0 else (128, 128, 128)
+        cv2.putText(frame, f"BPM: {bpm:.0f}", (20, y0 + 35),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, bpm_color, 2)
+
+        # Compressions
+        count = metrics.get('compression_count', 0) if isinstance(metrics, dict) else 0
+        cv2.putText(frame, f"Compressions: {count}", (20, y0 + 65),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+
+        # Depth (approximate)
+        depth = metrics.get('avg_depth', 0) if isinstance(metrics, dict) else 0
+        cv2.putText(frame, f"Depth: ~{depth:.0f} px", (20, y0 + 90),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 200), 1)
+
+        # Recoil
+        recoil = metrics.get('recoil_quality', 0) if isinstance(metrics, dict) else 0
+        r_color = (0, 255, 0) if recoil >= 0.7 else (0, 165, 255)
+        cv2.putText(frame, f"Recoil: {recoil*100:.0f}%", (20, y0 + 115),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, r_color, 1)
+
+        # Guidance at bottom
+        guidance = decision.get('guidance', '') if isinstance(decision, dict) else ''
+        if guidance:
+            ts = cv2.getTextSize(guidance, cv2.FONT_HERSHEY_SIMPLEX, 0.9, 2)[0]
+            cv2.putText(frame, guidance, ((w - ts[0]) // 2, h - 30),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+
+        return frame
+
+    def speak(self, message: str):
+        """
+        Audio feedback placeholder.
+
+        In production this would use pyttsx3 or gTTS.
+        For the mobile app, audio guidance is handled on the frontend.
+        """
+        # Audio feedback is handled by the mobile app frontend
+        pass
+
+    def release(self):
+        """Release resources (no-op for now)."""
+        pass
+

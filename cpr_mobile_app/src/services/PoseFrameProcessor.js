@@ -8,21 +8,20 @@
  * No simulation stubs — this processes real camera data.
  */
 
-import { cprAnalysisService } from './CPRAnalysisService';
 import { backendAPI } from './BackendAPIService';
-import { rulesEngine } from './RulesEngine';
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 
 const FRAME_CONFIG = {
-    // Frame capture interval (ms) — 2 FPS to avoid overwhelming backend
-    CAPTURE_INTERVAL_MS: 500,
+    // Frame capture interval (ms) — Try 60ms (~16 FPS) to allow maximum throughput without artificial slowing.
+    // The "isProcessing" backpressure will naturally clamp it to your device's physical limits.
+    CAPTURE_INTERVAL_MS: 60,
 
-    // Photo quality for base64 encoding (0-1) — lower = smaller payload
-    CAPTURE_QUALITY: 0.3,
+    // Photo quality for base64 encoding (0-1) — 0.1 minimizes bridge payload weight
+    CAPTURE_QUALITY: 0.1,
 
     // Max time to wait for backend response before skipping
-    BACKEND_TIMEOUT_MS: 3000,
+    BACKEND_TIMEOUT_MS: 6000,
 };
 
 // ─── SERVICE ──────────────────────────────────────────────────────────────────
@@ -100,6 +99,7 @@ class PoseFrameProcessor {
         // Skip if previous frame still processing (backpressure control)
         if (this.isProcessing) return;
         if (!this.cameraRef?.current) return;
+        if (!this.isRunning) return;   // Bail if stopped between ticks
 
         this.isProcessing = true;
         const startTime = Date.now();
@@ -128,6 +128,12 @@ class PoseFrameProcessor {
 
             this.framesSent++;
 
+            // Bail if stopped while capturing
+            if (!this.isRunning) {
+                this.isProcessing = false;
+                return;
+            }
+
             // ── 2. Send to backend for ML processing ──
             let backendResponse;
             try {
@@ -147,13 +153,14 @@ class PoseFrameProcessor {
             if (backendResponse.success) {
                 this.consecutiveErrors = 0;
 
-                // ── 4. Process backend metrics through RulesEngine ──
-                const analysis = cprAnalysisService.processBackendMetrics(backendResponse);
-
-                // ── 5. Deliver results ──
+                // ── 4. Deliver backend's exact results ──
+                // The backend (Layer 6) now evaluates all rules and returns metrics + ui_commands.
                 if (this.onMetricsUpdate) {
                     this.onMetricsUpdate({
-                        ...analysis,
+                        status: backendResponse.status,
+                        metrics: backendResponse.metrics || {},
+                        ui_commands: backendResponse.ui_commands || [],
+                        low_visibility_warning: backendResponse.low_visibility_warning,
                         latencyMs: latency,
                         avgLatencyMs: Math.round(this.avgLatencyMs),
                         framesProcessed: this.framesProcessed,
@@ -234,7 +241,6 @@ class PoseFrameProcessor {
         this.framesProcessed = 0;
         this.avgLatencyMs = 0;
         this.consecutiveErrors = 0;
-        cprAnalysisService.reset();
     }
 }
 
