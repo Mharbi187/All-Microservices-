@@ -127,7 +127,13 @@ export type ElementProps =
 export interface TemplateElement {
   id: string;
   type: ElementType;
-  props: ElementProps;
+  props: ElementProps & {
+    x?: number;
+    y?: number;
+    width?: number | '100%';
+    height?: number | 'auto';
+    fullWidth?: boolean;
+  };
 }
 
 // ── Template DTOs ────────────────────────────────────────────────────────────

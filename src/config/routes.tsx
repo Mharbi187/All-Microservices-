@@ -118,7 +118,10 @@ const TemplateBuilderPage = lazy(() => import('@/pages/templates/TemplateBuilder
 const AdminReportListPage = lazy(() => import('@/pages/admin-reports/AdminReportListPage'));
 const ReportFillPage = lazy(() => import('@/pages/admin-reports/ReportFillPage'));
 const ReportDetailPage = lazy(() => import('@/pages/admin-reports/ReportDetailPage'));
-const ReportingHubPage = lazy(() => import('@/pages/reports/ReportingHubPage'));
+const ReportingDashboardPage = lazy(() => import('@/pages/reports/ReportingDashboardPage'));
+const ReportingListPage = lazy(() => import('@/pages/reports/ReportingListPage'));
+const ReportingTemplatesPage = lazy(() => import('@/pages/reports/ReportingTemplatesPage'));
+const ReportingNotificationsPage = lazy(() => import('@/pages/reports/ReportingNotificationsPage'));
 
 
 export const router = createBrowserRouter([
@@ -171,12 +174,19 @@ export const router = createBrowserRouter([
             { path: 'crisis-room/:id', element: withLoader(<CrisisRoomPage />) },
 
             // Reporting — Hub unifié (point d'entrée principal)
-            { path: 'reports', element: withLoader(<ReportingHubPage />) },
-            // Reporting — pages détail (conservées pour navigation directe)
-            { path: 'templates', element: withLoader(<TemplateListPage />) },
-            { path: 'admin-reports', element: withLoader(<AdminReportListPage />) },
-            { path: 'admin-reports/:id', element: withLoader(<ReportDetailPage />) },
-            { path: 'admin-reports/:id/fill', element: withLoader(<ReportFillPage />) },
+            { path: 'reporting/dashboard', element: withLoader(<ReportingDashboardPage />) },
+            { path: 'reporting/list', element: withLoader(<ReportingListPage />) },
+            { path: 'reporting/templates', element: withLoader(<ReportingTemplatesPage />) },
+            { path: 'reporting/notifications', element: withLoader(<ReportingNotificationsPage />) },
+            { path: 'reporting/reports/:id', element: withLoader(<ReportDetailPage />) },
+            { path: 'reporting/reports/:id/fill', element: withLoader(<ReportFillPage />) },
+            
+            // Redirect legacy paths to new paths
+            { path: 'reports', element: <Navigate to="/reporting/dashboard" replace /> },
+            { path: 'templates', element: <Navigate to="/reporting/templates" replace /> },
+            { path: 'admin-reports', element: <Navigate to="/reporting/list" replace /> },
+            { path: 'admin-reports/:id', element: <Navigate to="/reporting/reports/:id" replace /> },
+            { path: 'admin-reports/:id/fill', element: <Navigate to="/reporting/reports/:id/fill" replace /> },
         ],
     },
 

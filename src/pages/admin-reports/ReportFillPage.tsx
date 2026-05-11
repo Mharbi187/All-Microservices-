@@ -11,7 +11,7 @@ import {
 } from '@ant-design/icons';
 import { adminReportService } from '@/services/adminReportService';
 import { signatureService } from '@/services/signatureService';
-import RenderEngine from '@/components/renderer/RenderEngine';
+import PrintRenderer from '@/components/renderer/PrintRenderer';
 import WorkflowTimeline from '@/components/shared/WorkflowTimeline';
 import SignatureModal from '@/components/shared/SignatureModal';
 import type { ReportInstanceDTO, ReportWorkflowStatus } from '@/types/template.types';
@@ -171,7 +171,7 @@ const ReportFillPage: React.FC = () => {
 
       {/* Report form */}
       <Card>
-        <RenderEngine
+        <PrintRenderer
           structure={(report as any).templateVersion?.structure}
           filledData={filledData}
           mode={isEditable ? 'fill' : 'readonly'}

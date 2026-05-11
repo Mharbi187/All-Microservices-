@@ -5,7 +5,7 @@
 // ============================================================
 import React, { useRef, useState } from 'react';
 import { Input, Checkbox, Radio, DatePicker, Divider, Button, Tooltip } from 'antd';
-import { EditOutlined } from '@ant-design/icons';
+import { EditOutlined, PictureOutlined } from '@ant-design/icons';
 import type {
   TemplateElement,
   HeadingProps,
@@ -45,44 +45,75 @@ const A4_STYLE: React.CSSProperties = {
 
 const ELEMENT_GAP: React.CSSProperties = { marginBottom: 18 };
 
-// ── RC letterhead ─────────────────────────────────────────────
+// ── RC Official Letterhead (tri-lingual: AR / FR / EN) ────────
 const RCLetterhead: React.FC = () => (
-  <div
-    style={{
-      display: 'flex',
-      alignItems: 'center',
-      gap: 12,
-      marginBottom: '8mm',
-      paddingBottom: '5mm',
-      borderBottom: `2px solid ${RC_RED}`,
-    }}
-  >
+  <div style={{ marginBottom: '8mm' }}>
     <div
       style={{
-        width: 40,
-        height: 40,
-        borderRadius: '50%',
-        background: RC_RED,
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: '#fff',
-        fontSize: 22,
-        fontWeight: 900,
-        flexShrink: 0,
-        fontFamily: "'Playfair Display', Georgia, serif",
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
+        gap: '8mm',
+        marginBottom: '4mm',
       }}
     >
-      ✚
-    </div>
-    <div>
-      <div style={{ fontSize: 14, fontWeight: 700, color: RC_RED, fontFamily: "'Playfair Display', Georgia, serif", lineHeight: 1.2 }}>
-        Croissant-Rouge Tunisien
+      {/* Right — Arabic RTL */}
+      <div
+        style={{
+          textAlign: 'right',
+          direction: 'rtl',
+          fontFamily: "'Amiri', 'Traditional Arabic', serif",
+          fontSize: 13,
+          fontWeight: 700,
+          color: '#333',
+          lineHeight: 1.7,
+          minWidth: 110,
+        }}
+      >
+        الهلال الأحمر التونسي
+        <br />
+        الهيئة الوطنية
       </div>
-      <div style={{ fontSize: 11, color: '#9CA3AF', fontFamily: RC_FONT }}>
-        Formulaire officiel — usage interne
+
+      {/* Center — Logo + name in 3 languages */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1mm' }}>
+        <img
+          src="/logos/logo_symbole.png"
+          alt="Logo CRT"
+          style={{ width: '40mm', height: 'auto', maxHeight: '30mm', objectFit: 'contain' }}
+        />
+        <div style={{ fontFamily: "'Amiri', serif", fontSize: 11, fontWeight: 700, color: RC_RED, textAlign: 'center', direction: 'rtl' }}>
+          الهلال الأحمر التونسي
+        </div>
+        <div style={{ fontFamily: RC_FONT, fontSize: 9, color: '#666', textAlign: 'center' }}>
+          Croissant Rouge Tunisien
+        </div>
+        <div style={{ fontFamily: RC_FONT, fontSize: 9, color: '#666', textAlign: 'center' }}>
+          Tunisian Red Crescent
+        </div>
+      </div>
+
+      {/* Left — English LTR */}
+      <div
+        style={{
+          textAlign: 'left',
+          direction: 'ltr',
+          fontFamily: RC_FONT,
+          fontSize: 12,
+          fontWeight: 700,
+          color: '#9B0B22',
+          lineHeight: 1.5,
+          minWidth: 140,
+        }}
+      >
+        Tunisian Red Crescent
+        <br />
+        National Committee
       </div>
     </div>
+
+    {/* Red line separator */}
+    <div style={{ height: 3, background: RC_RED, margin: '0 -25mm' }} />
   </div>
 );
 
@@ -111,7 +142,6 @@ export const V2ElementRenderer: React.FC<V2ElementRendererProps> = React.memo(({
   const props = el.props as any;
   const globalStyle: React.CSSProperties = {
     marginBottom: 18,
-    gridColumn: `span ${props.gridSpan || 12}`,
     width: '100%',
     paddingTop: props.padding?.top,
     paddingRight: props.padding?.right,
@@ -179,6 +209,11 @@ export const V2ElementRenderer: React.FC<V2ElementRendererProps> = React.memo(({
       // ── Subtitle ──────────────────────────────────────────
       case 'subtitle': {
         const { text, color, fontSize, textAlign, fontFamily, lineHeight, fontWeight } = props;
+        const displayText = (value as string) ?? text ?? '';
+        if (!displayText && mode !== 'fill') {
+          // In preview/readonly: show nothing for empty subtitles
+          return <div style={{ minHeight: 20, opacity: 0.3, borderBottom: '1px dashed #CBD5E1', marginBottom: 4 }} />;
+        }
         return (
           <h4
             style={{
@@ -193,7 +228,7 @@ export const V2ElementRenderer: React.FC<V2ElementRendererProps> = React.memo(({
               letterSpacing: 1,
             }}
           >
-            {(value as string) ?? text ?? 'SOUS-TITRE'}
+            {displayText || <span style={{ color: '#CBD5E1', fontStyle: 'italic', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>Sous-titre...</span>}
           </h4>
         );
       }
@@ -224,23 +259,28 @@ export const V2ElementRenderer: React.FC<V2ElementRendererProps> = React.memo(({
                 alt={alt}
                 style={{ maxWidth: '100%', width: width ? `${width}%` : '100%', borderRadius: 6, display: 'inline-block' }}
               />
+            ) : mode === 'preview' ? (
+              // Clean placeholder for preview/PDF mode
+              <div style={{
+                width: width ? `${width}%` : '100%', minHeight: 80,
+                background: '#F9FAFB', border: '1px dashed #D1D5DB', borderRadius: 8,
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                flexDirection: 'column', gap: 6, color: '#9CA3AF',
+              }}>
+                <PictureOutlined style={{ fontSize: 24, color: '#D1D5DB' }} />
+                <span style={{ fontSize: 11, color: '#D1D5DB' }}>Image</span>
+              </div>
             ) : (
-              <div
-                style={{
-                  background: '#F9FAFB',
-                  border: '2px dashed #E5E7EB',
-                  borderRadius: 8,
-                  minHeight: 80,
-                  width: width ? `${width}%` : '100%',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#D1D5DB',
-                  fontSize: 13,
-                  fontFamily: RC_FONT,
-                }}
-              >
-                📷 Zone image
+              <div style={{
+                background: '#F9FAFB', border: '2px dashed #E5E7EB', borderRadius: 8,
+                minHeight: 80, width: width ? `${width}%` : '100%',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                color: '#D1D5DB', fontSize: 13, fontFamily: RC_FONT,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <PictureOutlined style={{ marginRight: 6, fontSize: 16 }} />
+                  Zone image
+                </div>
               </div>
             )}
           </div>
@@ -509,22 +549,19 @@ export const V2ElementRenderer: React.FC<V2ElementRendererProps> = React.memo(({
 
       // ── Page Break ────────────────────────────────────────
       case 'page_break': {
-        if (mode === 'preview') {
-          return (
-            <div style={{
-              width: '100%',
-              margin: '20px 0',
-              textAlign: 'center',
-              position: 'relative'
-            }}>
-              <div style={{ borderTop: '2px dashed #9CA3AF', position: 'absolute', top: '50%', width: '100%', zIndex: 1 }}></div>
-              <span style={{ background: '#f8fafc', padding: '0 10px', color: '#6B7280', fontSize: 11, position: 'relative', zIndex: 2, fontFamily: RC_FONT, fontWeight: 600 }}>
-                ✂ SAUT DE PAGE
-              </span>
-            </div>
-          );
+        // In preview/fill/readonly: completely invisible — OfficialDocumentWrapper handles page splitting
+        if (mode === 'preview' || mode === 'fill' || mode === 'readonly') {
+          return null;
         }
-        return <div style={{ pageBreakAfter: 'always', breakAfter: 'page', width: '100%', height: 1 }} />;
+        // In edit (canvas) mode only: show visual dashed indicator
+        return (
+          <div style={{ width: '100%', margin: '20px 0', textAlign: 'center', position: 'relative' }}>
+            <div style={{ borderTop: '2px dashed #9CA3AF', position: 'absolute', top: '50%', width: '100%', zIndex: 1 }} />
+            <span style={{ background: '#f8fafc', padding: '0 10px', color: '#6B7280', fontSize: 11, position: 'relative', zIndex: 2, fontFamily: RC_FONT, fontWeight: 600 }}>
+              ✂ SAUT DE PAGE
+            </span>
+          </div>
+        );
       }
 
       default:
@@ -560,80 +597,3 @@ export const V2ElementRenderer: React.FC<V2ElementRendererProps> = React.memo(({
     JSON.stringify(prevProps.element) === JSON.stringify(nextProps.element) &&
     prevProps.filledData[prevProps.element.id] === nextProps.filledData[nextProps.element.id];
 });
-
-// ── Main Renderer Component ─────────────────────────────────────────────────
-interface V2RendererProps {
-  elements: TemplateElement[];
-  filledData: Record<string, unknown>;
-  mode: 'preview' | 'fill' | 'readonly';
-  onChange?: (id: string, value: unknown) => void;
-  showLetterhead?: boolean;
-}
-
-const V2Renderer: React.FC<V2RendererProps> = ({
-  elements,
-  filledData,
-  mode,
-  onChange,
-  showLetterhead = true,
-}) => {
-  const [sigModalEl, setSigModalEl] = useState<string | null>(null);
-
-  // JS Pagination Logic: Split elements by page_break
-  const pages = React.useMemo(() => {
-    const p: TemplateElement[][] = [];
-    let current: TemplateElement[] = [];
-    elements.forEach((el) => {
-      if (el.type === 'page_break') {
-        p.push(current);
-        current = []; // Nouveau tableau, page_break n'est plus rendu visuellement
-      } else {
-        current.push(el);
-      }
-    });
-    p.push(current);
-    return p;
-  }, [elements]);
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%', alignItems: 'center' }}>
-      {pages.map((pageElements, pageIndex) => (
-        <div key={`page-${pageIndex}`} style={{ ...A4_STYLE, overflow: 'hidden', pageBreakAfter: 'always' }}>
-          {showLetterhead && pageIndex === 0 && <RCLetterhead />}
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: 0, alignContent: 'start' }}>
-            {pageElements.map((el) => (
-              <V2ElementRenderer
-                key={el.id}
-                element={el}
-                filledData={filledData}
-                mode={mode}
-                onChange={onChange}
-                sigModalEl={sigModalEl}
-                setSigModalEl={setSigModalEl}
-              />
-            ))}
-          </div>
-          {/* Footer */}
-          <div
-            style={{
-              marginTop: '12mm',
-              paddingTop: '4mm',
-              borderTop: `1px solid #E5E7EB`,
-              fontSize: 10,
-              color: '#9CA3AF',
-              display: 'flex',
-              justifyContent: 'space-between',
-              fontFamily: RC_FONT,
-            }}
-          >
-            <span>Croissant-Rouge Tunisien — Document confidentiel</span>
-            <span>Généré le {new Date().toLocaleDateString('fr-FR')}</span>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-};
-
-export default V2Renderer;

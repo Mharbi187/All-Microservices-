@@ -33,10 +33,12 @@ import {
     AuditOutlined,
     RadarChartOutlined,
     TrophyOutlined,
+    AppstoreOutlined,
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useUIStore, useAuthStore } from '@/stores';
+import { useReportingStore } from '@/stores/reportingStore';
 import { getUserPermissions } from '@/config/roleConfig';
 
 const { Sider, Header, Content } = Layout;
@@ -49,6 +51,7 @@ const MainLayout: React.FC = () => {
 
     const { sidebarCollapsed, toggleSidebar, themeMode, toggleTheme } = useUIStore();
     const { user, logout } = useAuthStore();
+    const { unreadCount } = useReportingStore();
 
     // Get permissions based on user type + committee roles
     const permissions = useMemo(() => {
@@ -193,12 +196,39 @@ const MainLayout: React.FC = () => {
             });
         }
 
-        // Reporting Hub — visible pour tous les rôles qui y ont accès
+        // Reporting Hub — Submenu
         if (isAllowed('/reports')) {
             items.push({
-                key: '/reports',
+                key: 'reporting',
                 icon: <AuditOutlined />,
                 label: 'Système Reporting',
+                children: [
+                    {
+                        key: '/reporting/dashboard',
+                        icon: <DashboardOutlined />,
+                        label: 'Tableau de bord',
+                    },
+                    {
+                        key: '/reporting/list',
+                        icon: <FileTextOutlined />,
+                        label: 'Rapports',
+                    },
+                    {
+                        key: '/reporting/templates',
+                        icon: <AppstoreOutlined />,
+                        label: 'Modèles',
+                    },
+                    {
+                        key: '/reporting/notifications',
+                        icon: <BellOutlined />,
+                        label: (
+                            <Space>
+                                Notifications
+                                {unreadCount > 0 && <Badge count={unreadCount} size="small" />}
+                            </Space>
+                        ),
+                    },
+                ],
             });
         }
 

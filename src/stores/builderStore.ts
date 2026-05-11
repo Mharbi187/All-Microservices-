@@ -40,7 +40,7 @@ interface BuilderState {
 
   // Actions
   setMeta: (meta: Partial<BuilderMeta>) => void;
-  addElement: (type: ElementType) => void;
+  addElement: (type: ElementType, initialProps?: Partial<TemplateElement['props']>) => void;
   removeElement: (id: string) => void;
   updateElement: (id: string, props: Partial<TemplateElement['props']>) => void;
   reorderElements: (fromIndex: number, toIndex: number) => void;
@@ -121,11 +121,28 @@ export const useBuilderStore = create<BuilderState>()(
         state.isDirty = true;
       }),
 
-    addElement: (type) =>
+    addElement: (type, initialProps) =>
       set((state) => {
         state.past = pushHistory(state.past, state.elements.map(e => ({ ...e })));
         state.future = [];
-        state.elements.push({ id: nanoid(8), type, props: defaultProps(type) });
+        // Default spawn position: centered on A4 (794px width)
+        const elementWidth = initialProps?.width || 400;
+        const newId = nanoid(8);
+        const yOffset = state.elements.length * 30; // slight vertical cascade
+        
+        state.elements.push({ 
+          id: newId, 
+          type, 
+          props: {
+            ...defaultProps(type),
+            x: (794 - (elementWidth as number)) / 2, // Centered horizontally
+            y: 100 + (yOffset % 400), // Spawns near top but cascades down
+            width: elementWidth,
+            fullWidth: false,
+            ...initialProps
+          } 
+        });
+        state.selectedId = newId; // Auto-select so properties open on the right
         state.isDirty = true;
       }),
 

@@ -26,7 +26,8 @@ import { QRCodeSVG } from 'qrcode.react';
 import jeunesseService from '@/services/jeunesseService';
 import type { YouthIntegrationFormDTO, YouthRecommendationDTO, YouthFormTemplateDTO } from '@/types';
 import { useUIStore, useAuthStore } from '@/stores';
-import { exportToPDF } from '@/utils/reportUtils';
+
+
 
 // New Components
 import YouthRecommendationView from './components/YouthRecommendationView';

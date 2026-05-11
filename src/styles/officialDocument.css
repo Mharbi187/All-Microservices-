@@ -1,0 +1,390 @@
+/* ============================================================
+   Official CRT Document — Print-Ready Stylesheet
+   Croissant Rouge Tunisien — الهلال الأحمر التونسي
+   ============================================================ */
+
+/* ── Google Fonts ──────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* ── CSS Variables ─────────────────────────────────────────── */
+:root {
+  --crt-red: #C8102E;
+  --crt-dark-red: #9B0B22;
+  --crt-light-red: #FEF2F2;
+  --crt-border: #E5E7EB;
+  --crt-text: #1F2937;
+  --crt-muted: #6B7280;
+  --crt-font-ar: 'Amiri', 'Traditional Arabic', 'Sakkal Majalla', serif;
+  --crt-font-fr: 'Inter', Arial, 'Times New Roman', sans-serif;
+}
+
+/* ── A4 Document Container ─────────────────────────────────── */
+.crt-document {
+  width: 210mm;
+  min-height: 297mm;
+  margin: 0 auto;
+  background: #fff;
+  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.12);
+  font-family: var(--crt-font-fr);
+  font-size: 12pt;
+  color: var(--crt-text);
+  position: relative;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.crt-document * {
+  box-sizing: border-box;
+}
+
+/* ── Official Letterhead ───────────────────────────────────── */
+.crt-letterhead {
+  padding: 15mm 15mm 0;
+}
+
+.crt-letterhead-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10mm;
+  margin-bottom: 4mm;
+}
+
+/* Left column — Arabic RTL */
+.crt-lh-ar {
+  flex: 0 0 auto;
+  text-align: right;
+  direction: rtl;
+  font-family: var(--crt-font-ar);
+  font-size: 13pt;
+  font-weight: 700;
+  color: #333;
+  line-height: 1.7;
+  min-width: 110px;
+}
+
+/* Center column — Logo + Tri-language name */
+.crt-lh-center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2mm;
+}
+
+.crt-lh-logo {
+  width: 50mm;
+  height: auto;
+  max-height: 35mm;
+  object-fit: contain;
+}
+
+.crt-lh-name-ar {
+  font-family: var(--crt-font-ar);
+  font-size: 11pt;
+  font-weight: 700;
+  color: var(--crt-red);
+  text-align: center;
+  direction: rtl;
+}
+
+.crt-lh-name-fr {
+  font-family: var(--crt-font-fr);
+  font-size: 9pt;
+  color: #666;
+  text-align: center;
+  letter-spacing: 0.3px;
+}
+
+.crt-lh-name-en {
+  font-family: var(--crt-font-fr);
+  font-size: 9pt;
+  color: #666;
+  text-align: center;
+  letter-spacing: 0.3px;
+}
+
+/* Right column — English/French LTR */
+.crt-lh-en {
+  flex: 0 0 auto;
+  text-align: left;
+  direction: ltr;
+  font-family: var(--crt-font-fr);
+  font-size: 12pt;
+  font-weight: 700;
+  color: var(--crt-dark-red);
+  line-height: 1.5;
+  min-width: 140px;
+}
+
+/* Red separator line */
+.crt-red-line {
+  height: 3px;
+  background: var(--crt-red);
+  margin: 0 -15mm;
+  border: none;
+}
+
+/* ── Document Metadata ─────────────────────────────────────── */
+.crt-meta {
+  padding: 4mm 15mm 3mm;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 0.5px solid #eee;
+}
+
+.crt-meta-ref {
+  font-family: var(--crt-font-ar);
+  font-size: 11pt;
+  color: #333;
+  direction: rtl;
+}
+
+.crt-meta-date {
+  font-family: var(--crt-font-ar);
+  font-size: 11pt;
+  color: #333;
+  direction: rtl;
+  text-align: right;
+}
+
+/* ── Sender / Recipient Block ──────────────────────────────── */
+.crt-sender-block {
+  text-align: center;
+  padding: 5mm 15mm 4mm;
+  font-size: 12pt;
+  line-height: 1.9;
+}
+
+.crt-sender-label {
+  color: #555;
+  font-family: var(--crt-font-ar);
+  direction: rtl;
+}
+
+.crt-sender-name {
+  font-weight: 700;
+  font-size: 13pt;
+  font-family: var(--crt-font-ar);
+  direction: rtl;
+}
+
+.crt-sender-role {
+  font-weight: 700;
+  font-family: var(--crt-font-ar);
+  direction: rtl;
+  color: var(--crt-red);
+}
+
+.crt-recipient {
+  font-weight: 700;
+  font-family: var(--crt-font-ar);
+  direction: rtl;
+}
+
+/* ── Document Body ─────────────────────────────────────────── */
+.crt-body {
+  padding: 4mm 15mm 10mm;
+  min-height: 120mm;
+}
+
+/* Content blocks with per-block language support */
+.crt-content-block {
+  margin-bottom: 4mm;
+  font-size: 12pt;
+  line-height: 1.9;
+  color: #222;
+}
+
+.crt-content-block[dir="rtl"],
+.crt-content-block.crt-rtl {
+  direction: rtl;
+  text-align: right;
+  font-family: var(--crt-font-ar);
+}
+
+.crt-content-block[dir="ltr"],
+.crt-content-block.crt-ltr {
+  direction: ltr;
+  text-align: left;
+  font-family: var(--crt-font-fr);
+}
+
+/* ── Signature Block ───────────────────────────────────────── */
+.crt-signature-block {
+  margin-top: 10mm;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding: 0 15mm;
+  font-size: 12pt;
+}
+
+.crt-sig-left {
+  text-align: right;
+  direction: rtl;
+  font-family: var(--crt-font-ar);
+}
+
+.crt-sig-name {
+  font-weight: 700;
+  font-size: 13pt;
+}
+
+.crt-sig-role {
+  color: var(--crt-red);
+  font-size: 11pt;
+}
+
+.crt-stamp-zone {
+  margin-top: 3mm;
+  width: 25mm;
+  height: 15mm;
+  border: 1px dashed #ccc;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9pt;
+  color: #aaa;
+  font-family: var(--crt-font-ar);
+  direction: rtl;
+  margin-left: auto;
+}
+
+.crt-closing {
+  text-align: center;
+  margin-top: 5mm;
+  padding: 0 15mm;
+  font-size: 12pt;
+  font-family: var(--crt-font-ar);
+  font-style: italic;
+  color: #555;
+  direction: rtl;
+}
+
+/* ── Footer ────────────────────────────────────────────────── */
+.crt-footer {
+  background: #f9f9f9;
+  border-top: 0.5px solid #ddd;
+  padding: 3mm 15mm;
+  font-size: 8pt;
+  color: #666;
+  font-family: var(--crt-font-ar);
+  text-align: center;
+  line-height: 1.7;
+  direction: rtl;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+/* ── Editable Fields (for fill mode) ───────────────────────── */
+.crt-editable {
+  display: inline-block;
+  min-width: 60px;
+  border-bottom: 1.5px dashed var(--crt-red);
+  padding: 0 4px;
+  cursor: text;
+  outline: none;
+  color: #222;
+  background: rgba(200, 16, 46, 0.04);
+  border-radius: 2px;
+  transition: background 0.2s;
+}
+
+.crt-editable:focus {
+  background: rgba(200, 16, 46, 0.08);
+  border-bottom-color: var(--crt-dark-red);
+}
+
+/* ── Section Divider ───────────────────────────────────────── */
+.crt-section-divider {
+  border: none;
+  border-top: 0.5px dashed #ccc;
+  margin: 4mm 15mm;
+}
+
+/* ── Language Badge ────────────────────────────────────────── */
+.crt-lang-badge {
+  display: inline-block;
+  font-size: 8pt;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-weight: 500;
+  font-family: var(--crt-font-fr);
+  margin-bottom: 2mm;
+}
+
+.crt-lang-badge-ar {
+  background: var(--crt-light-red);
+  color: var(--crt-red);
+}
+
+.crt-lang-badge-fr {
+  background: #EFF6FF;
+  color: #2563EB;
+}
+
+.crt-lang-badge-en {
+  background: #F0FDF4;
+  color: #16A34A;
+}
+
+/* ── Print Styles ──────────────────────────────────────────── */
+@media print {
+  /* Hide UI elements */
+  .no-print,
+  .ant-layout-header,
+  .ant-layout-sider,
+  .ant-breadcrumb,
+  nav,
+  button,
+  .ant-btn {
+    display: none !important;
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+    background: white;
+  }
+
+  .crt-document {
+    width: 100%;
+    min-height: auto;
+    box-shadow: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .crt-footer {
+    position: fixed;
+    bottom: 0;
+  }
+
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  .crt-body {
+    page-break-inside: auto;
+  }
+
+  .crt-content-block {
+    page-break-inside: avoid;
+  }
+}
+
+/* ── Print Window (for PDF export) ─────────────────────────── */
+.crt-print-window {
+  font-family: var(--crt-font-fr);
+}
+
+.crt-print-window .crt-document {
+  box-shadow: none;
+  margin: 0;
+}

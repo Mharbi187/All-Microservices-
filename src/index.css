@@ -16,6 +16,12 @@
   --pink: #ef7984;
   --mid: #7a7774;
 
+  /* CRT Specific Colors */
+  --crt-red: #C8102E;
+  --crt-dark-red: #9B0B22;
+  --crt-light-red: #ffebed;
+  --crt-gray-bg: rgba(247, 248, 246, 0.05);
+
   /* Glass */
   --glass-bg: rgba(247,248,246,0.08);
   --glass-border: rgba(247,182,185,0.18);
@@ -65,6 +71,12 @@
   --footer-border: rgba(190,189,185,0.2);
   --stats-band-bg: rgba(241,3,22,0.04);
   --stats-band-border: rgba(241,3,22,0.1);
+
+  /* CRT Specific Colors - Light Mode */
+  --crt-red: #C8102E;
+  --crt-dark-red: #9B0B22;
+  --crt-light-red: #fff1f2;
+  --crt-gray-bg: #f9fafb;
 }
 
 /* ── Global Reset ── */
@@ -133,6 +145,16 @@ body {
 @keyframes shimmer {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
+}
+
+@keyframes slideUpFade {
+  0% { opacity: 0; transform: translateY(15px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  0% { opacity: 0; transform: scale(0.95); }
+  100% { opacity: 1; transform: scale(1); }
 }
 
 /* ── Utility Classes ── */

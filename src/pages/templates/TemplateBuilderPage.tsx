@@ -6,7 +6,7 @@ import React, { useEffect, useDeferredValue, useCallback, useState } from 'react
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Layout, Button, Space, Tooltip, message, Divider, Typography, Badge,
-  Select, Input, Switch, Form, Popconfirm, Tag, Slider, InputNumber, Collapse, Modal,
+  Select, Input, Switch, Form, Popconfirm, Tag, Slider, InputNumber, Collapse, Modal, Tabs, Alert,
 } from 'antd';
 import {
   ArrowLeftOutlined, EyeOutlined, EditOutlined, SaveOutlined, UndoOutlined, RedoOutlined,
@@ -18,6 +18,8 @@ import {
   CalendarOutlined, PictureOutlined, TableOutlined, HighlightOutlined,
   CloudUploadOutlined, CloudSyncOutlined, SendOutlined,
   BorderOuterOutlined, RadiusSettingOutlined, DashOutlined,
+  ZoomInOutlined, ZoomOutOutlined, AppstoreOutlined, WarningOutlined,
+  ArrowUpOutlined, ArrowDownOutlined, VerticalAlignTopOutlined, VerticalAlignBottomOutlined,
 } from '@ant-design/icons';
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor,
@@ -25,16 +27,20 @@ import {
 } from '@dnd-kit/core';
 import type { DragEndEvent } from '@dnd-kit/core';
 import {
-  SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy,
+  SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, rectSortingStrategy,
+  useSortable
 } from '@dnd-kit/sortable';
-import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import Moveable from 'react-moveable';
 import { nanoid } from 'nanoid';
 import { useBuilderStore } from '@/stores/builderStore';
 import { templateBuilderService } from '@/services/templateBuilderService';
 import type { ElementType, TemplateElement } from '@/types/template.types';
-import RenderEngine from '@/components/renderer/RenderEngine';
+import PrintRenderer, { validateLayout, openPrintPreview, exportToPrintWindow } from '@/components/renderer/PrintRenderer';
 import { V2ElementRenderer } from '@/components/renderer/V2Renderer';
+import OfficialDocumentWrapper from '@/components/renderer/OfficialDocumentWrapper';
+import type { DocumentHeaderConfig, DocumentMetadata, DocumentFooterConfig } from '@/components/renderer/OfficialDocumentWrapper';
+import { exportOfficialPDF, previewOfficialPDF } from '@/utils/reportUtils';
 
 const { Sider, Content, Header } = Layout;
 const { Text, Title } = Typography;
@@ -93,32 +99,67 @@ const PALETTE_GROUPS = [
   },
 ];
 
-// ── Sortable Element Card with floating toolbar ──────────────────────────────
-const SortableElementCard = React.memo(({ id, el, isSelected, isHovered, onSelect, onRemove, onDuplicate, onHover }: {
+// ── Flow Element Card (full-width, flow-based, draggable within page) ─────────
+const FlowElementCard = React.memo(({ id, el, isSelected, isHovered, onSelect, onRemove, onDuplicate, onHover, canMoveUp, canMoveDown, onMoveUp, onMoveDown, pageIndex, totalPages }: {
   id: string; el: TemplateElement; isSelected: boolean; isHovered: boolean;
   onSelect: () => void; onRemove: () => void; onDuplicate: () => void;
   onHover: (id: string | null) => void;
+  canMoveUp: boolean; canMoveDown: boolean;
+  onMoveUp: () => void; onMoveDown: () => void;
+  pageIndex: number; totalPages: number;
 }) => {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
-  const showToolbar = isSelected || isHovered;
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  // Use local state so toolbar stays visible when mouse moves to toolbar buttons
+  const [localHover, setLocalHover] = React.useState(false);
+  const showToolbar = isSelected || isHovered || localHover;
 
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    position: 'relative',
-    border: isSelected ? `2px solid ${COLORS.primary}` : isHovered ? `1px dashed ${COLORS.primaryBorder}` : '1px solid transparent',
-    borderRadius: 4,
-    cursor: 'default',
-    width: '100%',
-    gridColumn: `span ${(el.props as any).gridSpan || 12}`,
+  const span = typeof (el.props as any).gridSpan === 'number' ? (el.props as any).gridSpan : 12;
+  const widthPercentage = `${(span / 12) * 100}%`;
+
+  const cardStyle: React.CSSProperties = {
+    width: widthPercentage,
+    border: isSelected
+      ? `2px solid ${COLORS.primary}`
+      : isHovered
+      ? `1px dashed ${COLORS.primaryBorder}`
+      : '1px solid transparent',
+    borderRadius: 6,
+    background: isSelected ? `${COLORS.primaryLight}44` : 'transparent',
     boxSizing: 'border-box',
-    margin: isSelected ? '-1px' : '0' // compense la bordure pour ne pas sauter
+    position: 'relative',
+    marginBottom: 4,
+    opacity: isDragging ? 0.5 : 1,
+    transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
+    transition,
+    cursor: 'grab',
   };
+
+  // Page break element: show a minimal indicator in edit mode only
+  if (el.type === 'page_break') {
+    return (
+      <div ref={setNodeRef} style={{ ...cardStyle, padding: 0 }}
+        onClick={(e) => { e.stopPropagation(); onSelect(); }}
+        onMouseEnter={() => onHover(id)}
+        onMouseLeave={() => onHover(null)}>
+        {showToolbar && (
+          <div style={{ position: 'absolute', top: -28, right: 0, background: '#6B7280', borderRadius: 6, padding: '2px 6px', display: 'flex', gap: 2, zIndex: 60 }}>
+            <Button size="small" type="text" danger icon={<DeleteOutlined style={{ color: '#fff', fontSize: 11 }} />}
+              style={{ minWidth: 22, height: 22 }} onClick={e => { e.stopPropagation(); onRemove(); }} />
+          </div>
+        )}
+        <div style={{ width: '100%', margin: '4px 0', textAlign: 'center', position: 'relative', height: 28, display: 'flex', alignItems: 'center' }}>
+          <div style={{ borderTop: '2px dashed #9CA3AF', position: 'absolute', width: '100%', zIndex: 1 }} />
+          <span style={{ background: '#f8fafc', padding: '0 10px', color: '#6B7280', fontSize: 11, position: 'relative', zIndex: 2, fontWeight: 600 }}>✂ SAUT DE PAGE</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
+      id={`el-${id}`}
       ref={setNodeRef}
-      style={style}
+      style={cardStyle}
       onClick={(e) => { e.stopPropagation(); onSelect(); }}
       onMouseEnter={() => onHover(id)}
       onMouseLeave={() => onHover(null)}
@@ -126,28 +167,50 @@ const SortableElementCard = React.memo(({ id, el, isSelected, isHovered, onSelec
       {/* Floating toolbar */}
       {showToolbar && (
         <div style={{
-          position: 'absolute', top: -32, right: 0,
-          background: COLORS.primary, borderRadius: 6, padding: '4px 6px',
-          display: 'flex', gap: 2, zIndex: 50,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          position: 'absolute', top: -34, right: 0,
+          background: COLORS.primary, borderRadius: 8, padding: '4px 6px',
+          display: 'flex', gap: 2, zIndex: 60,
+          boxShadow: '0 4px 16px rgba(124,58,237,0.3)',
         }}>
-          <Tooltip title="Déplacer">
-            <Button size="small" type="text" icon={<DragOutlined style={{ color: '#fff', fontSize: 12 }} />}
-              style={{ minWidth: 24, height: 24, cursor: 'grab' }} {...attributes} {...listeners} />
+          {/* Drag handle */}
+          <Tooltip title="Déplacer (glisser)">
+            <span {...attributes} {...listeners}
+              style={{ display: 'flex', alignItems: 'center', padding: '0 4px', cursor: 'grab', color: '#fff' }}
+              onClick={e => e.stopPropagation()}>
+              <HolderOutlined style={{ fontSize: 12 }} />
+            </span>
           </Tooltip>
+          {/* Move to previous page */}
+          {pageIndex > 0 && (
+            <Tooltip title={`Déplacer vers page ${pageIndex}`}>
+              <Button size="small" type="text"
+                icon={<ArrowUpOutlined style={{ color: '#fff', fontSize: 11 }} />}
+                style={{ minWidth: 24, height: 24, background: 'rgba(255,255,255,0.15)' }}
+                onClick={e => { e.stopPropagation(); onMoveUp(); }} />
+            </Tooltip>
+          )}
+          {/* Move to next page */}
+          {pageIndex < totalPages - 1 && (
+            <Tooltip title={`Déplacer vers page ${pageIndex + 2}`}>
+              <Button size="small" type="text"
+                icon={<ArrowDownOutlined style={{ color: '#fff', fontSize: 11 }} />}
+                style={{ minWidth: 24, height: 24, background: 'rgba(255,255,255,0.15)' }}
+                onClick={e => { e.stopPropagation(); onMoveDown(); }} />
+            </Tooltip>
+          )}
           <Tooltip title="Dupliquer">
-            <Button size="small" type="text" icon={<CopyOutlined style={{ color: '#fff', fontSize: 12 }} />}
+            <Button size="small" type="text" icon={<CopyOutlined style={{ color: '#fff', fontSize: 11 }} />}
               style={{ minWidth: 24, height: 24 }} onClick={e => { e.stopPropagation(); onDuplicate(); }} />
           </Tooltip>
           <Tooltip title="Supprimer">
-            <Button size="small" type="text" icon={<DeleteOutlined style={{ color: '#fff', fontSize: 12 }} />}
+            <Button size="small" type="text" icon={<DeleteOutlined style={{ color: '#fff', fontSize: 11 }} />}
               style={{ minWidth: 24, height: 24 }} onClick={e => { e.stopPropagation(); onRemove(); }} />
           </Tooltip>
         </div>
       )}
 
-      {/* Render Element Live */}
-      <div style={{ pointerEvents: 'none' }}>
+      {/* Content rendered with full width */}
+      <div style={{ pointerEvents: 'none', width: '100%', padding: '8px 0' }}>
         <V2ElementRenderer
           element={el}
           filledData={{}}
@@ -157,11 +220,15 @@ const SortableElementCard = React.memo(({ id, el, isSelected, isHovered, onSelec
     </div>
   );
 }, (prevProps, nextProps) => {
-  // Deep equality for performance
   return prevProps.isSelected === nextProps.isSelected &&
     prevProps.isHovered === nextProps.isHovered &&
+    prevProps.canMoveUp === nextProps.canMoveUp &&
+    prevProps.canMoveDown === nextProps.canMoveDown &&
     JSON.stringify(prevProps.el) === JSON.stringify(nextProps.el);
 });
+
+// ── Keep AbsoluteElementCard as alias (may be referenced elsewhere) ───────────
+const AbsoluteElementCard = FlowElementCard;
 
 // ── Box Model Editor ───────────────────────────────────────────────────────────
 const BoxModelEditor: React.FC<{
@@ -294,8 +361,54 @@ const PropertiesPanel: React.FC<{
         </div>
       </div>
 
-      <Collapse defaultActiveKey={['content', 'text', 'spacing']} expandIconPosition="end" ghost
+      <Collapse defaultActiveKey={['layout', 'content', 'text', 'spacing']} expandIconPosition="end" ghost
         items={[
+          {
+            key: 'layout', label: <Text strong style={{ fontSize: 12 }}>Mise en page (Position & Taille)</Text>,
+            children: (
+              <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 12 }}>Pleine largeur (A4)</Text>
+                  <Switch
+                    size="small"
+                    checked={(element.props as any).fullWidth}
+                    onChange={v => update('fullWidth', v)}
+                  />
+                </div>
+                {!(element.props as any).fullWidth && (
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <div style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 11, color: COLORS.textSecondary, display: 'block', marginBottom: 4 }}>Largeur (px)</Text>
+                      <InputNumber
+                        style={{ width: '100%' }}
+                        value={(element.props as any).width || 400}
+                        onChange={v => update('width', v || 400)}
+                      />
+                    </div>
+                  </div>
+                )}
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <div style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 11, color: COLORS.textSecondary, display: 'block', marginBottom: 4 }}>Position X</Text>
+                    <InputNumber
+                      style={{ width: '100%' }}
+                      value={(element.props as any).x || 0}
+                      onChange={v => update('x', v || 0)}
+                      disabled={(element.props as any).fullWidth}
+                    />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 11, color: COLORS.textSecondary, display: 'block', marginBottom: 4 }}>Position Y</Text>
+                    <InputNumber
+                      style={{ width: '100%' }}
+                      value={(element.props as any).y || 0}
+                      onChange={v => update('y', v || 0)}
+                    />
+                  </div>
+                </div>
+              </Space>
+            )
+          },
           {
             key: 'content', label: <Text strong style={{ fontSize: 12 }}>Contenu</Text>,
             children: (
@@ -329,6 +442,13 @@ const PropertiesPanel: React.FC<{
                     <Text style={{ fontSize: 11, color: COLORS.textSecondary, display: 'block', marginBottom: 4 }}>Texte</Text>
                     <Input.TextArea rows={4} value={(element.props as any).text || ''}
                       onChange={e => update('text', e.target.value)} placeholder="Saisissez votre texte..." />
+                  </div>
+                )}
+                {element.type === 'subtitle' && (
+                  <div>
+                    <Text style={{ fontSize: 11, color: COLORS.textSecondary, display: 'block', marginBottom: 4 }}>Texte du sous-titre</Text>
+                    <Input.TextArea rows={2} value={(element.props as any).text || ''}
+                      onChange={e => update('text', e.target.value)} placeholder="Sous-titre..." />
                   </div>
                 )}
                 {['text_input', 'textarea', 'date_picker', 'signature_block', 'checkbox', 'radio'].includes(element.type) && (
@@ -699,6 +819,37 @@ const TemplateBuilderPage: React.FC = () => {
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [draftVersionId, setDraftVersionId] = useState<string | null>(null);
+  const [zoom, setZoom] = useState(100); // percent
+  const [showGrid, setShowGrid] = useState(true);
+  const [validationWarnings, setValidationWarnings] = useState<string[]>([]);
+
+  // ── DnD sensors for canvas (flow-based drag-and-drop between elements) ──
+  const canvasSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+
+  const [docHeader, setDocHeader] = useState<DocumentHeaderConfig>({
+    organizationAr: 'الهلال الأحمر التونسي',
+    subtitleAr: 'الهيئة الوطنية',
+    organizationFr: 'Croissant Rouge Tunisien',
+    organizationEn: 'Tunisian Red Crescent',
+    headerEn: 'Tunisian Red Crescent',
+    subtitleEn: 'National Committee',
+    logoUrl: '/logos/logo_symbole.png',
+    primaryColor: '#C8102E',
+  });
+  const [docMeta, setDocMeta] = useState<DocumentMetadata>({
+    reference: '',
+    location: 'تونس',
+    senderName: '',
+    senderRole: '',
+    recipient: '',
+  });
+  const [docFooter, setDocFooter] = useState<DocumentFooterConfig>({
+    text: 'المقر الاجتماعي: 19 نهج الجلاترا تونس 1000 | الهاتف: 71320151-71253052 | الفاكس: 71320630\ncontact@croissant-rouge.tn | www.croissant-rouge.tn',
+  });
 
   const {
     elements, selectedId, previewMode, isDirty, meta,
@@ -736,11 +887,6 @@ const TemplateBuilderPage: React.FC = () => {
   const deferredSelectedId = useDeferredValue(selectedId);
   const selectedEl = elements.find(e => e.id === deferredSelectedId);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  );
-
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
       if (isDirty) { e.preventDefault(); e.returnValue = ''; }
@@ -749,18 +895,41 @@ const TemplateBuilderPage: React.FC = () => {
     return () => window.removeEventListener('beforeunload', handler);
   }, [isDirty]);
 
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    reorderElements(
-      elements.findIndex(e => e.id === active.id),
-      elements.findIndex(e => e.id === over.id),
-    );
-  }, [elements, reorderElements]);
-
   const handleDuplicate = useCallback((el: TemplateElement) => {
-    addElement(el.type);
+    addElement(el.type, { ...el.props as any });
   }, [addElement]);
+
+  /**
+   * Move an element from its current page to the adjacent page (prev or next).
+   * Works by relocating the element in the flat `elements` array relative to page_break positions.
+   */
+  const moveElementToPage = useCallback((elId: string, direction: 'up' | 'down') => {
+    const allEls = [...elements];
+    const elIdx = allEls.findIndex(e => e.id === elId);
+    if (elIdx < 0) return;
+
+    // Find page_break indices
+    const breakIndices = allEls
+      .map((e, i) => e.type === 'page_break' ? i : -1)
+      .filter(i => i >= 0);
+
+    // Determine which page this element is on
+    let currentPage = 0;
+    for (const bi of breakIndices) {
+      if (bi < elIdx) currentPage++;
+      else break;
+    }
+
+    const totalPages = breakIndices.length + 1;
+
+    if (direction === 'up' && currentPage > 0) {
+      const breakIdx = breakIndices[currentPage - 1]; // the break before current page
+      reorderElements(elIdx, breakIdx);
+    } else if (direction === 'down' && currentPage < totalPages - 1) {
+      const breakIdx = breakIndices[currentPage]; // the break after current page
+      reorderElements(elIdx, breakIdx);
+    }
+  }, [elements, reorderElements]);
 
   const handleSave = async (silent = false) => {
     setIsSaving(true);
@@ -824,19 +993,44 @@ const TemplateBuilderPage: React.FC = () => {
       message.warning('Veuillez sauvegarder le modèle au moins une fois avant d\'exporter.');
       return;
     }
-    
-    // We need a version ID to export. Force save draft if not available.
+
+    // Run overlap/bounds validation
+    const validation = validateLayout(elements);
+    setValidationWarnings(validation.warnings);
+    if (!validation.valid) {
+      message.error('Export bloqué : des erreurs de mise en page doivent être corrigées.');
+      return;
+    }
+    if (validation.warnings.length > 0) {
+      const proceed = await new Promise<boolean>(resolve => {
+        Modal.confirm({
+          title: '⚠️ Avertissements de mise en page',
+          content: (
+            <div>
+              {validation.warnings.map((w, i) => <div key={i} style={{ marginBottom: 4, fontSize: 12 }}>• {w}</div>)}
+              <div style={{ marginTop: 8, color: '#666', fontSize: 11 }}>Continuer quand même ?</div>
+            </div>
+          ),
+          okText: 'Continuer',
+          cancelText: 'Corriger d\'abord',
+          onOk: () => resolve(true),
+          onCancel: () => resolve(false),
+        });
+      });
+      if (!proceed) return;
+    }
+
     let exportVersionId = draftVersionId;
     if (!exportVersionId) {
-       message.info('Enregistrement du brouillon avant export...');
-       try {
-         const v = await templateBuilderService.createDraftVersion(id, elements, 'Auto-save pour export');
-         exportVersionId = v.id;
-         setDraftVersionId(v.id);
-       } catch {
-         message.error('Impossible d\'enregistrer le brouillon.');
-         return;
-       }
+      message.info('Enregistrement du brouillon avant export...');
+      try {
+        const v = await templateBuilderService.createDraftVersion(id, elements, 'Auto-save pour export');
+        exportVersionId = v.id;
+        setDraftVersionId(v.id);
+      } catch {
+        message.error('Impossible d\'enregistrer le brouillon.');
+        return;
+      }
     }
 
     const hide = message.loading('Génération du PDF en cours...', 0);
@@ -856,6 +1050,18 @@ const TemplateBuilderPage: React.FC = () => {
     } finally {
       hide();
     }
+  };
+
+  const handlePrintPreview = () => {
+    const validation = validateLayout(elements);
+    setValidationWarnings(validation.warnings);
+    openPrintPreview(elements, {}, docHeader, docFooter, meta.title || 'Modèle CRT');
+  };
+
+  const handleExportOfficialPrint = () => {
+    const validation = validateLayout(elements);
+    setValidationWarnings(validation.warnings);
+    exportToPrintWindow(elements, {}, docHeader, docFooter, meta.title || 'Modèle CRT');
   };
 
   const canvasWidth = viewMode === 'desktop' ? '210mm' : viewMode === 'tablet' ? '600px' : '375px';
@@ -900,8 +1106,32 @@ const TemplateBuilderPage: React.FC = () => {
           <Tooltip title="Annuler"><Button icon={<UndoOutlined />} disabled={past.length === 0} onClick={undo} type="text" /></Tooltip>
           <Tooltip title="Rétablir"><Button icon={<RedoOutlined />} disabled={future.length === 0} onClick={redo} type="text" /></Tooltip>
           <Divider type="vertical" />
-          <Tooltip title="Exporter en PDF via Serveur">
-            <Button icon={<FilePdfOutlined style={{ color: COLORS.danger }} />} onClick={handleExportPdf} style={{ borderColor: COLORS.border }} />
+          {/* Zoom controls */}
+          <Tooltip title="Zoom -">
+            <Button size="small" type="text" icon={<ZoomOutOutlined />} onClick={() => setZoom(z => Math.max(50, z - 10))} />
+          </Tooltip>
+          <span style={{ fontSize: 11, color: COLORS.textSecondary, minWidth: 36, textAlign: 'center' }}>{zoom}%</span>
+          <Tooltip title="Zoom +">
+            <Button size="small" type="text" icon={<ZoomInOutlined />} onClick={() => setZoom(z => Math.min(200, z + 10))} />
+          </Tooltip>
+          <Tooltip title={showGrid ? 'Masquer la grille' : 'Afficher la grille'}>
+            <Button size="small" type="text" icon={<AppstoreOutlined />}
+              style={{ color: showGrid ? COLORS.primary : COLORS.textMuted, background: showGrid ? COLORS.primaryLight : 'transparent' }}
+              onClick={() => setShowGrid(g => !g)} />
+          </Tooltip>
+          <Divider type="vertical" />
+          <Tooltip title="Aperçu PDF (simulation impression)">
+            <Button size="small" icon={<EyeOutlined />} onClick={handlePrintPreview} style={{ borderColor: COLORS.border }}>
+              PDF Aperçu
+            </Button>
+          </Tooltip>
+          <Tooltip title="Exporter PDF officiel (impression)">
+            <Button size="small" icon={<FilePdfOutlined style={{ color: COLORS.danger }} />} onClick={handleExportOfficialPrint} style={{ borderColor: COLORS.border }}>
+              Export PDF
+            </Button>
+          </Tooltip>
+          <Tooltip title="Exporter en PDF via Serveur Puppeteer">
+            <Button size="small" icon={<FilePdfOutlined />} onClick={handleExportPdf} style={{ borderColor: COLORS.border, color: COLORS.primary }} />
           </Tooltip>
           <Button icon={previewMode ? <EditOutlined /> : <EyeOutlined />} onClick={togglePreview}
             style={{ borderColor: COLORS.border }}>
@@ -919,57 +1149,216 @@ const TemplateBuilderPage: React.FC = () => {
       </Header>
 
       <Layout style={{ background: COLORS.canvas }}>
-        {/* ── Left Sidebar — Element Palette ────────────────────── */}
+        {/* ── Left Sidebar — Header Config + Element Palette ──────── */}
         {!previewMode && (
-          <Sider width={240} style={{
+          <Sider width={260} style={{
             background: COLORS.surface, borderRight: `1px solid ${COLORS.border}`,
-            overflowY: 'auto', padding: '16px 12px',
+            overflowY: 'auto', display: 'flex', flexDirection: 'column',
           }}>
-            <Text style={{
-              fontSize: 10, fontWeight: 700, color: COLORS.textMuted,
-              textTransform: 'uppercase', letterSpacing: 1.5, display: 'block', marginBottom: 12,
-            }}>
-              Bibliothèque d'éléments
-            </Text>
 
-            <Input
-              prefix={<SearchOutlined style={{ color: COLORS.textMuted }} />}
-              placeholder="Recherche"
-              style={{ marginBottom: 16, borderRadius: 8 }}
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
+            {/* ── SECTION 1: CRT Document Header ──────────────── */}
+            <Collapse
+              defaultActiveKey={['header']}
+              ghost
+              expandIconPosition="end"
+              style={{ borderBottom: `1px solid ${COLORS.border}` }}
+              items={[{
+                key: 'header',
+                label: (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 13 }}>🏷️</span>
+                    <Text strong style={{ fontSize: 12, color: COLORS.text }}>En-tête du document</Text>
+                  </div>
+                ),
+                children: (
+                  <div style={{ padding: '0 12px 12px' }}>
+                    <Space direction="vertical" style={{ width: '100%' }} size={8}>
+
+                      {/* Logo live preview */}
+                      <div style={{
+                        display: 'flex', justifyContent: 'center',
+                        padding: '8px 0', background: '#fafafa',
+                        borderRadius: 6, border: `1px solid ${COLORS.border}`,
+                        marginBottom: 4,
+                      }}>
+                        <img
+                          src={docHeader.logoUrl || '/logos/logo_symbole.png'}
+                          alt="Logo preview"
+                          style={{
+                            width: docHeader.logoSize || 52,
+                            height: docHeader.logoSize || 52,
+                            objectFit: 'contain',
+                            transform: docHeader.logoRotation ? `rotate(${docHeader.logoRotation}deg)` : undefined,
+                            transition: 'all 0.2s ease',
+                            display: 'block',
+                          }}
+                        />
+                      </div>
+
+                      {/* Logo URL */}
+                      <div>
+                        <Text style={{ fontSize: 10, color: COLORS.textSecondary, display: 'block', marginBottom: 3 }}>Logo URL (défaut: /logos/logo_symbole.png)</Text>
+                        <Input
+                          size="small"
+                          value={docHeader.logoUrl ?? ''}
+                          placeholder="/logos/logo_symbole.png (vide = défaut)"
+                          onChange={e => setDocHeader(h => ({ ...h, logoUrl: e.target.value || undefined }))}
+                          allowClear
+                        />
+                      </div>
+
+                      {/* Logo Size */}
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <Text style={{ fontSize: 10, color: COLORS.textSecondary }}>Taille du logo</Text>
+                          <Text style={{ fontSize: 10 }}>{docHeader.logoSize || 52}px</Text>
+                        </div>
+                        <Slider
+                          min={24} max={120} step={4}
+                          value={docHeader.logoSize || 52}
+                          onChange={v => setDocHeader(h => ({ ...h, logoSize: v }))}
+                          tooltip={{ formatter: (v) => `${v}px` }}
+                        />
+                      </div>
+
+                      {/* Logo Rotation */}
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <Text style={{ fontSize: 10, color: COLORS.textSecondary }}>Rotation du logo</Text>
+                          <Text style={{ fontSize: 10 }}>{docHeader.logoRotation || 0}°</Text>
+                        </div>
+                        <Slider
+                          min={-180} max={180} step={5}
+                          value={docHeader.logoRotation || 0}
+                          onChange={v => setDocHeader(h => ({ ...h, logoRotation: v }))}
+                          tooltip={{ formatter: (v) => `${v}°` }}
+                        />
+                        <Button
+                          size="small" block type="dashed"
+                          onClick={() => setDocHeader(h => ({ ...h, logoRotation: 0 }))}
+                        >↺ Réinitialiser rotation</Button>
+                      </div>
+
+                      <Divider style={{ margin: '4px 0' }} />
+
+                      {/* Organization texts */}
+                      <div>
+                        <Text style={{ fontSize: 10, color: COLORS.textSecondary, display: 'block', marginBottom: 3 }}>Arabe (RTL)</Text>
+                        <Input size="small"
+                          value={docHeader.organizationAr || ''}
+                          onChange={e => setDocHeader(h => ({ ...h, organizationAr: e.target.value }))}
+                          placeholder="الهلال الأحمر التونسي" />
+                      </div>
+                      <div>
+                        <Text style={{ fontSize: 10, color: COLORS.textSecondary, display: 'block', marginBottom: 3 }}>Sous-titre AR</Text>
+                        <Input size="small"
+                          value={docHeader.subtitleAr || ''}
+                          onChange={e => setDocHeader(h => ({ ...h, subtitleAr: e.target.value }))}
+                          placeholder="الهيئة الوطنية" />
+                      </div>
+                      <div>
+                        <Text style={{ fontSize: 10, color: COLORS.textSecondary, display: 'block', marginBottom: 3 }}>Anglais</Text>
+                        <Input size="small"
+                          value={docHeader.headerEn || ''}
+                          onChange={e => setDocHeader(h => ({ ...h, headerEn: e.target.value }))}
+                          placeholder="Tunisian Red Crescent" />
+                        <Input size="small" style={{ marginTop: 4 }}
+                          value={docHeader.subtitleEn || ''}
+                          onChange={e => setDocHeader(h => ({ ...h, subtitleEn: e.target.value }))}
+                          placeholder="National Committee" />
+                      </div>
+                      <div>
+                        <Text style={{ fontSize: 10, color: COLORS.textSecondary, display: 'block', marginBottom: 3 }}>Couleur</Text>
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                          <input type="color" value={docHeader.primaryColor || '#C8102E'}
+                            onChange={e => setDocHeader(h => ({ ...h, primaryColor: e.target.value }))}
+                            style={{ width: 28, height: 28, padding: 0, border: 'none', borderRadius: 4, cursor: 'pointer' }} />
+                          <Input size="small" value={docHeader.primaryColor || '#C8102E'}
+                            onChange={e => setDocHeader(h => ({ ...h, primaryColor: e.target.value }))}
+                            style={{ flex: 1 }} />
+                        </div>
+                      </div>
+
+                      <Divider style={{ margin: '4px 0' }} />
+
+                      {/* Pied de page */}
+                      <div>
+                        <Text style={{ fontSize: 10, color: COLORS.textSecondary, display: 'block', marginBottom: 3 }}>Pied de page</Text>
+                        <Input.TextArea rows={3} size="small"
+                          value={docFooter.text || ''}
+                          onChange={e => setDocFooter({ text: e.target.value })}
+                          placeholder="Adresse, téléphone, email..."
+                        />
+                      </div>
+
+                      <Divider style={{ margin: '4px 0' }} />
+
+                      {/* Export buttons */}
+                      <Button
+                        type="primary" block size="small"
+                        icon={<FilePdfOutlined />}
+                        style={{ background: '#C8102E', borderColor: '#C8102E' }}
+                        onClick={handleExportOfficialPrint}
+                      >
+                        Exporter PDF (impression)
+                      </Button>
+                      <Button block size="small" icon={<EyeOutlined />}
+                        onClick={handlePrintPreview}
+                      >
+                        Aperçu PDF simulation
+                      </Button>
+                    </Space>
+                  </div>
+                ),
+              }]}
             />
 
-            {PALETTE_GROUPS.map(group => {
-              const filteredItems = group.items.filter(type => {
-                const meta = ELEMENT_META[type];
-                return meta && meta.label.toLowerCase().includes(searchTerm.toLowerCase());
-              });
+            {/* ── SECTION 2: Element Palette ───────────────────── */}
+            <div style={{ padding: '12px 12px 16px' }}>
+              <Text style={{
+                fontSize: 10, fontWeight: 700, color: COLORS.textMuted,
+                textTransform: 'uppercase', letterSpacing: 1.5, display: 'block', marginBottom: 10,
+              }}>
+                Bibliothèque d'éléments
+              </Text>
 
-              if (filteredItems.length === 0) return null;
+              <Input
+                prefix={<SearchOutlined style={{ color: COLORS.textMuted }} />}
+                placeholder="Recherche"
+                style={{ marginBottom: 12, borderRadius: 8 }}
+                size="small"
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+              />
 
-              return (
-                <div key={group.label} style={{ marginBottom: 16 }}>
-                  <div style={{
-                    fontSize: 9, fontWeight: 700, color: group.color,
-                    textTransform: 'uppercase', letterSpacing: 1.5,
-                    marginBottom: 6, paddingLeft: 2,
-                  }}>
-                    {group.label}
+              {PALETTE_GROUPS.map(group => {
+                const filteredItems = group.items.filter(type => {
+                  const meta = ELEMENT_META[type];
+                  return meta && meta.label.toLowerCase().includes(searchTerm.toLowerCase());
+                });
+                if (filteredItems.length === 0) return null;
+                return (
+                  <div key={group.label} style={{ marginBottom: 14 }}>
+                    <div style={{
+                      fontSize: 9, fontWeight: 700, color: group.color,
+                      textTransform: 'uppercase', letterSpacing: 1.5,
+                      marginBottom: 6, paddingLeft: 2,
+                    }}>
+                      {group.label}
+                    </div>
+                    {filteredItems.map(type => (
+                      <PaletteItem key={type} type={type} onAdd={addElement} />
+                    ))}
                   </div>
-                  {filteredItems.map(type => (
-                    <PaletteItem key={type} type={type} onAdd={addElement} />
-                  ))}
-                </div>
-              );
-            })}
+                );
+              })}
 
-            {/* Element count */}
-            <Divider style={{ margin: '12px 0' }} />
-            <div style={{ textAlign: 'center' }}>
-              <Tag color={COLORS.primary} style={{ fontSize: 11 }}>
-                {elements.length} élément{elements.length !== 1 ? 's' : ''} dans le modèle
-              </Tag>
+              <Divider style={{ margin: '10px 0' }} />
+              <div style={{ textAlign: 'center' }}>
+                <Tag color={COLORS.primary} style={{ fontSize: 11 }}>
+                  {elements.length} élément{elements.length !== 1 ? 's' : ''}
+                </Tag>
+              </div>
             </div>
           </Sider>
         )}
@@ -979,10 +1368,31 @@ const TemplateBuilderPage: React.FC = () => {
           overflowY: 'auto',
           background: COLORS.canvas,
           padding: '40px 24px',
-          backgroundImage: 'radial-gradient(#cbd5e1 1.5px, transparent 1.5px)',
+          backgroundImage: showGrid ? 'radial-gradient(#cbd5e1 1.5px, transparent 1.5px)' : 'none',
           backgroundSize: '24px 24px',
           position: 'relative'
         }}>
+          {/* Validation warnings strip */}
+          {validationWarnings.length > 0 && !previewMode && (
+            <div style={{
+              position: 'absolute', top: 24, left: 32, right: 32, zIndex: 20,
+              background: '#FFFBEB', border: '1px solid #F59E0B', borderRadius: 8,
+              padding: '8px 12px', display: 'flex', alignItems: 'flex-start', gap: 8
+            }}>
+              <WarningOutlined style={{ color: '#F59E0B', marginTop: 2 }} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: '#92400E', marginBottom: 4 }}>
+                  {validationWarnings.length} avertissement(s) de mise en page
+                </div>
+                {validationWarnings.slice(0, 3).map((w, i) => (
+                  <div key={i} style={{ fontSize: 11, color: '#92400E' }}>• {w}</div>
+                ))}
+              </div>
+              <Button size="small" type="text" onClick={() => setValidationWarnings([])}
+                style={{ color: '#92400E', padding: 0, fontSize: 11 }}>✕</Button>
+            </div>
+          )}
+
           {/* Top Ruler */}
           {!previewMode && (
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 24, borderBottom: `1px solid ${COLORS.border}`, background: '#fff', display: 'flex', zIndex: 10 }}>
@@ -1001,61 +1411,173 @@ const TemplateBuilderPage: React.FC = () => {
           )}
 
           {previewMode ? (
-            <div style={{ maxWidth: canvasWidth, margin: '0 auto' }}>
-              <RenderEngine structure={elements} mode="preview" />
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '0 0 40px' }}>
+              <OfficialDocumentWrapper
+                id="crt-builder-preview"
+                header={docHeader}
+                meta={{
+                  ...docMeta,
+                  dateAr: new Date().toLocaleDateString('ar-TN', { year: 'numeric', month: 'long', day: 'numeric' }),
+                }}
+                footer={docFooter}
+                showSender={!!(docMeta.senderName || docMeta.recipient)}
+                showSignature={false}
+                pageGroups={pages.map((group, idx) => (
+                  <PrintRenderer
+                    key={idx}
+                    structure={group.filter(el => el.type !== 'page_break')}
+                    mode="preview"
+                    showLetterhead={false}
+                    showShell={false}
+                  />
+                ))}
+              />
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 24, width: '100%', alignItems: 'center' }}>
-              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                <SortableContext items={elements.map(e => e.id)} strategy={verticalListSortingStrategy}>
-                  {pages.map((pageElements, pageIndex) => (
-                    <div key={`page-${pageIndex}`} style={{
-                      background: COLORS.surface, minHeight: '297mm', width: canvasWidth,
-                      padding: '20mm 25mm',
-                      boxShadow: '0 8px 32px rgba(0,0,0,0.08)', borderRadius: 4,
-                      transition: 'width 0.3s ease',
-                      position: 'relative',
-                      zIndex: 5,
-                      display: 'grid', // Grid system for layout
-                      gridTemplateColumns: 'repeat(12, 1fr)',
-                      alignContent: 'start',
-                      gap: '0px'
-                    }}
-                      onClick={() => selectElement('')}
-                    >
-                      {pageElements.length === 0 && elements.length === 0 && (
-                        <div style={{
-                          textAlign: 'center', color: COLORS.textMuted, paddingTop: 100, gridColumn: 'span 12'
-                        }}>
-                          <PlusOutlined style={{ fontSize: 40, color: COLORS.border, marginBottom: 16 }} />
-                          <div style={{ fontSize: 15, fontWeight: 600, color: COLORS.textSecondary, marginBottom: 6 }}>
-                            Commencez à construire
-                          </div>
-                          <div style={{ fontSize: 12, color: COLORS.textMuted }}>
-                            Glissez ou cliquez sur un élément depuis le panneau de gauche
-                          </div>
-                        </div>
-                      )}
-                      {pageElements.length === 0 && elements.length > 0 && (
-                        <div style={{ textAlign: 'center', color: COLORS.textMuted, paddingTop: 100, gridColumn: 'span 12' }}>
-                          <div style={{ fontSize: 14 }}>Page {pageIndex + 1} vide</div>
-                        </div>
-                      )}
-                      {pageElements.map(el => (
-                        <SortableElementCard
-                          key={el.id} id={el.id} el={el}
-                          isSelected={selectedId === el.id}
-                          isHovered={hoveredId === el.id}
-                          onSelect={() => selectElement(el.id)}
-                          onRemove={() => removeElement(el.id)}
-                          onDuplicate={() => handleDuplicate(el)}
-                          onHover={setHoveredId}
-                        />
-                      ))}
+            /* ── Flow-based Canvas (full width, DnD sortable between pages) ── */
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 28, width: '100%', maxWidth: '100%', padding: '0 8px', boxSizing: 'border-box', alignItems: 'center' }}>
+              {pages.map((pageElements, pageIndex) => {
+                const pageIds = pageElements.map(el => el.id);
+                const nonBreakElements = pageElements.filter(el => el.type !== 'page_break');
+
+                return (
+                  <div key={`page-${pageIndex}`} style={{ display: 'flex', flexDirection: 'column', gap: 0, width: 794 }}>
+                    {/* ── Page label ── */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <div style={{ height: 1, flex: 1, background: COLORS.border }} />
+                      <div style={{
+                        fontSize: 11, fontWeight: 700, color: COLORS.textSecondary,
+                        background: COLORS.canvas, padding: '2px 12px', borderRadius: 12,
+                        border: `1px solid ${COLORS.border}`, letterSpacing: 1,
+                      }}>
+                        📄 PAGE {pageIndex + 1} / {pages.length}
+                      </div>
+                      <div style={{ height: 1, flex: 1, background: COLORS.border }} />
                     </div>
-                  ))}
-                </SortableContext>
-              </DndContext>
+
+                    {/* ── A4 Page canvas ── */}
+                    <div
+                      style={{
+                        background: COLORS.surface,
+                        minHeight: 1123,
+                        width: 794,
+                        margin: '0 auto',
+                        boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
+                        borderRadius: 8,
+                        border: `1px solid ${COLORS.border}`,
+                        transform: `scale(${zoom / 100})`,
+                        transformOrigin: 'top center',
+                        transition: 'box-shadow 0.2s',
+                        overflow: 'visible',
+                        display: 'flex',
+                        flexDirection: 'column',
+                      }}
+                      onClick={() => selectElement(null)}
+                    >
+                      {/* ── Compact letterhead (edit mode indicator) ── */}
+                      <div style={{
+                        padding: '12px 24px 8px',
+                        borderBottom: `3px solid ${docHeader.primaryColor || '#C8102E'}`,
+                        background: '#fafafa',
+                        borderRadius: '8px 8px 0 0',
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        pointerEvents: 'none',
+                      }}>
+                        <div style={{ fontSize: 9, color: '#333', direction: 'rtl', lineHeight: 1.5 }}>
+                          {docHeader.organizationAr || 'الهلال الأحمر التونسي'}<br />
+                          {docHeader.subtitleAr || 'الهيئة الوطنية'}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <img
+                            src={docHeader.logoUrl || '/logos/logo_symbole.png'}
+                            alt="Logo" style={{ width: 32, height: 32, objectFit: 'contain' }}
+                          />
+                          <div style={{ fontSize: 9, color: docHeader.primaryColor || '#C8102E', fontWeight: 700, direction: 'rtl' }}>
+                            {docHeader.organizationAr || 'الهلال الأحمر التونسي'}
+                          </div>
+                        </div>
+                        <div style={{ fontSize: 9.5, fontWeight: 700, color: '#9B0B22', textAlign: 'right', lineHeight: 1.4 }}>
+                          {docHeader.headerEn || 'Tunisian Red Crescent'}<br />
+                          {docHeader.subtitleEn || 'National Committee'}
+                        </div>
+                      </div>
+
+                      {/* ── DnD sortable content zone ── */}
+                      <DndContext
+                        sensors={canvasSensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={(event: DragEndEvent) => {
+                          const { active, over } = event;
+                          if (over && active.id !== over.id) {
+                            // Reorder within the full elements array
+                            const allEls = [...elements];
+                            const oldGlobalIdx = allEls.findIndex(e => e.id === active.id);
+                            const newGlobalIdx = allEls.findIndex(e => e.id === over.id);
+                            if (oldGlobalIdx >= 0 && newGlobalIdx >= 0) {
+                              reorderElements(oldGlobalIdx, newGlobalIdx);
+                            }
+                          }
+                        }}
+                      >
+                        <SortableContext items={pageIds} strategy={rectSortingStrategy}>
+                          <div style={{ padding: '16px 24px', flex: 1, width: '100%', boxSizing: 'border-box', display: 'flex', flexWrap: 'wrap', alignContent: 'flex-start' }}
+                            onClick={e => e.stopPropagation()}>
+
+                            {nonBreakElements.length === 0 && pageElements.length === 0 && elements.length === 0 && (
+                              <div style={{ textAlign: 'center', color: COLORS.textMuted, width: '100%', marginTop: 200 }}>
+                                <PlusOutlined style={{ fontSize: 48, color: COLORS.border, marginBottom: 16 }} />
+                                <div style={{ fontSize: 16, fontWeight: 600, color: COLORS.textSecondary, marginBottom: 8 }}>
+                                  Commencez à construire
+                                </div>
+                                <div style={{ fontSize: 13, color: COLORS.textMuted }}>
+                                  Cliquez sur un élément dans le panneau de gauche pour l'ajouter
+                                </div>
+                              </div>
+                            )}
+
+                            {nonBreakElements.length === 0 && elements.length > 0 && (
+                              <div style={{ textAlign: 'center', color: COLORS.textMuted, width: '100%', marginTop: 160, fontSize: 14 }}>
+                                Page {pageIndex + 1} vide — utilisez ↑↓ pour y déplacer des éléments
+                              </div>
+                            )}
+
+                            {nonBreakElements.map(el => (
+                              <FlowElementCard
+                                key={el.id} id={el.id} el={el}
+                                isSelected={selectedId === el.id}
+                                isHovered={hoveredId === el.id}
+                                onSelect={() => selectElement(el.id)}
+                                onRemove={() => removeElement(el.id)}
+                                onDuplicate={() => handleDuplicate(el)}
+                                onHover={setHoveredId}
+                                canMoveUp={pageIndex > 0}
+                                canMoveDown={pageIndex < pages.length - 1}
+                                onMoveUp={() => moveElementToPage(el.id, 'up')}
+                                onMoveDown={() => moveElementToPage(el.id, 'down')}
+                                pageIndex={pageIndex}
+                                totalPages={pages.length}
+                              />
+                            ))}
+                          </div>
+                        </SortableContext>
+                      </DndContext>
+
+                      {/* ── Compact footer indicator ── */}
+                      <div style={{
+                        padding: '6px 24px',
+                        borderTop: '0.5px solid #eee',
+                        background: '#f8f8f8',
+                        borderRadius: '0 0 8px 8px',
+                        fontSize: 9, color: '#aaa', textAlign: 'center',
+                        pointerEvents: 'none',
+                        marginTop: 'auto',
+                      }}>
+                        {(docFooter.text || '').split('\n')[0] || 'Pied de page CRT'}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
 
@@ -1085,6 +1607,9 @@ const TemplateBuilderPage: React.FC = () => {
                 <EditOutlined style={{ fontSize: 32, color: COLORS.border, marginBottom: 12 }} />
                 <div style={{ fontSize: 13, color: COLORS.textSecondary }}>
                   Sélectionnez un élément pour modifier ses propriétés
+                </div>
+                <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 8 }}>
+                  🏷️ En-tête modifiable dans le panneau gauche
                 </div>
               </div>
             )}
