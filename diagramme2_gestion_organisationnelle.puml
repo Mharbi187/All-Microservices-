@@ -1,0 +1,211 @@
+@startuml diagramme2_gestion_organisationnelle
+
+' ============================================================
+'  NEXUS-AID | Diagramme 2 : Gestion Organisationnelle
+'  Comites, Roles, Hierarchie & Certifications
+'  Source : core-service | Mai 2026
+'  Version : noir/blanc + methodes metier
+' ============================================================
+
+skinparam monochrome true
+skinparam shadowing false
+skinparam roundcorner 4
+skinparam linetype ortho
+skinparam nodesep 25
+skinparam ranksep 35
+skinparam classAttributeIconSize 0
+skinparam classFontName Arial
+skinparam classFontSize 10
+skinparam ArrowFontSize 9
+
+hide circle
+
+left to right direction
+
+title Gestion Organisationnelle (2/2)
+
+' ============================================================
+'  ENUMERATIONS
+' ============================================================
+
+enum CommitteeType {
+    NATIONAL
+    REGIONAL
+    LOCAL
+}
+
+enum CommitteeStatus {
+    PENDING_CONSTITUTION
+    ACTIVE
+    SUSPENDED
+    DISSOLVED
+}
+
+enum RoleTitle {
+    PRESIDENT
+    VICE_PRESIDENT
+    SECRETAIRE_GENERAL
+    RESP_SECOURISME
+    RESP_JEUNESSE
+    RESP_SANTE
+    RESP_DIFFUSION
+    RESP_CATASTROPHES
+    RESP_ACTION_SOCIALE
+    RESP_IMMIGRATION
+    RESP_VFF
+}
+
+enum CommitteeRoleStatus {
+    PROPOSED
+    APPROVED
+    REJECTED
+}
+
+' ============================================================
+'  REFERENCE AUX ENTITES DU DIAGRAMME 1
+' ============================================================
+
+class "<<Volunteer>>" as VolunteerRef {
+    (voir Diagramme 1/2)
+    - id         : UUID
+    - fullName   : String
+    - committeeId: UUID
+}
+
+' ============================================================
+'  STRUCTURE ORGANISATIONNELLE
+' ============================================================
+
+class Committee <<Entity>> {
+    - id                     : UUID <<PK>>
+    - name                   : String
+    - type                   : CommitteeType
+    - region                 : String
+    - status                 : CommitteeStatus
+    .. Mandat du Bureau ..
+    - currentMandateStart    : LocalDate
+    - currentMandateEnd      : LocalDate
+    - MANDATE_DURATION_YEARS : int = 4
+    .. Metadonnees ..
+    - createdAt              : LocalDateTime
+    - approvedAt             : LocalDateTime
+    __
+    + hasMandatoryRoles() : boolean
+    + isMandateExpired() : boolean
+    + createCommittee(name, type, region, parentId) : Committee
+    + approveCommittee(committeeId) : Committee
+    + getAllCommittees() : List
+    + getAllCommitteesSummary() : List
+    + getGovernanceInfo(committeeId) : CommitteeGovernance
+    + getHierarchyOverview() : List
+}
+
+' ============================================================
+'  ROLES DES VOLONTAIRES DANS LES COMITES
+' ============================================================
+
+class CommitteeRole <<Entity>> {
+    - id             : UUID <<PK>>
+    - title          : RoleTitle
+    - status         : CommitteeRoleStatus
+    .. Cycle de Vie ..
+    - assignedAt     : LocalDateTime
+    - mandateEndDate : LocalDate
+    .. Workflow d'Attribution ..
+    - proposedBy     : UUID
+    - proposedAt     : LocalDateTime
+    - approvedBy     : UUID
+    - approvedAt     : LocalDateTime
+    - reason         : String
+    __
+    + isMandateExpired() : boolean
+    + proposeRole(committeeId, volunteerId, title) : void
+    + validateRoleAssignment(roleId, approve) : void
+    + revokeRole(committeeId, title) : void
+    + getPendingProposals() : List
+}
+
+' ============================================================
+'  AUDIT DE LA HIERARCHIE
+' ============================================================
+
+class HierarchyAuditLog <<Entity>> {
+    - id                : UUID <<PK>>
+    - action            : String
+    - performedBy       : UUID
+    - targetCommitteeId : UUID
+    - targetVolunteerId : UUID
+    - timestamp         : LocalDateTime
+    - reason            : String
+    __
+    + getHierarchicalAuditLogs() : List
+}
+
+' ============================================================
+'  RELATIONS ORGANISATIONNELLES
+' ============================================================
+
+' Hierarchie des comites (auto-reference)
+Committee "0..1" o-- "0..*" Committee : supervise >
+
+' Roles des volontaires dans les comites
+VolunteerRef "1" o-- "0..*" CommitteeRole : a des roles >
+Committee    "1" *-- "0..*" CommitteeRole : contient >
+
+' Audit hierarchique
+Committee "1" -- "0..*" HierarchyAuditLog : genere >
+
+' ============================================================
+'  DEPENDANCES vers les ENUMERATIONS
+' ============================================================
+
+Committee     ..> CommitteeType
+Committee     ..> CommitteeStatus
+CommitteeRole ..> RoleTitle
+CommitteeRole ..> CommitteeRoleStatus
+
+' ============================================================
+'  NOTES
+' ============================================================
+
+note top of Committee
+  <b>Table : "committees"</b>
+  Contrainte unique : (type, region)
+  -> 1 seul comite par type et par region.
+  <b>Hierarchie geographique :</b>
+  NATIONAL  -> Comite central (Tunis)
+  REGIONAL  -> 1 par gouvernorat (24 max)
+  LOCAL     -> 1 par delegation
+  Bureau obligatoire : PRESIDENT + SECRETAIRE_GENERAL
+  Mandat legal : 4 ans (statuts CRT, decret 88-2011)
+end note
+
+note right of CommitteeRole
+  <b>Table : "committee_roles"</b>
+  <b>Cle de toute la hierarchie !</b>
+  Un Volunteer devient Responsable ou
+  President via un CommitteeRole.
+  Workflow : PROPOSED -> APPROVED / REJECTED
+  Mandat : 4 ans (mandateEndDate auto-calcule)
+end note
+
+note bottom of HierarchyAuditLog
+  <b>Table : "hierarchy_audit_logs"</b>
+  Trace toutes les actions admin :
+  - Attribution de roles
+  - Changements de statut
+  - Actions sur les comites
+  performedBy = UUID de l'acteur
+end note
+
+legend bottom
+|= Symbole |= Description |
+| *-- | Composition |
+| o-- | Agregation |
+| -- | Association |
+| ..> | Dependance |
+endlegend
+
+footer Nexus-AID | core-service
+
+@enduml

@@ -1,0 +1,164 @@
+\documentclass[12pt,a4paper]{report}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{geometry}
+\geometry{a4paper, margin=2.5cm}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{enumitem}
+
+% Setup hyperref
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,      
+    urlcolor=cyan,
+    pdftitle={Analyse et Documentation du Projet Nexus-AID},
+    pdfpagemode=FullScreen,
+}
+
+\begin{document}
+
+\begin{titlepage}
+    \centering
+    \vspace*{2cm}
+    
+    {\scshape\LARGE Plateforme Nexus-AID \par}
+    \vspace{1.5cm}
+    {\huge\bfseries Rapport d'Analyse Complète du Projet\par}
+    \vspace{2cm}
+    {\Large\itshape Système de Coordination et de Réponse aux Catastrophes\par}
+    \vspace{2cm}
+    
+    \vfill
+    
+    {\large \today\par}
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+\chapter{Introduction Générale}
+Le projet \textbf{Nexus-AID} est une plateforme de coordination et de réponse aux catastrophes (Disaster Response \& Coordination System) architecturée sous forme de microservices. Elle vise à fournir une solution complète et évolutive pour les organisations d'envergure nationale (ex: le Croissant-Rouge) en facilitant la gestion des comités régionaux, des volontaires, des donateurs, et des alertes liées aux catastrophes naturelles.
+
+Le projet a été développé en utilisant une architecture de branches par service (Branch-per-Service), où l'orchestration s'effectue sur la branche principale, tandis que les microservices ont leurs propres branches de développement.
+
+\chapter{Bénéfices et Objectifs du Projet}
+\section{Valeur Métier et Impact}
+La plateforme est conçue pour supporter un maillage territorial complexe (jusqu'à 24 comités régionaux principaux et plus de 40 comités locaux et antennes).
+Ses principaux bénéfices incluent :
+\begin{itemize}
+    \item \textbf{Centralisation des Opérations} : Permet de gérer tous les aspects logistiques, sociaux, et administratifs dans un seul système.
+    \item \textbf{Détection Proactive} : Grâce à l'utilisation d'un agent IA pour la détection des catastrophes, Nexus-AID permet de réagir rapidement face aux crises.
+    \item \textbf{Multi-Tenancy par Comité} : Assure l'isolation et la confidentialité des données entre les différentes régions, permettant aux coordinateurs de ne voir que ce qui relève de leur juridiction.
+    \item \textbf{Digitalisation des Flux} : Remplacement des processus papier par des workflows numériques incluant la gestion d'adhésion des volontaires, les signatures électroniques, et la création de rapports.
+\end{itemize}
+
+\chapter{Architecture Globale}
+L'architecture de Nexus-AID repose sur un modèle de microservices interconnectés. Cette approche garantit la scalabilité, la tolérance aux pannes et un déploiement indépendant de chaque composant.
+
+\section{Composants d'Orchestration et d'Infrastructure}
+\begin{itemize}
+    \item \textbf{API Gateway} : Agit comme point d'entrée unique (Port 8060). Redirige les requêtes vers les microservices appropriés.
+    \item \textbf{Eureka Server} : Registre de services (Service Discovery). Permet aux microservices de se découvrir dynamiquement.
+    \item \textbf{Config Server} : Centralise la configuration de l'ensemble des microservices.
+    \item \textbf{PostgreSQL} : Base de données relationnelle principale, initialisée avec un schéma partagé ou des bases distinctes par service.
+    \item \textbf{RabbitMQ} : Bus de messages pour la communication asynchrone (AMQP) entre les services, notamment pour les alertes de catastrophes et les notifications.
+    \item \textbf{MinIO} : Serveur de stockage d'objets (S3 compatible) utilisé pour gérer les fichiers, les images, et les rapports générés.
+    \item \textbf{Redis} : Utilisé pour la mise en cache et la gestion des sessions au niveau de la passerelle.
+\end{itemize}
+
+\chapter{Analyse des Microservices}
+Le système est découpé en plusieurs microservices ayant chacun des responsabilités spécifiques.
+
+\section{Core-Service (Module 1 : Social and Resource Management)}
+\textbf{Rôle} : Gère le cœur métier de l'organisation, notamment les profils, les utilisateurs, et la hiérarchie.
+\begin{itemize}
+    \item \textbf{Responsabilités} : Gestion des rôles RBAC (Super Admin, Président, Volontaire, Donateur, etc.), authentification (JWT), validation des adhésions, et structuration des comités régionaux et locaux.
+    \item \textbf{Interactions} : Communique avec l'API Gateway pour les requêtes entrantes, RabbitMQ pour la publication d'événements liés aux profils, et la base de données PostgreSQL.
+\end{itemize}
+
+\section{Admin-Service (Module 3 : Administratif et Reporting)}
+\textbf{Rôle} : Traite toutes les tâches administratives, la création de rapports, et la gestion des documents.
+\begin{itemize}
+    \item \textbf{Responsabilités} : Intègre un "Template Builder" permettant de créer dynamiquement des modèles de rapports (stockés au format JSONB), gère les signatures de documents, et interagit avec le stockage MinIO.
+    \item \textbf{Interactions} : Fait appel au PDF-Service pour la génération de rapports finaux, utilise OpenFeign pour communiquer avec d'autres services, et RabbitMQ pour les flux asynchrones.
+\end{itemize}
+
+\section{Disaster-Detection (Module 4 : Agent IA)}
+\textbf{Rôle} : Agit comme un système prédictif et de détection en temps réel des catastrophes.
+\begin{itemize}
+    \item \textbf{Responsabilités} : Analyse des données spatiales et météorologiques, envoi d'alertes via SMS (Twilio) ou Email (SendGrid), et présentation des risques.
+    \item \textbf{Interactions} : Écoute et publie des alertes sur RabbitMQ pour que les autres services et le frontend puissent informer les volontaires sur le terrain.
+\end{itemize}
+
+\section{PDF-Service}
+\textbf{Rôle} : Microservice utilitaire dédié à la génération de PDF.
+\begin{itemize}
+    \item \textbf{Responsabilités} : Convertir des structures HTML/JSON en fichiers PDF imprimables (A4) à l'aide de Puppeteer.
+\end{itemize}
+
+\chapter{Modules et Dossiers Principaux}
+La structure du code reflète directement l'architecture :
+\begin{itemize}
+    \item \texttt{nexus-aid-frontend/} : Contient l'application SPA en React/Vite. Intègre Zustand (State Management), Ant Design (UI), Leaflet (Cartographie), et dnd-kit pour le Builder de rapports.
+    \item \texttt{core-service/} : Application Spring Boot pour la gestion des utilisateurs. Contient les modules (entity, repository, service, controller, messaging).
+    \item \texttt{admin-service/} : Application Spring Boot pour le reporting.
+    \item \texttt{disaster-detection/} : Code Python utilisant FastAPI/Flask, EarthEngine, scikit-learn et XGBoost.
+    \item \texttt{docs/} : Documentation du projet.
+    \item \texttt{docker-compose.yml} : Fichier central permettant le lancement de l'infrastructure complète.
+\end{itemize}
+
+\chapter{Technologies Utilisées}
+\section{Backend}
+\begin{itemize}
+    \item \textbf{Langages} : Java 21, Python 3, Node.js 20+
+    \item \textbf{Frameworks} : Spring Boot 3.4.x, Spring Cloud (Gateway, Config, Eureka), FastAPI/Flask, Express.js.
+    \item \textbf{Sécurité} : Spring Security, JWT (JSON Web Tokens).
+    \item \textbf{Communication} : API REST, OpenFeign, RabbitMQ.
+\end{itemize}
+
+\section{Frontend}
+\begin{itemize}
+    \item \textbf{Framework} : React 19, TypeScript, Vite.
+    \item \textbf{Librairies UI} : Ant Design (Pro Components), TailwindCSS, Framer Motion.
+    \item \textbf{Outils Spécifiques} : dnd-kit (Drag \& Drop), react-moveable, Zustand (gestion d'état), Leaflet (Cartes).
+\end{itemize}
+
+\section{Données et Infrastructure}
+\begin{itemize}
+    \item \textbf{Base de données} : PostgreSQL 15, Redis 7 (Cache).
+    \item \textbf{Stockage Fichiers} : MinIO (compatible S3).
+    \item \textbf{DevOps \& Déploiement} : Docker, Docker Compose, GitHub Actions.
+\end{itemize}
+
+\chapter{État d'Avancement et Fonctionnalités}
+\section{Fonctionnalités Implémentées}
+\begin{itemize}
+    \item \textbf{Gestion des Utilisateurs \& RBAC} : Rôles distincts (Super Admin, Président, Volontaire, Donateur) fonctionnels avec filtrage d'accès par comité.
+    \item \textbf{Multi-Tenancy par Comité} : Les APIs garantissent que les présidents et coordinateurs ne voient que les ressources de leurs propres comités.
+    \item \textbf{Template Builder} : Interface de création de modèles de rapports avec drag-and-drop, positionnement absolu, et persistance en JSONB.
+    \item \textbf{Génération de PDF} : Exportation des rapports avec Puppeteer via le \texttt{pdf-service}.
+    \item \textbf{Infrastructure de Messagerie} : Connexion établie entre les microservices via RabbitMQ.
+\end{itemize}
+
+\section{En Cours de Développement}
+\begin{itemize}
+    \item \textbf{Moteur de Rendu PDF Avancé} : Stabilisation du flux A4 multi-pages et gestion de la pagination pour l'export.
+    \item \textbf{Détection IA} : Ajustement des modèles XGBoost pour une meilleure précision des alertes de catastrophes.
+\end{itemize}
+
+\section{Fonctionnalités Prévues (À Venir)}
+\begin{itemize}
+    \item \textbf{Application Mobile} : Intégration du code source de l'application mobile avec le backend existant.
+    \item \textbf{Paiement \& Dons en Ligne} : Module de transaction pour les donateurs directement sur la plateforme.
+    \item \textbf{Tableaux de Bord Avancés} : Intégration de métriques prédictives supplémentaires pour le Super Admin.
+\end{itemize}
+
+\chapter{Conclusion}
+Le projet \textbf{Nexus-AID} est un système robuste, moderne et hautement découplé. Ses choix architecturaux basés sur des microservices, combinés à un frontend réactif et des modules intelligents (IA), lui permettent de répondre efficacement aux exigences critiques des organisations de secours d'urgence. Les fondations sont solides, les flux principaux sont implémentés, et le projet est bien positionné pour intégrer de nouvelles fonctionnalités comme l'application mobile et des analyses approfondies.
+
+\end{document}

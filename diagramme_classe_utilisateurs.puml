@@ -1,0 +1,431 @@
+@startuml Nexus_AID_Gestion_Utilisateurs
+
+' ============================================================
+'  NEXUS-AID - Diagramme de Classe Complet
+'  Gestion des Utilisateurs & Hierarchie Organisationnelle
+'  Genere depuis : core-service (Spring Boot 3.x)
+'  Date : Mai 2026
+' ============================================================
+
+skinparam backgroundColor #F8F9FA
+skinparam classBorderColor #2C3E50
+skinparam classFontSize 11
+skinparam classFontName Arial
+skinparam classAttributeIconSize 0
+skinparam shadowing true
+skinparam roundcorner 8
+skinparam linetype ortho
+skinparam nodesep 50
+skinparam ranksep 70
+skinparam ArrowColor #2C3E50
+skinparam ArrowFontSize 10
+
+' Couleurs par stereotype - syntaxe correcte (une ligne par stereotype)
+skinparam classBackgroundColor<<utilisateur>>    #D6EAF8
+skinparam classBorderColor<<utilisateur>>        #1A5276
+skinparam classHeaderBackgroundColor<<utilisateur>> #1A5276
+
+skinparam classBackgroundColor<<comite>>         #D5F5E3
+skinparam classBorderColor<<comite>>             #1D6A39
+skinparam classHeaderBackgroundColor<<comite>>   #1D6A39
+
+skinparam classBackgroundColor<<securite>>       #FDEBD0
+skinparam classBorderColor<<securite>>           #935116
+skinparam classHeaderBackgroundColor<<securite>> #935116
+
+skinparam classBackgroundColor<<profil>>         #F5EEF8
+skinparam classBorderColor<<profil>>             #6C3483
+skinparam classHeaderBackgroundColor<<profil>>   #6C3483
+
+skinparam classBackgroundColor<<certification>>  #EBF5FB
+skinparam classBorderColor<<certification>>      #1B4F72
+skinparam classHeaderBackgroundColor<<certification>> #1B4F72
+
+skinparam enumBackgroundColor #ECF0F1
+skinparam enumBorderColor     #7F8C8D
+
+hide circle
+
+title <b>NEXUS-AID - Gestion des Utilisateurs & Hierarchie Organisationnelle</b>\nDiagramme de Classes Complet | core-service
+
+' ============================================================
+'  SECTION 1 - ENUMERATIONS
+' ============================================================
+
+enum UserType {
+    VOLUNTEER
+    TRAINER
+    DONOR
+    ADMIN
+}
+
+enum AccountStatus {
+    PENDING
+    APPROVED
+    REJECTED
+    SUSPENDED
+}
+
+enum CommitteeType {
+    NATIONAL
+    REGIONAL
+    LOCAL
+}
+
+enum CommitteeStatus {
+    PENDING_CONSTITUTION
+    ACTIVE
+    SUSPENDED
+    DISSOLVED
+}
+
+enum CommitteeRoleStatus {
+    PROPOSED
+    APPROVED
+    REJECTED
+}
+
+enum RoleTitle {
+    PRESIDENT
+    VICE_PRESIDENT
+    SECRETAIRE_GENERAL
+    RESP_SECOURISME
+    RESP_JEUNESSE
+    RESP_SANTE
+    RESP_DIFFUSION
+    RESP_CATASTROPHES
+    RESP_ACTION_SOCIALE
+    RESP_IMMIGRATION
+    RESP_VFF
+}
+
+enum EducationLevel {
+    MOINS_BAC
+    BAC
+    BAC_PLUS_1_2
+    LICENCE
+    MASTER
+    DOCTORAT
+}
+
+enum SecurityEventType {
+    LOGIN_SUCCESS
+    LOGIN_FAILURE
+    REGISTER
+    TOKEN_REFRESH
+    LOGOUT
+    BLOCKED_IP
+    CAPTCHA_TRIGGERED
+    CAPTCHA_FAILED
+    SUSPICIOUS_ACTIVITY
+    PASSWORD_CHANGE
+    ACCOUNT_LOCKED
+    BRUTE_FORCE_DETECTED
+    ANOMALY_DETECTED
+}
+
+' ============================================================
+'  SECTION 2 - HIERARCHIE DES UTILISATEURS
+'  (Heritage JPA - InheritanceType.JOINED)
+' ============================================================
+
+class User <<utilisateur>> {
+    .. Identite ..
+    - id                  : UUID
+    - fullName            : String
+    - email               : String [unique]
+    - cin                 : String [unique]
+    - phone               : String
+    - password            : String
+    - birthDate           : LocalDate
+    .. Compte ..
+    - type                : UserType
+    - accountStatus       : AccountStatus
+    - avatar              : String
+    - avatarPublicId      : String
+    - firstLoginCompleted : boolean
+}
+
+class Volunteer <<utilisateur>> {
+    .. Affectation ..
+    - matricule        : String
+    - committeeId      : UUID
+    - dateAdhesion     : LocalDate
+    .. Activite ..
+    - skills           : List<String>  [JSONB]
+    - hoursVolunteered : Double
+    - trainingProgress : String        [JSONB]
+}
+
+class Trainer <<utilisateur>> {
+    .. Expertise ..
+    - expertiseDomains : String [JSONB]
+    - auditHistory     : String [JSONB]
+}
+
+class Donor <<utilisateur>> {
+    .. Preferences dons ..
+    - preferredCategories : List<String> [JSONB]
+    - targetZones         : List<String> [JSONB]
+    - totalDonationsCount : Integer
+}
+
+' ============================================================
+'  SECTION 3 - PROFIL ETENDU VOLONTAIRE
+'  (Table separee - rempli apres 1ere connexion)
+' ============================================================
+
+class VolunteerExtendedProfile <<profil>> {
+    .. Identifiant ..
+    - id                      : UUID
+    - volunteerId             : UUID [FK -> volunteers]
+    .. Coordonnees ..
+    - phone                   : String
+    - emergencyContactName    : String
+    - emergencyContactPhone   : String
+    - emergencyContactRelation: String
+    - photoUrl                : String
+    - photoPublicId           : String
+    .. Formation ..
+    - educationLevel          : EducationLevel
+    - specializationDomain    : String
+    - trainingCoursesAttended : String [JSONB]
+    .. Integration CRT ..
+    - realIntegrationDate     : LocalDate
+    - otherSkills             : String
+    .. Validation workflow ..
+    - profileCompleted        : boolean
+    - profileCompletionScore  : int
+    - submittedAt             : LocalDateTime
+    - reviewedBy              : UUID
+    - reviewedAt              : LocalDateTime
+    - reviewNotes             : String
+    .. Metadonnees ..
+    - createdAt               : LocalDateTime
+    - updatedAt               : LocalDateTime
+}
+
+' ============================================================
+'  SECTION 4 - STRUCTURE ORGANISATIONNELLE (COMITES)
+' ============================================================
+
+class Committee <<comite>> {
+    .. Identite ..
+    - id                  : UUID
+    - name                : String
+    - type                : CommitteeType
+    - region              : String
+    - status              : CommitteeStatus
+    .. Mandat Bureau ..
+    - currentMandateStart : LocalDate
+    - currentMandateEnd   : LocalDate
+    .. Metadonnees ..
+    - createdAt           : LocalDateTime
+    - approvedAt          : LocalDateTime
+    __
+    + hasMandatoryRoles() : boolean
+    + isMandateExpired()  : boolean
+}
+
+class CommitteeRole <<comite>> {
+    .. Identifiant ..
+    - id              : UUID
+    .. Role ..
+    - title           : RoleTitle
+    - status          : CommitteeRoleStatus
+    .. Cycle de Vie ..
+    - assignedAt      : LocalDateTime
+    - mandateEndDate  : LocalDate
+    .. Workflow attribution ..
+    - proposedBy      : UUID
+    - proposedAt      : LocalDateTime
+    - approvedBy      : UUID
+    - approvedAt      : LocalDateTime
+    - reason          : String
+    __
+    + isMandateExpired() : boolean
+}
+
+' ============================================================
+'  SECTION 5 - CERTIFICATIONS
+' ============================================================
+
+class SecourismeCertification <<certification>> {
+    .. Identification ..
+    - id          : UUID
+    - code        : String [unique]
+    - label       : String
+    - description : String
+    - level       : int
+    - active      : boolean
+    - editableBy  : String [JSONB]
+    .. Metadonnees ..
+    - createdAt   : LocalDateTime
+    - updatedAt   : LocalDateTime
+}
+
+class VolunteerCertification <<certification>> {
+    - id              : UUID
+    - volunteerId     : UUID [FK -> volunteers]
+    - certificationId : UUID [FK -> secourisme_certifications]
+    - dateObtained    : LocalDate
+    - dateExpiry      : LocalDate
+    - issuedBy        : String
+    - documentUrl     : String
+    - status          : String
+    - notes           : String
+    - addedBy         : UUID
+    - createdAt       : LocalDateTime
+}
+
+' ============================================================
+'  SECTION 6 - SECURITE & AUDIT
+' ============================================================
+
+class RefreshToken <<securite>> {
+    - id          : UUID
+    - token       : String [unique]
+    - userId      : UUID [FK -> users]
+    - expiresAt   : Instant
+    - revoked     : boolean
+    - createdAt   : Instant
+    - replacedBy  : String
+    __
+    + isExpired() : boolean
+    + isValid()   : boolean
+}
+
+class SecurityAuditLog <<securite>> {
+    - id          : UUID
+    - eventType   : SecurityEventType
+    - userId      : UUID
+    - email       : String
+    - ipAddress   : String
+    - userAgent   : String
+    - details     : String
+    - success     : boolean
+    - riskScore   : int
+    - timestamp   : Instant
+}
+
+class HierarchyAuditLog <<securite>> {
+    - id                : UUID
+    - action            : String
+    - performedBy       : UUID
+    - targetCommitteeId : UUID
+    - targetVolunteerId : UUID
+    - timestamp         : LocalDateTime
+    - reason            : String
+}
+
+' ============================================================
+'  SECTION 7 - RELATIONS D'HERITAGE
+' ============================================================
+
+User <|-- Volunteer    : "extends (JOINED)"
+User <|-- Donor        : "extends (JOINED)"
+Volunteer <|-- Trainer : "extends (JOINED)"
+
+' ============================================================
+'  SECTION 8 - RELATIONS DE COMPOSITION / ASSOCIATION
+' ============================================================
+
+' Profil etendu (1-1)
+Volunteer "1" -- "0..1" VolunteerExtendedProfile : "possede >"
+
+' Roles dans les comites
+Volunteer "1" o-- "0..*" CommitteeRole : "a des roles >"
+Committee "1" *-- "0..*" CommitteeRole : "contient >"
+
+' Hierarchie des comites (auto-reference)
+Committee "0..1" o-- "0..*" Committee : "parent / sous-comites"
+
+' Certifications
+Volunteer "1" o-- "0..*" VolunteerCertification  : "certifications >"
+SecourismeCertification "1" -- "0..*" VolunteerCertification : "< catalogue"
+
+' Securite
+User "1" -- "0..*" RefreshToken     : "tokens JWT >"
+User "1" -- "0..*" SecurityAuditLog : "audit >"
+
+' ============================================================
+'  SECTION 9 - DEPENDANCES vers les ENUMERATIONS
+' ============================================================
+
+User          ..> UserType
+User          ..> AccountStatus
+Committee     ..> CommitteeType
+Committee     ..> CommitteeStatus
+CommitteeRole ..> RoleTitle
+CommitteeRole ..> CommitteeRoleStatus
+VolunteerExtendedProfile ..> EducationLevel
+SecurityAuditLog ..> SecurityEventType
+
+' ============================================================
+'  NOTES EXPLICATIVES
+' ============================================================
+
+note top of User
+  <b>Classe mere de tous les utilisateurs</b>
+  InheritanceType.JOINED : chaque sous-classe
+  a sa propre table liee par la cle primaire (UUID).
+  accountStatus controle l'acces a la plateforme :
+  PENDING -> APPROVED / REJECTED / SUSPENDED
+end note
+
+note right of CommitteeRole
+  <b>Cle de la hierarchie organisationnelle</b>
+  Un Volunteer devient Responsable ou President
+  via un CommitteeRole (composition, pas heritage).
+  - PRESIDENT / VICE_PRESIDENT -> Direction
+  - SECRETAIRE_GENERAL -> Administration
+  - RESP_* -> Responsables de domaine
+  Mandat legal : 4 ans (statuts CRT)
+end note
+
+note bottom of Committee
+  <b>Hierarchie geographique</b>
+  NATIONAL -> 1 seul comite central (Tunis)
+  REGIONAL -> 1 par gouvernorat (24 max)
+  LOCAL -> 1 par delegation
+  Auto-reference : parentCommittee / subCommittees
+end note
+
+note right of VolunteerExtendedProfile
+  <b>Formulaire complementaire obligatoire</b>
+  Rempli lors de la 1ere connexion apres APPROVED.
+  Score de completude calcule automatiquement (0-100%).
+  Valide par PRESIDENT_NATIONAL si score >= 80%.
+end note
+
+note left of RefreshToken
+  <b>Rotation des tokens JWT</b>
+  Chaque refresh token est a usage unique.
+  Un token deja utilise = vol de token detecte.
+  userId reference User.id (pas de FK JPA directe).
+end note
+
+' ============================================================
+'  LEGENDE
+' ============================================================
+
+legend bottom right
+    <b>Legende des Relations</b>
+    |= Symbole |= Type           |= Description            |
+    | <--|>    | Heritage        | Sous-classe (extends)    |
+    | *--      | Composition     | Cycle de vie lie         |
+    | o--      | Agregation      | Association forte        |
+    | --       | Association     | Lien 1-a-1 ou 1-a-N      |
+    | ..>      | Dependance      | Utilisation d'un type    |
+
+    <b>Couleurs des groupes :</b>
+    |<#D6EAF8> | Utilisateurs (User, Volunteer, Donor...)     |
+    |<#D5F5E3> | Organisation (Committee, CommitteeRole)      |
+    |<#F5EEF8> | Profil etendu (VolunteerExtendedProfile)     |
+    |<#EBF5FB> | Certifications (Secourisme...)               |
+    |<#FDEBD0> | Securite (RefreshToken, AuditLog...)         |
+endlegend
+
+footer Nexus-AID | core-service | Diagramme de Classes v1.1 | Mai 2026
+
+@enduml

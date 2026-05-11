@@ -1,0 +1,272 @@
+@startuml diagramme1_gestion_utilisateurs
+
+' ============================================================
+'  NEXUS-AID | Diagramme 1 : Gestion des Utilisateurs
+'  Heritage, Roles & Securite
+'  Source : core-service | Mai 2026
+'  Version : noir/blanc + methodes metier
+' ============================================================
+
+skinparam monochrome true
+skinparam shadowing false
+skinparam roundcorner 4
+skinparam linetype ortho
+skinparam nodesep 25
+skinparam ranksep 35
+skinparam classAttributeIconSize 0
+skinparam classFontName Arial
+skinparam classFontSize 10
+skinparam ArrowFontSize 9
+
+hide circle
+
+left to right direction
+
+title Gestion des Utilisateurs (1/2)
+
+' ============================================================
+'  ENUMERATIONS
+' ============================================================
+
+enum UserType {
+    VOLUNTEER
+    TRAINER
+    DONOR
+    ADMIN
+}
+
+enum AccountStatus {
+    PENDING
+    APPROVED
+    REJECTED
+    SUSPENDED
+}
+
+enum EducationLevel {
+    MOINS_BAC
+    BAC
+    BAC_PLUS_1_2
+    LICENCE
+    MASTER
+    DOCTORAT
+}
+
+enum SecurityEventType {
+    LOGIN_SUCCESS
+    LOGIN_FAILURE
+    REGISTER
+    TOKEN_REFRESH
+    LOGOUT
+    BLOCKED_IP
+    CAPTCHA_TRIGGERED
+    CAPTCHA_FAILED
+    SUSPICIOUS_ACTIVITY
+    PASSWORD_CHANGE
+    ACCOUNT_LOCKED
+    BRUTE_FORCE_DETECTED
+    ANOMALY_DETECTED
+}
+
+' ============================================================
+'  CLASSES UTILISATEURS
+'  Heritage JPA : InheritanceType.JOINED
+' ============================================================
+
+class User <<Entity>> {
+    .. Identite ..
+    - id                  : UUID  <<PK>>
+    - fullName            : String
+    - email               : String <<unique>>
+    - cin                 : String <<unique>>
+    - phone               : String
+    - password            : String
+    - birthDate           : LocalDate
+    .. Compte ..
+    - type                : UserType
+    - accountStatus       : AccountStatus
+    - avatar              : String
+    - avatarPublicId      : String
+    - firstLoginCompleted : boolean
+    __
+    + register(request) : AuthResponse
+    + login(request) : AuthResponse
+    + logout() : void
+    + refreshAccessToken(token) : AuthResponse
+    + getCurrentUser() : User
+    + getMyProfile() : Map
+    + updateProfile(updates) : void
+    + updateAvatarUrl(url, publicId) : void
+    + validatePasswordStrength(pwd) : void
+}
+
+class Volunteer <<Entity>> {
+    .. Affectation ..
+    - matricule        : String
+    - committeeId      : UUID
+    - dateAdhesion     : LocalDate
+    .. Activite ..
+    - skills           : List<String>  [JSONB]
+    - hoursVolunteered : Double
+    - trainingProgress : String        [JSONB]
+    __
+    + approveVolunteer(volunteerId) : void
+    + rejectVolunteer(volunteerId) : void
+    + promoteToTrainer(expertiseDomains) : Trainer
+    + getPendingVolunteersForCommittee() : List
+    + getAllVolunteersForCommittee() : List
+    + getMyVisibleVolunteers() : List
+}
+
+class Trainer <<Entity>> {
+    .. Expertise ..
+    - expertiseDomains : String [JSONB]
+    - auditHistory     : String [JSONB]
+}
+
+class Donor <<Entity>> {
+    .. Preferences dons ..
+    - preferredCategories : List<String> [JSONB]
+    - targetZones         : List<String> [JSONB]
+    - totalDonationsCount : Integer
+}
+
+' ============================================================
+'  PROFIL ETENDU (table volunteer_extended_profiles)
+' ============================================================
+
+class VolunteerExtendedProfile <<Entity>> {
+    - id                       : UUID <<PK>>
+    - volunteerId              : UUID <<FK>>
+    .. Coordonnees ..
+    - phone                    : String
+    - emergencyContactName     : String
+    - emergencyContactPhone    : String
+    - emergencyContactRelation : String
+    - photoUrl                 : String
+    - photoPublicId            : String
+    .. Formation ..
+    - educationLevel           : EducationLevel
+    - specializationDomain     : String
+    - trainingCoursesAttended  : String [JSONB]
+    .. Integration CRT ..
+    - realIntegrationDate      : LocalDate
+    - otherSkills              : String
+    .. Workflow validation ..
+    - profileCompleted         : boolean
+    - profileCompletionScore   : int
+    - submittedAt              : LocalDateTime
+    - reviewedBy               : UUID
+    - reviewedAt               : LocalDateTime
+    - reviewNotes              : String
+    .. Metadonnees ..
+    - createdAt                : LocalDateTime
+    - updatedAt                : LocalDateTime
+    __
+    + saveExtendedProfile(data) : VolunteerExtendedProfile
+    + getExtendedProfile(volunteerId) : VolunteerExtendedProfile
+    + isProfileCompleted(volunteerId) : boolean
+    + calculateScore() : int
+    + adminUpdateExtendedProfile(data) : VolunteerExtendedProfile
+    + preUpdate() : void
+}
+
+' ============================================================
+'  SECURITE : Tokens & Audit
+' ============================================================
+
+class RefreshToken <<Entity>> {
+    - id          : UUID <<PK>>
+    - token       : String <<unique>>
+    - userId      : UUID
+    - expiresAt   : Instant
+    - revoked     : boolean
+    - createdAt   : Instant
+    - replacedBy  : String
+    __
+    + isExpired() : boolean
+    + isValid()   : boolean
+    + createRefreshToken(userId) : RefreshToken
+    + rotateRefreshToken(token) : RefreshToken
+    + revokeAllUserTokens(userId) : void
+    + cleanupExpiredTokens() : int
+}
+
+class SecurityAuditLog <<Entity>> {
+    - id          : UUID <<PK>>
+    - eventType   : SecurityEventType
+    - userId      : UUID
+    - email       : String
+    - ipAddress   : String
+    - userAgent   : String
+    - details     : String
+    - success     : boolean
+    - riskScore   : int
+    - timestamp   : Instant
+    __
+    + logEvent(eventType, ...) : void
+    + logLoginSuccess(userId, ...) : void
+    + logLoginFailure(email, ...) : void
+    + logCaptchaTriggered(email, ...) : void
+    + logBlockedIp(ip, ...) : void
+    + logSuspiciousActivity(ip, ...) : void
+    + logTokenRefresh(userId, ...) : void
+    + logLogout(userId, ...) : void
+    + getRecentLogs(page, size) : Page
+    + getDashboardStats() : Map
+    + getBlockedIps() : List
+    + cleanOldLogs() : void
+}
+
+' ============================================================
+'  HERITAGE (InheritanceType.JOINED)
+' ============================================================
+
+User <|-- Volunteer
+User <|-- Donor
+Volunteer <|-- Trainer
+
+' ============================================================
+'  RELATIONS D'ASSOCIATION
+' ============================================================
+
+Volunteer "1" -- "0..1" VolunteerExtendedProfile
+User "1" -- "*" RefreshToken
+User "1" -- "*" SecurityAuditLog
+
+' ============================================================
+'  DEPENDANCES vers les ENUMERATIONS
+' ============================================================
+
+User ..> UserType
+User ..> AccountStatus
+VolunteerExtendedProfile ..> EducationLevel
+SecurityAuditLog         ..> SecurityEventType
+
+' ============================================================
+'  NOTES
+' ============================================================
+
+note bottom of User
+Classe mere des utilisateurs.
+InheritanceType.JOINED.
+end note
+
+note right of Volunteer
+Volontaire lie a un comite.
+end note
+
+note left of RefreshToken
+JWT Refresh Token.
+Usage unique.
+end note
+
+legend bottom
+|= Symbole |= Description |
+| <|-- | Heritage |
+| -- | Association |
+| ..> | Dependance |
+endlegend
+
+footer Nexus-AID | core-service
+
+@enduml

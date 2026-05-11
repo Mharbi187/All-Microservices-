@@ -1,0 +1,221 @@
+@startuml uc_gestion_rapports
+
+' ============================================================
+'  NEXUS-AID | Diagramme de Cas d'Utilisation
+'  Gestion des Rapports d'Activite
+'  Sources : core-service + admin-service + pdf-service
+'  Mai 2026
+' ============================================================
+
+skinparam monochrome true
+skinparam shadowing false
+skinparam roundcorner 4
+skinparam actorFontName Arial
+skinparam actorFontSize 11
+skinparam usecaseFontName Arial
+skinparam usecaseFontSize 10
+skinparam packageFontName Arial
+skinparam packageFontSize 12
+skinparam ArrowFontSize 9
+skinparam defaultTextAlignment center
+skinparam nodesep 20
+skinparam ranksep 30
+
+left to right direction
+
+title Diagramme de Cas d'Utilisation\nGestion des Rapports | Nexus-AID
+
+' ============================================================
+'  ACTEURS
+' ============================================================
+
+actor "Responsable\nde Domaine" as RESP
+actor "Secretaire\nGeneral" as SG
+actor "President" as PRES
+actor "Administrateur" as ADMIN
+
+' ============================================================
+'  SYSTEME PRINCIPAL
+' ============================================================
+
+rectangle "Gestion des Rapports" {
+
+    ' --- Creation & Redaction ---
+    usecase "Creer un brouillon\nde rapport" as UC_CREATE
+    usecase "Remplir les donnees\ndu rapport" as UC_FILL
+    usecase "Sauvegarder\nautomatiquement\n(autosave)" as UC_AUTOSAVE
+    usecase "Assigner un rapport\na un utilisateur" as UC_ASSIGN
+
+    ' --- Workflow de Validation ---
+    usecase "Soumettre le rapport" as UC_SUBMIT
+    usecase "Valider le rapport" as UC_VALIDATE
+    usecase "Finaliser le rapport" as UC_FINALIZE
+    usecase "Archiver le rapport" as UC_ARCHIVE
+
+    ' --- Consultation ---
+    usecase "Consulter mes rapports" as UC_MY
+    usecase "Consulter les rapports\ndu comite" as UC_COMMITTEE
+    usecase "Consulter les rapports\npar statut" as UC_STATUS
+    usecase "Consulter le tableau\nde bord rapports" as UC_DASHBOARD
+
+    ' --- Export PDF ---
+    usecase "Exporter le brouillon\nen PDF" as UC_DRAFT_PDF
+    usecase "Generer le PDF\nofficiel" as UC_OFFICIAL_PDF
+    usecase "Telecharger le PDF" as UC_DOWNLOAD_PDF
+
+    ' --- Audit & Tracabilite ---
+    usecase "Consulter la piste\nd'audit du rapport" as UC_AUDIT
+    usecase "Calculer le hash\nd'integrite (SHA-256)" as UC_HASH
+
+    ' --- Authentification ---
+    usecase "S'authentifier" as UC_AUTH
+}
+
+' ============================================================
+'  ACTEURS SECONDAIRES (SYSTEMES)
+' ============================================================
+
+actor "pdf-service\n(Puppeteer)" as PDF_SYS <<system>>
+actor "MinIO\n(Stockage)" as MINIO <<system>>
+actor "RabbitMQ\n(Evenements)" as RABBIT <<system>>
+
+' ============================================================
+'  ASSOCIATIONS ACTEURS -> CAS D'UTILISATION
+' ============================================================
+
+' --- Responsable de Domaine ---
+RESP --> UC_CREATE
+RESP --> UC_FILL
+RESP --> UC_SUBMIT
+RESP --> UC_MY
+RESP --> UC_DRAFT_PDF
+RESP --> UC_COMMITTEE
+
+' --- Secretaire General ---
+SG --> UC_VALIDATE
+SG --> UC_MY
+SG --> UC_COMMITTEE
+SG --> UC_STATUS
+SG --> UC_OFFICIAL_PDF
+SG --> UC_DOWNLOAD_PDF
+SG --> UC_DASHBOARD
+
+' --- President ---
+PRES --> UC_FINALIZE
+PRES --> UC_ARCHIVE
+PRES --> UC_MY
+PRES --> UC_COMMITTEE
+PRES --> UC_STATUS
+PRES --> UC_OFFICIAL_PDF
+PRES --> UC_DOWNLOAD_PDF
+PRES --> UC_DASHBOARD
+PRES --> UC_AUDIT
+
+' --- Administrateur ---
+ADMIN --> UC_CREATE
+ADMIN --> UC_VALIDATE
+ADMIN --> UC_FINALIZE
+ADMIN --> UC_ARCHIVE
+ADMIN --> UC_STATUS
+ADMIN --> UC_DASHBOARD
+ADMIN --> UC_AUDIT
+ADMIN --> UC_ASSIGN
+
+' ============================================================
+'  RELATIONS <<include>> et <<extend>>
+' ============================================================
+
+' Inclusions obligatoires
+UC_CREATE ..> UC_AUTH : <<include>>
+UC_SUBMIT ..> UC_AUTH : <<include>>
+UC_VALIDATE ..> UC_AUTH : <<include>>
+UC_FINALIZE ..> UC_AUTH : <<include>>
+UC_ARCHIVE ..> UC_HASH : <<include>>
+
+' Extensions optionnelles
+UC_FILL ..> UC_AUTOSAVE : <<extend>>
+UC_FINALIZE ..> UC_OFFICIAL_PDF : <<extend>>
+UC_ARCHIVE ..> UC_OFFICIAL_PDF : <<extend>>
+UC_CREATE ..> UC_ASSIGN : <<extend>>
+
+' ============================================================
+'  ASSOCIATIONS SYSTEMES SECONDAIRES
+' ============================================================
+
+UC_OFFICIAL_PDF --> PDF_SYS
+UC_DRAFT_PDF --> PDF_SYS
+UC_OFFICIAL_PDF --> MINIO
+UC_DOWNLOAD_PDF --> MINIO
+UC_SUBMIT --> RABBIT
+UC_VALIDATE --> RABBIT
+UC_FINALIZE --> RABBIT
+UC_ARCHIVE --> RABBIT
+
+' ============================================================
+'  NOTES
+' ============================================================
+
+note bottom of UC_SUBMIT
+  Transition : DRAFT -> SUBMITTED
+  Publie un evenement RabbitMQ
+  pour notification.
+end note
+
+note bottom of UC_VALIDATE
+  Transition : SUBMITTED -> VALIDATED
+  Reservee au Secretaire General
+  ou a l'Administrateur.
+end note
+
+note bottom of UC_FINALIZE
+  Transition : VALIDATED -> FINALIZED
+  Reservee au President
+  ou a l'Administrateur.
+end note
+
+note bottom of UC_ARCHIVE
+  Transition : FINALIZED -> ARCHIVED
+  Calcul SHA-256 du contenu.
+  Rapport immutable apres archivage.
+end note
+
+note right of UC_OFFICIAL_PDF
+  Generation asynchrone via
+  pdf-service (Puppeteer).
+  Stockage sur MinIO avec
+  versioning (v1, v2...).
+end note
+
+note bottom of RESP
+  Roles concernes :
+  RESP_SECOURISME
+  RESP_SANTE
+  RESP_JEUNESSE
+  RESP_ACTION_SOCIALE
+  RESP_DIFFUSION
+  RESP_IMMIGRATION
+  RESP_VFF
+end note
+
+' ============================================================
+'  LEGENDE
+' ============================================================
+
+legend bottom right
+    |= Symbole       |= Description                          |
+    | -->             | Association (acteur -> cas)             |
+    | ..> <<include>> | Inclusion obligatoire                  |
+    | ..> <<extend>>  | Extension optionnelle                  |
+    | <<system>>      | Acteur secondaire (systeme externe)    |
+
+    <b>Workflow du rapport :</b>
+    |<#FFFFFF> DRAFT     | Brouillon en cours de redaction        |
+    |<#FFFFFF> SUBMITTED | Soumis au Secretaire General           |
+    |<#FFFFFF> VALIDATED | Valide par le Secretaire General       |
+    |<#FFFFFF> FINALIZED | Finalise par le President              |
+    |<#FFFFFF> ARCHIVED  | Archive (immutable, hash SHA-256)      |
+endlegend
+
+footer Nexus-AID | core-service + admin-service + pdf-service
+
+@enduml
