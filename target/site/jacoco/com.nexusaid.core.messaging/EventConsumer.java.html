@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="fr"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>EventConsumer.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core-service</a> &gt; <a href="index.source.html" class="el_package">com.nexusaid.core.messaging</a> &gt; <span class="el_source">EventConsumer.java</span></div><h1>EventConsumer.java</h1><pre class="source lang-java linenums">package com.nexusaid.core.messaging;
+
+import com.nexusaid.core.entity.Committee;
+import com.nexusaid.core.entity.Intervention;
+import com.nexusaid.core.entity.enums.InterventionStatus;
+import com.nexusaid.core.entity.enums.InterventionType;
+import com.nexusaid.core.repository.CommitteeRepository;
+import com.nexusaid.core.repository.InterventionRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.stereotype.Component;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
+/**
+ * Consumes events from RabbitMQ for the Core Service.
+ * Implements real inter-service communication from MS4 to MS1.
+ *
+ * FIXES APPLIED:
+ * - H1: Idempotency via deduplication window (region + disasterType within 30
+ * min)
+ * - H2: Region-based committee lookup instead of committees.get(0)
+ * - H6: Schema validation — required fields checked before processing
+ */
+@Component
+@RequiredArgsConstructor
+<span class="nc" id="L33">@Slf4j</span>
+public class EventConsumer {
+
+        private final InterventionRepository interventionRepository;
+        private final CommitteeRepository committeeRepository;
+
+        /**
+         * H1 FIX: Deduplication window.
+         * Tracks recently processed disaster alerts to prevent duplicate interventions.
+         * Key: &quot;disasterType|region&quot;, Value: timestamp of last processing.
+         * Window: 30 minutes (same disaster type + region = duplicate).
+         */
+        private final ConcurrentHashMap&lt;String, LocalDateTime&gt; recentAlerts = new ConcurrentHashMap&lt;&gt;();
+        private static final int DEDUP_WINDOW_MINUTES = 30;
+
+        /**
+         * H6 FIX: Required fields for a valid disaster alert event.
+         */
+<span class="nc" id="L51">        private static final Set&lt;String&gt; REQUIRED_FIELDS = Set.of(&quot;disasterType&quot;, &quot;region&quot;, &quot;severity&quot;);</span>
+
+        /**
+         * When MS4 (Disaster Detection) detects a crisis via GEE, it publishes to this
+         * queue. This consumer auto-creates an actionable Intervention in the
+         * volunteering module.
+         *
+         * BEFORE (vulnerabilities):
+         * - No dedup: 50 identical alerts = 50 duplicate interventions (H1)
+         * - committees.get(0): wrong team always assigned (H2)
+         * - No validation: malformed event could crash consumer (H6)
+         *
+         * AFTER (hardened):
+         * - Dedup window prevents duplicate interventions within 30 min (H1)
+         * - Region-based committee lookup via name/region matching (H2)
+         * - Required fields validated before processing (H6)
+         */
+        @RabbitListener(queues = &quot;nexusaid.disaster.alerts&quot;)
+        public void handleDisasterAlert(Map&lt;String, Object&gt; event) {
+                // ── H6: Schema validation ────────────────────────────
+<span class="nc bnc" id="L71" title="All 2 branches missed.">                for (String field : REQUIRED_FIELDS) {</span>
+<span class="nc bnc" id="L72" title="All 4 branches missed.">                        if (!event.containsKey(field) || event.get(field) == null) {</span>
+<span class="nc" id="L73">                                log.warn(&quot;[CORE] Rejecting malformed disaster alert — missing field '{}': {}&quot;,</span>
+                                                field, event);
+<span class="nc" id="L75">                                return;</span>
+                        }
+<span class="nc" id="L77">                }</span>
+
+<span class="nc" id="L79">                String disasterType = String.valueOf(event.get(&quot;disasterType&quot;));</span>
+<span class="nc" id="L80">                String region = String.valueOf(event.get(&quot;region&quot;));</span>
+<span class="nc" id="L81">                String severity = String.valueOf(event.get(&quot;severity&quot;));</span>
+<span class="nc" id="L82">                Object riskScoreObj = event.getOrDefault(&quot;riskScore&quot;, 0.0);</span>
+<span class="nc bnc" id="L83" title="All 2 branches missed.">                double riskScore = riskScoreObj instanceof Number ? ((Number) riskScoreObj).doubleValue() : 0.0;</span>
+
+<span class="nc" id="L85">                log.info(&quot;[CORE] Disaster alert received from MS4: type={}, region={}, severity={}, risk={}&quot;,</span>
+<span class="nc" id="L86">                                disasterType, region, severity, riskScore);</span>
+
+                // ── H1: Idempotency check ───────────────────────────
+<span class="nc" id="L89">                String dedupKey = disasterType + &quot;|&quot; + region;</span>
+<span class="nc" id="L90">                LocalDateTime lastProcessed = recentAlerts.get(dedupKey);</span>
+<span class="nc" id="L91">                LocalDateTime now = LocalDateTime.now();</span>
+
+<span class="nc bnc" id="L93" title="All 4 branches missed.">                if (lastProcessed != null &amp;&amp; lastProcessed.plusMinutes(DEDUP_WINDOW_MINUTES).isAfter(now)) {</span>
+<span class="nc" id="L94">                        log.info(&quot;[CORE] Duplicate disaster alert suppressed (within {}min window): {} in {}&quot;,</span>
+<span class="nc" id="L95">                                        DEDUP_WINDOW_MINUTES, disasterType, region);</span>
+<span class="nc" id="L96">                        return;</span>
+                }
+<span class="nc" id="L98">                recentAlerts.put(dedupKey, now);</span>
+
+                // Cleanup old entries periodically (simple eviction)
+<span class="nc" id="L101">                recentAlerts.entrySet().removeIf(</span>
+<span class="nc" id="L102">                                e -&gt; e.getValue().plusMinutes(DEDUP_WINDOW_MINUTES * 2L).isBefore(now));</span>
+
+                // ── H2: Region-based committee lookup ───────────────
+<span class="nc" id="L105">                Committee targetCommittee = findCommitteeByRegion(region);</span>
+<span class="nc bnc" id="L106" title="All 2 branches missed.">                if (targetCommittee == null) {</span>
+<span class="nc" id="L107">                        log.warn(&quot;[CORE] Cannot create Intervention: no committee found for region '{}'. &quot;</span>
+                                        + &quot;Attempting fallback to any available committee.&quot;, region);
+<span class="nc" id="L109">                        List&lt;Committee&gt; allCommittees = committeeRepository.findAll();</span>
+<span class="nc bnc" id="L110" title="All 2 branches missed.">                        if (allCommittees.isEmpty()) {</span>
+<span class="nc" id="L111">                                log.error(&quot;[CORE] CRITICAL: No committees exist in DB. Disaster alert for {} in {} &quot;</span>
+                                                + &quot;cannot be actioned. Manual intervention required.&quot;, disasterType,
+                                                region);
+<span class="nc" id="L114">                                return;</span>
+                        }
+<span class="nc" id="L116">                        targetCommittee = allCommittees.get(0);</span>
+<span class="nc" id="L117">                        log.warn(&quot;[CORE] Fallback: assigning intervention to committee '{}' (id={})&quot;,</span>
+<span class="nc" id="L118">                                        targetCommittee.getName(), targetCommittee.getId());</span>
+                }
+
+<span class="nc" id="L121">                String description = String.format(</span>
+                                &quot;Auto-generated emergency intervention triggered by the AI Command Center.\n&quot;
+                                                + &quot;Region: %s\nDisaster: %s\nSeverity Index: %s\nRisk Multiplier: %.4f\n&quot;
+                                                + &quot;Please deploy the relevant regional volunteering cells immediately.&quot;,
+<span class="nc" id="L125">                                region, disasterType, severity, riskScore);</span>
+
+<span class="nc" id="L127">                String title = &quot;URGENT RESPONSE: &quot; + disasterType + &quot; in &quot; + region;</span>
+
+<span class="nc" id="L129">                Intervention intervention = Intervention.builder()</span>
+<span class="nc" id="L130">                                .committee(targetCommittee)</span>
+<span class="nc" id="L131">                                .interventionType(InterventionType.CATASTROPHE)</span>
+<span class="nc" id="L132">                                .title(title)</span>
+<span class="nc" id="L133">                                .description(description)</span>
+<span class="nc" id="L134">                                .locationGps(region)</span>
+<span class="nc" id="L135">                                .startDatetime(LocalDateTime.now())</span>
+<span class="nc" id="L136">                                .status(InterventionStatus.IN_PROGRESS)</span>
+<span class="nc" id="L137">                                .participantsCount(0)</span>
+<span class="nc" id="L138">                                .beneficiariesCount(0)</span>
+<span class="nc" id="L139">                                .build();</span>
+
+<span class="nc" id="L141">                interventionRepository.save(intervention);</span>
+<span class="nc" id="L142">                log.info(&quot;[CORE] Created Emergency Intervention for {} in {} (id={}, committee={})&quot;,</span>
+<span class="nc" id="L143">                                disasterType, region, intervention.getId(), targetCommittee.getName());</span>
+<span class="nc" id="L144">        }</span>
+
+        /**
+         * H2 FIX: Attempt to find a committee whose name or region matches the
+         * disaster alert's region string. Returns null if no match found.
+         */
+        private Committee findCommitteeByRegion(String region) {
+<span class="nc bnc" id="L151" title="All 4 branches missed.">                if (region == null || region.isBlank())</span>
+<span class="nc" id="L152">                        return null;</span>
+<span class="nc" id="L153">                String regionLower = region.toLowerCase().trim();</span>
+
+<span class="nc" id="L155">                List&lt;Committee&gt; allCommittees = committeeRepository.findAll();</span>
+                // Exact match on region field
+<span class="nc" id="L157">                Optional&lt;Committee&gt; exact = allCommittees.stream()</span>
+<span class="nc bnc" id="L158" title="All 4 branches missed.">                                .filter(c -&gt; c.getRegion() != null &amp;&amp; c.getRegion().equalsIgnoreCase(regionLower))</span>
+<span class="nc" id="L159">                                .findFirst();</span>
+<span class="nc bnc" id="L160" title="All 2 branches missed.">                if (exact.isPresent())</span>
+<span class="nc" id="L161">                        return exact.get();</span>
+
+                // Partial match on name
+<span class="nc" id="L164">                Optional&lt;Committee&gt; partial = allCommittees.stream()</span>
+<span class="nc bnc" id="L165" title="All 4 branches missed.">                                .filter(c -&gt; c.getName() != null &amp;&amp; c.getName().toLowerCase().contains(regionLower))</span>
+<span class="nc" id="L166">                                .findFirst();</span>
+<span class="nc" id="L167">                return partial.orElse(null);</span>
+        }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

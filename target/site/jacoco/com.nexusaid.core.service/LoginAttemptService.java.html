@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="fr"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>LoginAttemptService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core-service</a> &gt; <a href="index.source.html" class="el_package">com.nexusaid.core.service</a> &gt; <span class="el_source">LoginAttemptService.java</span></div><h1>LoginAttemptService.java</h1><pre class="source lang-java linenums">package com.nexusaid.core.service;
+
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+
+import java.time.Instant;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+/**
+ * In-memory brute-force protection service.
+ * Tracks login attempts per IP + email combination.
+ *
+ * Policy:
+ * - After 2 failed attempts → CAPTCHA required
+ * - After 5 failed attempts → IP blocked for 15 minutes
+ * - Successful login → reset counter
+ */
+<span class="nc" id="L20">@Slf4j</span>
+@Service
+<span class="nc" id="L22">public class LoginAttemptService {</span>
+
+    private static final int CAPTCHA_THRESHOLD = 2;
+    private static final int BLOCK_THRESHOLD = 5;
+    private static final long BLOCK_DURATION_MS = 15 * 60 * 1000L; // 15 minutes
+    private static final long ENTRY_TTL_MS = 30 * 60 * 1000L;       // 30 minutes
+
+    /**
+     * Tracks failed login attempts per key (IP or IP:email).
+     */
+<span class="nc" id="L32">    private final Map&lt;String, AttemptInfo&gt; attempts = new ConcurrentHashMap&lt;&gt;();</span>
+
+    /**
+     * Record a failed login attempt.
+     */
+    public void recordFailure(String ip, String email) {
+<span class="nc" id="L38">        String ipKey = normalizeKey(ip);</span>
+<span class="nc" id="L39">        String combinedKey = normalizeKey(ip + &quot;:&quot; + email);</span>
+
+        // Track by IP alone
+<span class="nc" id="L42">        attempts.compute(ipKey, (k, info) -&gt; {</span>
+<span class="nc bnc" id="L43" title="All 2 branches missed.">            if (info == null) info = new AttemptInfo();</span>
+<span class="nc" id="L44">            info.incrementFailure();</span>
+<span class="nc" id="L45">            return info;</span>
+        });
+
+        // Track by IP:email combination
+<span class="nc" id="L49">        attempts.compute(combinedKey, (k, info) -&gt; {</span>
+<span class="nc bnc" id="L50" title="All 2 branches missed.">            if (info == null) info = new AttemptInfo();</span>
+<span class="nc" id="L51">            info.incrementFailure();</span>
+<span class="nc" id="L52">            return info;</span>
+        });
+
+<span class="nc" id="L55">        AttemptInfo ipInfo = attempts.get(ipKey);</span>
+<span class="nc bnc" id="L56" title="All 4 branches missed.">        if (ipInfo != null &amp;&amp; ipInfo.getFailCount() &gt;= BLOCK_THRESHOLD) {</span>
+<span class="nc" id="L57">            ipInfo.block(BLOCK_DURATION_MS);</span>
+<span class="nc" id="L58">            log.warn(&quot;🚫 IP blocked due to {} failed login attempts: {}&quot;, ipInfo.getFailCount(), ip);</span>
+        }
+<span class="nc" id="L60">    }</span>
+
+    /**
+     * Record a successful login — resets the counters.
+     */
+    public void recordSuccess(String ip, String email) {
+<span class="nc" id="L66">        String ipKey = normalizeKey(ip);</span>
+<span class="nc" id="L67">        String combinedKey = normalizeKey(ip + &quot;:&quot; + email);</span>
+<span class="nc" id="L68">        attempts.remove(combinedKey);</span>
+
+        // Only reset IP counter if it wasn't blocked
+<span class="nc" id="L71">        AttemptInfo ipInfo = attempts.get(ipKey);</span>
+<span class="nc bnc" id="L72" title="All 4 branches missed.">        if (ipInfo != null &amp;&amp; !ipInfo.isCurrentlyBlocked()) {</span>
+<span class="nc" id="L73">            ipInfo.resetFailures();</span>
+        }
+<span class="nc" id="L75">    }</span>
+
+    /**
+     * Check if IP is currently blocked.
+     */
+    public boolean isBlocked(String ip) {
+<span class="nc" id="L81">        AttemptInfo info = attempts.get(normalizeKey(ip));</span>
+<span class="nc bnc" id="L82" title="All 2 branches missed.">        if (info == null) return false;</span>
+
+<span class="nc bnc" id="L84" title="All 2 branches missed.">        if (info.isCurrentlyBlocked()) {</span>
+<span class="nc" id="L85">            return true;</span>
+        }
+
+        // Block expired, reset
+<span class="nc bnc" id="L89" title="All 2 branches missed.">        if (info.wasBlocked()) {</span>
+<span class="nc" id="L90">            info.unblock();</span>
+        }
+<span class="nc" id="L92">        return false;</span>
+    }
+
+    /**
+     * Check if CAPTCHA is required based on failed attempt count.
+     */
+    public boolean isCaptchaRequired(String ip, String email) {
+        // Check by IP
+<span class="nc" id="L100">        AttemptInfo ipInfo = attempts.get(normalizeKey(ip));</span>
+<span class="nc bnc" id="L101" title="All 4 branches missed.">        if (ipInfo != null &amp;&amp; ipInfo.getFailCount() &gt;= CAPTCHA_THRESHOLD) {</span>
+<span class="nc" id="L102">            return true;</span>
+        }
+
+        // Check by IP:email combo
+<span class="nc bnc" id="L106" title="All 2 branches missed.">        if (email != null) {</span>
+<span class="nc" id="L107">            AttemptInfo comboInfo = attempts.get(normalizeKey(ip + &quot;:&quot; + email));</span>
+<span class="nc bnc" id="L108" title="All 4 branches missed.">            if (comboInfo != null &amp;&amp; comboInfo.getFailCount() &gt;= CAPTCHA_THRESHOLD) {</span>
+<span class="nc" id="L109">                return true;</span>
+            }
+        }
+
+<span class="nc" id="L113">        return false;</span>
+    }
+
+    /**
+     * Get the number of failed attempts for an IP.
+     */
+    public int getFailedAttempts(String ip) {
+<span class="nc" id="L120">        AttemptInfo info = attempts.get(normalizeKey(ip));</span>
+<span class="nc bnc" id="L121" title="All 2 branches missed.">        return info != null ? info.getFailCount() : 0;</span>
+    }
+
+    /**
+     * Get remaining block time in seconds for an IP.
+     */
+    public long getRemainingBlockSeconds(String ip) {
+<span class="nc" id="L128">        AttemptInfo info = attempts.get(normalizeKey(ip));</span>
+<span class="nc bnc" id="L129" title="All 4 branches missed.">        if (info == null || !info.isCurrentlyBlocked()) return 0;</span>
+<span class="nc" id="L130">        long remaining = (info.getBlockedUntil() - Instant.now().toEpochMilli()) / 1000;</span>
+<span class="nc" id="L131">        return Math.max(0, remaining);</span>
+    }
+
+    /**
+     * Clean expired entries every 5 minutes to prevent memory leaks.
+     */
+    @Scheduled(fixedRate = 300000)
+    public void cleanExpiredEntries() {
+<span class="nc" id="L139">        long now = Instant.now().toEpochMilli();</span>
+<span class="nc" id="L140">        attempts.entrySet().removeIf(entry -&gt; {</span>
+<span class="nc" id="L141">            AttemptInfo info = entry.getValue();</span>
+<span class="nc bnc" id="L142" title="All 4 branches missed.">            return (now - info.getLastAttemptTime()) &gt; ENTRY_TTL_MS &amp;&amp; !info.isCurrentlyBlocked();</span>
+        });
+<span class="nc" id="L144">    }</span>
+
+    private String normalizeKey(String key) {
+<span class="nc bnc" id="L147" title="All 2 branches missed.">        return key == null ? &quot;unknown&quot; : key.trim().toLowerCase();</span>
+    }
+
+    // ─── Inner class ───────────────────────────────────────────────
+
+<span class="nc" id="L152">    private static class AttemptInfo {</span>
+<span class="nc" id="L153">        private int failCount = 0;</span>
+<span class="nc" id="L154">        private long lastAttemptTime = Instant.now().toEpochMilli();</span>
+<span class="nc" id="L155">        private long blockedUntil = 0;</span>
+
+        void incrementFailure() {
+<span class="nc" id="L158">            this.failCount++;</span>
+<span class="nc" id="L159">            this.lastAttemptTime = Instant.now().toEpochMilli();</span>
+<span class="nc" id="L160">        }</span>
+
+        void resetFailures() {
+<span class="nc" id="L163">            this.failCount = 0;</span>
+<span class="nc" id="L164">        }</span>
+
+        void block(long durationMs) {
+<span class="nc" id="L167">            this.blockedUntil = Instant.now().toEpochMilli() + durationMs;</span>
+<span class="nc" id="L168">        }</span>
+
+        void unblock() {
+<span class="nc" id="L171">            this.blockedUntil = 0;</span>
+<span class="nc" id="L172">            this.failCount = 0;</span>
+<span class="nc" id="L173">        }</span>
+
+        boolean isCurrentlyBlocked() {
+<span class="nc bnc" id="L176" title="All 4 branches missed.">            return blockedUntil &gt; 0 &amp;&amp; Instant.now().toEpochMilli() &lt; blockedUntil;</span>
+        }
+
+        boolean wasBlocked() {
+<span class="nc bnc" id="L180" title="All 2 branches missed.">            return blockedUntil &gt; 0;</span>
+        }
+
+        int getFailCount() {
+<span class="nc" id="L184">            return failCount;</span>
+        }
+
+        long getLastAttemptTime() {
+<span class="nc" id="L188">            return lastAttemptTime;</span>
+        }
+
+        long getBlockedUntil() {
+<span class="nc" id="L192">            return blockedUntil;</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

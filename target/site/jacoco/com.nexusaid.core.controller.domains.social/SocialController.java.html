@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="fr"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SocialController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core-service</a> &gt; <a href="index.source.html" class="el_package">com.nexusaid.core.controller.domains.social</a> &gt; <span class="el_source">SocialController.java</span></div><h1>SocialController.java</h1><pre class="source lang-java linenums">package com.nexusaid.core.controller.domains.social;
+
+import com.nexusaid.core.entity.domains.social.Family;
+import com.nexusaid.core.entity.domains.social.SocialAction;
+import com.nexusaid.core.entity.domains.social.VulnerabilityScore;
+import com.nexusaid.core.security.JwtService;
+import com.nexusaid.core.service.domains.social.SocialService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+@RestController
+@RequestMapping(&quot;/api/v1/social&quot;)
+@RequiredArgsConstructor
+public class SocialController {
+
+    private final SocialService socialService;
+    private final JwtService jwtService;
+
+    // ===== Families =====
+
+    @PostMapping(&quot;/families&quot;)
+    @PreAuthorize(&quot;hasAnyRole('PRESIDENT', 'RESP_ACTION_SOCIALE')&quot;)
+    public ResponseEntity&lt;Family&gt; registerFamily(@RequestBody Family family) {
+<span class="fc" id="L30">        return ResponseEntity.ok(socialService.registerFamily(family));</span>
+    }
+
+    @GetMapping(&quot;/families&quot;)
+    @PreAuthorize(&quot;hasAnyRole('PRESIDENT', 'RESP_ACTION_SOCIALE')&quot;)
+    public ResponseEntity&lt;List&lt;Family&gt;&gt; getAllFamilies() {
+<span class="nc" id="L36">        return ResponseEntity.ok(socialService.getAllFamilies());</span>
+    }
+
+    @GetMapping(&quot;/families/{familyId}&quot;)
+    @PreAuthorize(&quot;hasAnyRole('PRESIDENT', 'RESP_ACTION_SOCIALE')&quot;)
+    public ResponseEntity&lt;Family&gt; getFamilyById(@PathVariable UUID familyId) {
+<span class="fc" id="L42">        return socialService.getFamilyById(familyId)</span>
+<span class="fc" id="L43">                .map(ResponseEntity::ok)</span>
+<span class="fc" id="L44">                .orElse(ResponseEntity.notFound().build());</span>
+    }
+
+    @PutMapping(&quot;/families/{familyId}&quot;)
+    @PreAuthorize(&quot;hasAnyRole('PRESIDENT', 'RESP_ACTION_SOCIALE')&quot;)
+    public ResponseEntity&lt;Family&gt; updateFamily(
+            @PathVariable UUID familyId,
+            @RequestBody Family family) {
+<span class="nc" id="L52">        return ResponseEntity.ok(socialService.updateFamily(familyId, family));</span>
+    }
+
+    // ===== Vulnerability Scores =====
+
+    @GetMapping(&quot;/families/{familyId}/score&quot;)
+    @PreAuthorize(&quot;hasAnyRole('PRESIDENT', 'RESP_ACTION_SOCIALE')&quot;)
+    public ResponseEntity&lt;VulnerabilityScore&gt; getLatestScore(@PathVariable UUID familyId) {
+<span class="nc" id="L60">        return socialService.getLatestScoreForFamily(familyId)</span>
+<span class="nc" id="L61">                .map(ResponseEntity::ok)</span>
+<span class="nc" id="L62">                .orElse(ResponseEntity.notFound().build());</span>
+    }
+
+    @GetMapping(&quot;/families/{familyId}/score/history&quot;)
+    @PreAuthorize(&quot;hasAnyRole('PRESIDENT', 'RESP_ACTION_SOCIALE')&quot;)
+    public ResponseEntity&lt;List&lt;VulnerabilityScore&gt;&gt; getScoreHistory(@PathVariable UUID familyId) {
+<span class="fc" id="L68">        return ResponseEntity.ok(socialService.getScoreHistory(familyId));</span>
+    }
+
+    @PostMapping(&quot;/families/{familyId}/score&quot;)
+    @PreAuthorize(&quot;hasAnyRole('PRESIDENT', 'RESP_ACTION_SOCIALE')&quot;)
+    public ResponseEntity&lt;VulnerabilityScore&gt; updateScore(
+            @PathVariable UUID familyId,
+            @RequestBody VulnerabilityScore score) {
+<span class="nc" id="L76">        return ResponseEntity.ok(socialService.calculateAndSaveScore(familyId, score));</span>
+    }
+
+    // ===== Social Actions =====
+
+    @PostMapping(&quot;/actions&quot;)
+    @PreAuthorize(&quot;hasAnyRole('PRESIDENT', 'RESP_ACTION_SOCIALE', 'VOLUNTEER')&quot;)
+    public ResponseEntity&lt;SocialAction&gt; performAction(
+            @RequestHeader(&quot;Authorization&quot;) String token,
+            @RequestBody SocialAction action) {
+
+<span class="nc" id="L87">        UUID volunteerId = jwtService.extractUserId(token.substring(7));</span>
+<span class="nc" id="L88">        return ResponseEntity.ok(socialService.performAction(action, volunteerId));</span>
+    }
+
+    @GetMapping(&quot;/families/{familyId}/actions&quot;)
+    @PreAuthorize(&quot;hasAnyRole('PRESIDENT', 'RESP_ACTION_SOCIALE')&quot;)
+    public ResponseEntity&lt;List&lt;SocialAction&gt;&gt; getActionsForFamily(@PathVariable UUID familyId) {
+<span class="nc" id="L94">        return ResponseEntity.ok(socialService.getActionsForFamily(familyId));</span>
+    }
+
+    @GetMapping(&quot;/actions&quot;)
+    @PreAuthorize(&quot;hasAnyRole('PRESIDENT', 'RESP_ACTION_SOCIALE')&quot;)
+    public ResponseEntity&lt;List&lt;SocialAction&gt;&gt; getAllActions() {
+<span class="nc" id="L100">        return ResponseEntity.ok(socialService.getAllActions());</span>
+    }
+
+    // ===== Analytics =====
+
+    @GetMapping(&quot;/analytics&quot;)
+    @PreAuthorize(&quot;hasAnyRole('PRESIDENT', 'RESP_ACTION_SOCIALE')&quot;)
+    public ResponseEntity&lt;Map&lt;String, Object&gt;&gt; getAnalytics() {
+<span class="fc" id="L108">        return ResponseEntity.ok(socialService.getAnalytics());</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

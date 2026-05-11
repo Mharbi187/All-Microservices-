@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="fr"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SecurityAuditLog.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core-service</a> &gt; <a href="index.source.html" class="el_package">com.nexusaid.core.entity</a> &gt; <span class="el_source">SecurityAuditLog.java</span></div><h1>SecurityAuditLog.java</h1><pre class="source lang-java linenums">package com.nexusaid.core.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.time.Instant;
+import java.util.UUID;
+
+/**
+ * Security audit log entity.
+ * Records all security-relevant events for monitoring, compliance, and threat detection.
+ */
+@Entity
+@Table(name = &quot;security_audit_logs&quot;, indexes = {
+        @Index(name = &quot;idx_audit_event_type&quot;, columnList = &quot;event_type&quot;),
+        @Index(name = &quot;idx_audit_timestamp&quot;, columnList = &quot;timestamp&quot;),
+        @Index(name = &quot;idx_audit_ip&quot;, columnList = &quot;ip_address&quot;),
+        @Index(name = &quot;idx_audit_user_id&quot;, columnList = &quot;user_id&quot;)
+})
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class SecurityAuditLog {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = &quot;event_type&quot;, nullable = false, length = 50)
+    private SecurityEventType eventType;
+
+    @Column(name = &quot;user_id&quot;)
+    private UUID userId;
+
+    @Column(length = 255)
+    private String email;
+
+    @Column(name = &quot;ip_address&quot;, length = 45)
+    private String ipAddress;
+
+    @Column(name = &quot;user_agent&quot;, length = 512)
+    private String userAgent;
+
+    @Column(length = 1024)
+    private String details;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean success = false;
+
+    @Column(nullable = false, updatable = false)
+    @Builder.Default
+    private Instant timestamp = Instant.now();
+
+    @Column(name = &quot;risk_score&quot;)
+    @Builder.Default
+    private int riskScore = 0;
+
+    // ─── Event Types ────────────────────────────────────────────────
+
+<span class="nc" id="L64">    public enum SecurityEventType {</span>
+<span class="nc" id="L65">        LOGIN_SUCCESS,</span>
+<span class="nc" id="L66">        LOGIN_FAILURE,</span>
+<span class="nc" id="L67">        REGISTER,</span>
+<span class="nc" id="L68">        TOKEN_REFRESH,</span>
+<span class="nc" id="L69">        LOGOUT,</span>
+<span class="nc" id="L70">        BLOCKED_IP,</span>
+<span class="nc" id="L71">        CAPTCHA_TRIGGERED,</span>
+<span class="nc" id="L72">        CAPTCHA_FAILED,</span>
+<span class="nc" id="L73">        SUSPICIOUS_ACTIVITY,</span>
+<span class="nc" id="L74">        PASSWORD_CHANGE,</span>
+<span class="nc" id="L75">        ACCOUNT_LOCKED,</span>
+<span class="nc" id="L76">        BRUTE_FORCE_DETECTED,</span>
+<span class="nc" id="L77">        ANOMALY_DETECTED</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

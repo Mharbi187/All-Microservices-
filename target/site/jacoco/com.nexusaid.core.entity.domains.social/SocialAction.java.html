@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="fr"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SocialAction.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core-service</a> &gt; <a href="index.source.html" class="el_package">com.nexusaid.core.entity.domains.social</a> &gt; <span class="el_source">SocialAction.java</span></div><h1>SocialAction.java</h1><pre class="source lang-java linenums">package com.nexusaid.core.entity.domains.social;
+
+import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
+import jakarta.persistence.*;
+import lombok.*;
+import org.hibernate.annotations.Type;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+@Entity
+@Table(name = &quot;social_actions&quot;)
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class SocialAction {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    private UUID id;
+
+    @Column(name = &quot;family_id&quot;, nullable = false)
+    private UUID familyId;
+
+    @Column(name = &quot;action_type&quot;, nullable = false)
+    private String actionType; // FOOD_DELIVERY, MEDICAL_AID, FINANCIAL
+
+    @Column(name = &quot;event_context&quot;)
+    private String eventContext; // e.g., Ramadan 2026, Winter Rescue
+
+    @Type(JsonBinaryType.class)
+    @Column(name = &quot;aid_provided&quot;, columnDefinition = &quot;jsonb&quot;)
+    private Map&lt;String, Object&gt; aidProvided;
+
+    private int quantity;
+
+    @Column(name = &quot;performed_by&quot;, nullable = false)
+    private UUID performedBy;
+
+    @Column(name = &quot;performed_at&quot;)
+    private LocalDateTime performedAt;
+
+    @Type(JsonBinaryType.class)
+    @Column(name = &quot;photos_urls&quot;, columnDefinition = &quot;jsonb&quot;)
+    private List&lt;String&gt; photosUrls;
+
+    @Column(length = 1000)
+    private String notes;
+
+    @PrePersist
+    protected void onCreate() {
+<span class="nc" id="L56">        performedAt = LocalDateTime.now();</span>
+<span class="nc" id="L57">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

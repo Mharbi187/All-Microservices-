@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="fr"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>VffController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core-service</a> &gt; <a href="index.source.html" class="el_package">com.nexusaid.core.controller.domains.vff</a> &gt; <span class="el_source">VffController.java</span></div><h1>VffController.java</h1><pre class="source lang-java linenums">package com.nexusaid.core.controller.domains.vff;
+
+import com.nexusaid.core.entity.domains.vff.ProtectionCampaign;
+import com.nexusaid.core.entity.domains.vff.VictimCase;
+import com.nexusaid.core.entity.domains.vff.VictimSupportPath;
+import com.nexusaid.core.security.JwtService;
+import com.nexusaid.core.service.domains.vff.VffService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.UUID;
+
+@RestController
+@RequestMapping(&quot;/api/v1/vff&quot;)
+@RequiredArgsConstructor
+public class VffController {
+
+    private final VffService vffService;
+    private final JwtService jwtService;
+
+    // ----- Victim Cases -----
+
+    @PostMapping(&quot;/cases&quot;)
+    @PreAuthorize(&quot;hasAnyRole('PRESIDENT', 'RESP_VFF')&quot;)
+    public ResponseEntity&lt;VictimCase&gt; reportCase(
+            @RequestHeader(&quot;Authorization&quot;) String token,
+            @RequestBody VictimCase victimCase) {
+        
+<span class="nc" id="L32">        UUID volunteerId = jwtService.extractUserId(token.substring(7));</span>
+<span class="nc" id="L33">        return ResponseEntity.ok(vffService.reportVictimCase(victimCase, volunteerId));</span>
+    }
+
+    @GetMapping(&quot;/cases&quot;)
+    @PreAuthorize(&quot;hasAnyRole('PRESIDENT', 'RESP_VFF')&quot;)
+    public ResponseEntity&lt;List&lt;VictimCase&gt;&gt; getAllCases() {
+<span class="nc" id="L39">        return ResponseEntity.ok(vffService.getAllCases());</span>
+    }
+
+    // ----- Support Paths -----
+
+    @PostMapping(&quot;/support-paths/{caseId}&quot;)
+    @PreAuthorize(&quot;hasAnyRole('PRESIDENT', 'RESP_VFF')&quot;)
+    public ResponseEntity&lt;VictimSupportPath&gt; createSupportPath(
+            @PathVariable UUID caseId,
+            @RequestBody VictimSupportPath supportPath) {
+<span class="nc" id="L49">        return ResponseEntity.ok(vffService.initializeSupportPath(caseId, supportPath));</span>
+    }
+
+    @PutMapping(&quot;/support-paths/{caseId}&quot;)
+    @PreAuthorize(&quot;hasAnyRole('PRESIDENT', 'RESP_VFF')&quot;)
+    public ResponseEntity&lt;VictimSupportPath&gt; updateSupportPath(
+            @PathVariable UUID caseId,
+            @RequestBody VictimSupportPath updates) {
+<span class="nc" id="L57">        return ResponseEntity.ok(vffService.updateSupportPath(caseId, updates));</span>
+    }
+
+    @GetMapping(&quot;/support-paths/{caseId}&quot;)
+    @PreAuthorize(&quot;hasAnyRole('PRESIDENT', 'RESP_VFF')&quot;)
+    public ResponseEntity&lt;VictimSupportPath&gt; getSupportPath(@PathVariable UUID caseId) {
+<span class="nc" id="L63">        return vffService.getSupportPath(caseId)</span>
+<span class="nc" id="L64">                .map(ResponseEntity::ok)</span>
+<span class="nc" id="L65">                .orElse(ResponseEntity.notFound().build());</span>
+    }
+
+    // ----- Protection Campaigns -----
+
+    @PostMapping(&quot;/campaigns&quot;)
+    @PreAuthorize(&quot;hasAnyRole('PRESIDENT', 'RESP_VFF')&quot;)
+    public ResponseEntity&lt;ProtectionCampaign&gt; launchCampaign(@RequestBody ProtectionCampaign campaign) {
+<span class="nc" id="L73">        return ResponseEntity.ok(vffService.launchCampaign(campaign));</span>
+    }
+
+    @GetMapping(&quot;/campaigns&quot;)
+    @PreAuthorize(&quot;hasAnyRole('PRESIDENT', 'RESP_VFF')&quot;)
+    public ResponseEntity&lt;List&lt;ProtectionCampaign&gt;&gt; getAllCampaigns() {
+<span class="nc" id="L79">        return ResponseEntity.ok(vffService.getAllCampaigns());</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="fr"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AuthController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core-service</a> &gt; <a href="index.source.html" class="el_package">com.nexusaid.core.controller</a> &gt; <span class="el_source">AuthController.java</span></div><h1>AuthController.java</h1><pre class="source lang-java linenums">package com.nexusaid.core.controller;
+
+import com.nexusaid.core.dto.AuthDtos.AuthResponse;
+import com.nexusaid.core.dto.AuthDtos.LoginRequest;
+import com.nexusaid.core.dto.AuthDtos.RefreshTokenRequest;
+import com.nexusaid.core.dto.AuthDtos.RegisterRequest;
+import com.nexusaid.core.service.AuthService;
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
+
+@RestController
+@RequestMapping(&quot;/api/v1/auth&quot;)
+@RequiredArgsConstructor
+public class AuthController {
+
+    private final AuthService authService;
+
+    @PostMapping(&quot;/register&quot;)
+    public ResponseEntity&lt;AuthResponse&gt; register(@RequestBody RegisterRequest request,
+                                                  HttpServletRequest httpRequest) {
+<span class="fc" id="L25">        String ip = extractClientIp(httpRequest);</span>
+<span class="fc" id="L26">        String userAgent = httpRequest.getHeader(&quot;User-Agent&quot;);</span>
+<span class="fc" id="L27">        return ResponseEntity.ok(authService.register(request, ip, userAgent));</span>
+    }
+
+    @PostMapping(&quot;/login&quot;)
+    public ResponseEntity&lt;AuthResponse&gt; login(@RequestBody LoginRequest request,
+                                               HttpServletRequest httpRequest) {
+<span class="fc" id="L33">        String ip = extractClientIp(httpRequest);</span>
+<span class="fc" id="L34">        String userAgent = httpRequest.getHeader(&quot;User-Agent&quot;);</span>
+<span class="fc" id="L35">        AuthResponse response = authService.login(request, ip, userAgent);</span>
+
+        // If blocked or CAPTCHA required without token, return 200 with status
+        // (Frontend reads captchaRequired / blockRemainingSeconds to adapt UI)
+<span class="fc" id="L39">        return ResponseEntity.ok(response);</span>
+    }
+
+    @PostMapping(&quot;/refresh&quot;)
+    public ResponseEntity&lt;AuthResponse&gt; refreshToken(@RequestBody RefreshTokenRequest request,
+                                                      HttpServletRequest httpRequest) {
+<span class="nc" id="L45">        String ip = extractClientIp(httpRequest);</span>
+        try {
+<span class="nc" id="L47">            AuthResponse response = authService.refreshAccessToken(request.getRefreshToken(), ip);</span>
+<span class="nc" id="L48">            return ResponseEntity.ok(response);</span>
+<span class="nc" id="L49">        } catch (RuntimeException e) {</span>
+<span class="nc" id="L50">            return ResponseEntity.status(401)</span>
+<span class="nc" id="L51">                    .body(AuthResponse.builder()</span>
+<span class="nc" id="L52">                            .message(e.getMessage())</span>
+<span class="nc" id="L53">                            .build());</span>
+        }
+    }
+
+    @PostMapping(&quot;/logout&quot;)
+    public ResponseEntity&lt;Map&lt;String, String&gt;&gt; logout(HttpServletRequest httpRequest) {
+<span class="nc" id="L59">        String ip = extractClientIp(httpRequest);</span>
+        try {
+<span class="nc" id="L61">            authService.logout(ip);</span>
+<span class="nc" id="L62">            return ResponseEntity.ok(Map.of(&quot;message&quot;, &quot;Logged out successfully&quot;));</span>
+<span class="nc" id="L63">        } catch (Exception e) {</span>
+<span class="nc" id="L64">            return ResponseEntity.ok(Map.of(&quot;message&quot;, &quot;Logged out&quot;));</span>
+        }
+    }
+
+    /**
+     * Extract client IP from request, considering proxy headers.
+     */
+    private String extractClientIp(HttpServletRequest request) {
+<span class="fc" id="L72">        String xForwardedFor = request.getHeader(&quot;X-Forwarded-For&quot;);</span>
+<span class="pc bpc" id="L73" title="3 of 4 branches missed.">        if (xForwardedFor != null &amp;&amp; !xForwardedFor.isBlank()) {</span>
+<span class="nc" id="L74">            return xForwardedFor.split(&quot;,&quot;)[0].trim();</span>
+        }
+<span class="fc" id="L76">        String xRealIp = request.getHeader(&quot;X-Real-IP&quot;);</span>
+<span class="pc bpc" id="L77" title="3 of 4 branches missed.">        if (xRealIp != null &amp;&amp; !xRealIp.isBlank()) {</span>
+<span class="nc" id="L78">            return xRealIp;</span>
+        }
+<span class="fc" id="L80">        return request.getRemoteAddr();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

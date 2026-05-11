@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="fr"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CaptchaService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core-service</a> &gt; <a href="index.source.html" class="el_package">com.nexusaid.core.service</a> &gt; <span class="el_source">CaptchaService.java</span></div><h1>CaptchaService.java</h1><pre class="source lang-java linenums">package com.nexusaid.core.service;
+
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.*;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+
+import java.util.Map;
+
+/**
+ * Google reCAPTCHA Enterprise verification service.
+ * Validates CAPTCHA tokens sent from the frontend to prevent
+ * automated bot attacks on login and registration endpoints.
+ */
+<span class="nc" id="L16">@Slf4j</span>
+@Service
+public class CaptchaService {
+
+    @Value(&quot;${recaptcha.secret-key:}&quot;)
+    private String secretKey;
+
+    @Value(&quot;${recaptcha.site-key:}&quot;)
+    private String siteKey;
+
+    @Value(&quot;${recaptcha.enabled:true}&quot;)
+    private boolean enabled;
+
+    @Value(&quot;${recaptcha.score-threshold:0.5}&quot;)
+    private double scoreThreshold;
+
+    private static final String VERIFY_URL = &quot;https://www.google.com/recaptcha/api/siteverify&quot;;
+
+    private final RestTemplate restTemplate;
+
+<span class="nc" id="L36">    public CaptchaService(RestTemplate restTemplate) {</span>
+<span class="nc" id="L37">        this.restTemplate = restTemplate;</span>
+<span class="nc" id="L38">    }</span>
+
+    /**
+     * Verify a reCAPTCHA token from the frontend.
+     *
+     * @param token          The reCAPTCHA response token from the client
+     * @param expectedAction The expected action (LOGIN, REGISTER)
+     * @return true if the token is valid
+     */
+    @SuppressWarnings(&quot;unchecked&quot;)
+    public boolean verify(String token, String expectedAction) {
+<span class="nc bnc" id="L49" title="All 2 branches missed.">        if (!enabled) {</span>
+<span class="nc" id="L50">            log.debug(&quot;reCAPTCHA verification is disabled — skipping&quot;);</span>
+<span class="nc" id="L51">            return true;</span>
+        }
+
+<span class="nc bnc" id="L54" title="All 4 branches missed.">        if (token == null || token.isBlank()) {</span>
+<span class="nc" id="L55">            log.warn(&quot;CAPTCHA token is null or blank&quot;);</span>
+<span class="nc" id="L56">            return false;</span>
+        }
+
+<span class="nc bnc" id="L59" title="All 4 branches missed.">        if (secretKey == null || secretKey.isBlank()) {</span>
+<span class="nc" id="L60">            log.warn(&quot;reCAPTCHA secret key is not configured — allowing request&quot;);</span>
+<span class="nc" id="L61">            return true;</span>
+        }
+
+        try {
+<span class="nc" id="L65">            String url = VERIFY_URL + &quot;?secret=&quot; + secretKey + &quot;&amp;response=&quot; + token;</span>
+<span class="nc" id="L66">            ResponseEntity&lt;Map&gt; response = restTemplate.postForEntity(url, null, Map.class);</span>
+
+<span class="nc bnc" id="L68" title="All 4 branches missed.">            if (response.getStatusCode() != HttpStatus.OK || response.getBody() == null) {</span>
+<span class="nc" id="L69">                log.error(&quot;reCAPTCHA verification failed: HTTP {}&quot;, response.getStatusCode());</span>
+<span class="nc" id="L70">                return false;</span>
+            }
+
+<span class="nc" id="L73">            Map&lt;String, Object&gt; body = response.getBody();</span>
+<span class="nc" id="L74">            boolean success = Boolean.TRUE.equals(body.get(&quot;success&quot;));</span>
+
+<span class="nc bnc" id="L76" title="All 2 branches missed.">            if (!success) {</span>
+<span class="nc" id="L77">                log.warn(&quot;reCAPTCHA verification failed: {}&quot;, body.get(&quot;error-codes&quot;));</span>
+<span class="nc" id="L78">                return false;</span>
+            }
+
+            // For reCAPTCHA v3/Enterprise, check score
+<span class="nc bnc" id="L82" title="All 2 branches missed.">            if (body.containsKey(&quot;score&quot;)) {</span>
+<span class="nc" id="L83">                double score = ((Number) body.get(&quot;score&quot;)).doubleValue();</span>
+<span class="nc bnc" id="L84" title="All 2 branches missed.">                if (score &lt; scoreThreshold) {</span>
+<span class="nc" id="L85">                    log.warn(&quot;reCAPTCHA score too low: {} (threshold: {})&quot;, score, scoreThreshold);</span>
+<span class="nc" id="L86">                    return false;</span>
+                }
+            }
+
+            // Verify action matches
+<span class="nc bnc" id="L91" title="All 4 branches missed.">            if (expectedAction != null &amp;&amp; body.containsKey(&quot;action&quot;)) {</span>
+<span class="nc" id="L92">                String action = (String) body.get(&quot;action&quot;);</span>
+<span class="nc bnc" id="L93" title="All 2 branches missed.">                if (!expectedAction.equalsIgnoreCase(action)) {</span>
+<span class="nc" id="L94">                    log.warn(&quot;reCAPTCHA action mismatch: expected={}, got={}&quot;, expectedAction, action);</span>
+<span class="nc" id="L95">                    return false;</span>
+                }
+            }
+
+<span class="nc" id="L99">            log.info(&quot;reCAPTCHA verification successful for action: {}&quot;, expectedAction);</span>
+<span class="nc" id="L100">            return true;</span>
+
+<span class="nc" id="L102">        } catch (Exception e) {</span>
+<span class="nc" id="L103">            log.error(&quot;reCAPTCHA verification error: {}&quot;, e.getMessage(), e);</span>
+            // Fail open in case of network error to avoid blocking legitimate users
+<span class="nc" id="L105">            return true;</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

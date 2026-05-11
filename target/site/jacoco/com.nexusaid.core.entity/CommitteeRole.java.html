@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="fr"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CommitteeRole.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core-service</a> &gt; <a href="index.source.html" class="el_package">com.nexusaid.core.entity</a> &gt; <span class="el_source">CommitteeRole.java</span></div><h1>CommitteeRole.java</h1><pre class="source lang-java linenums">package com.nexusaid.core.entity;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.nexusaid.core.entity.enums.CommitteeRoleStatus;
+import com.nexusaid.core.entity.enums.RoleTitle;
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+/**
+ * Rôle d'un volontaire au sein d'un comité.
+ * Conformément aux statuts CRT : mandat quadriennal (4 ans),
+ * élection démocratique par l'assemblée des bénévoles.
+ */
+@Entity
+@Table(name = &quot;committee_roles&quot;)
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+public class CommitteeRole {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private RoleTitle title;
+
+    @ManyToOne
+    @JoinColumn(name = &quot;committee_id&quot;, nullable = false)
+    @JsonIgnore
+    private Committee committee;
+
+    @ManyToOne
+    @JoinColumn(name = &quot;volunteer_id&quot;, nullable = false)
+    private Volunteer volunteer;
+
+    @Column(name = &quot;assigned_at&quot;)
+    private LocalDateTime assignedAt = LocalDateTime.now();
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private CommitteeRoleStatus status = CommitteeRoleStatus.APPROVED;
+
+    @Column(name = &quot;proposed_by&quot;)
+    private UUID proposedBy;
+
+    @Column(name = &quot;approved_by&quot;)
+    private UUID approvedBy;
+
+    @Column(name = &quot;proposed_at&quot;)
+    private LocalDateTime proposedAt;
+
+    @Column(name = &quot;approved_at&quot;)
+    private LocalDateTime approvedAt;
+
+    @Column(columnDefinition = &quot;TEXT&quot;)
+    private String reason;
+
+    /** Fin du mandat = assignedAt + 4 ans (calculé automatiquement) */
+    @Column(name = &quot;mandate_end_date&quot;)
+    private LocalDate mandateEndDate;
+
+    /** Le mandat est-il expiré ? */
+    public boolean isMandateExpired() {
+<span class="nc bnc" id="L74" title="All 4 branches missed.">        return mandateEndDate != null &amp;&amp; LocalDate.now().isAfter(mandateEndDate);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

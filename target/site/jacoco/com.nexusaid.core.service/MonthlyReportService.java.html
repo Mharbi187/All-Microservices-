@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="fr"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MonthlyReportService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core-service</a> &gt; <a href="index.source.html" class="el_package">com.nexusaid.core.service</a> &gt; <span class="el_source">MonthlyReportService.java</span></div><h1>MonthlyReportService.java</h1><pre class="source lang-java linenums">package com.nexusaid.core.service;
+
+import com.nexusaid.core.entity.MonthlyReport;
+import com.nexusaid.core.entity.enums.MonthlyReportStatus;
+import com.nexusaid.core.repository.MonthlyReportRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+public class MonthlyReportService {
+
+    private final MonthlyReportRepository reportRepository;
+
+    public List&lt;MonthlyReport&gt; getReportsByCommittee(UUID committeeId) {
+<span class="nc" id="L21">        return reportRepository.findByCommitteeId(committeeId);</span>
+    }
+
+    public List&lt;MonthlyReport&gt; getReportsByResponsible(UUID responsibleId) {
+<span class="nc" id="L25">        return reportRepository.findByResponsibleId(responsibleId);</span>
+    }
+
+    @Transactional
+    public MonthlyReport createDraft(MonthlyReport request, UUID responsibleId) {
+<span class="nc" id="L30">        request.setResponsibleId(responsibleId);</span>
+<span class="nc" id="L31">        request.setStatus(MonthlyReportStatus.DRAFT);</span>
+<span class="nc" id="L32">        return reportRepository.save(request);</span>
+    }
+
+    @Transactional
+    public MonthlyReport validateReport(UUID reportId, UUID validatorId) {
+<span class="nc" id="L37">        MonthlyReport report = reportRepository.findById(reportId)</span>
+<span class="nc" id="L38">                .orElseThrow(() -&gt; new RuntimeException(&quot;Report not found&quot;));</span>
+
+<span class="nc bnc" id="L40" title="All 2 branches missed.">        if (report.getStatus() != MonthlyReportStatus.DRAFT) {</span>
+<span class="nc" id="L41">            throw new RuntimeException(&quot;Only DRAFT reports can be validated&quot;);</span>
+        }
+
+<span class="nc" id="L44">        report.setStatus(MonthlyReportStatus.VALIDATED);</span>
+<span class="nc" id="L45">        report.setValidatedBy(validatorId);</span>
+<span class="nc" id="L46">        report.setValidatedAt(LocalDateTime.now());</span>
+<span class="nc" id="L47">        return reportRepository.save(report);</span>
+    }
+
+    @Transactional
+    public MonthlyReport finalizeReport(UUID reportId, UUID finalizerId) {
+<span class="nc" id="L52">        MonthlyReport report = reportRepository.findById(reportId)</span>
+<span class="nc" id="L53">                .orElseThrow(() -&gt; new RuntimeException(&quot;Report not found&quot;));</span>
+
+<span class="nc bnc" id="L55" title="All 2 branches missed.">        if (report.getStatus() != MonthlyReportStatus.VALIDATED) {</span>
+<span class="nc" id="L56">            throw new RuntimeException(&quot;Only VALIDATED reports can be finalized&quot;);</span>
+        }
+
+<span class="nc" id="L59">        report.setStatus(MonthlyReportStatus.FINALIZED);</span>
+<span class="nc" id="L60">        report.setFinalizedBy(finalizerId);</span>
+<span class="nc" id="L61">        report.setFinalizedAt(LocalDateTime.now());</span>
+<span class="nc" id="L62">        return reportRepository.save(report);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>
