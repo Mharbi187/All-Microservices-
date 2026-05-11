@@ -41,6 +41,7 @@ public class SecurityConfig {
                                 "/api/v1/auth/**",
                                 "/api/v1/profiles/register",
                                 "/api/v1/onboarding/public/**",
+                                "/api/v1/sync/**",        // M2M: disaster-detection → core-service
                                 "/error",
                                 "/actuator/**"
                         ).permitAll()
