@@ -296,6 +296,8 @@ class ResponseTeam:
 #  TEAM MATCHING SERVICE
 # ============================================================
 
+import time
+
 class TeamMatchingService:
     """Service de matching des équipes avec les besoins"""
     
@@ -303,45 +305,55 @@ class TeamMatchingService:
         self.teams: List[ResponseTeam] = []
         self._sync_with_core_service()
 
-    def _sync_with_core_service(self):
-        core_url = os.getenv("CORE_SERVICE_URL", "http://localhost:8080")
-        try:
-            r = requests.get(f"{core_url}/api/v1/sync/teams", timeout=5)
-            if r.status_code == 200:
-                data = r.json()
-                self.teams = []
-                for t in data:
-                    t_type = TeamType.IDRT
-                    tt_raw = t.get("team_type")
-                    if tt_raw == "NATIONAL": t_type = TeamType.NDRT
-                    elif tt_raw == "REGIONAL": t_type = TeamType.RDRT
-                    
-                    loc_data = t.get("base_location", {})
-                    loc = Location(
-                        latitude=loc_data.get("lat", 36.8),
-                        longitude=loc_data.get("lon", 10.18),
-                        address=loc_data.get("name", "Unknown Base"),
-                        city=loc_data.get("region", "Tunis"),
-                        region=loc_data.get("region", "Tunis")
-                    )
-                    
-                    team = ResponseTeam(
-                        id=t.get("id"),
-                        name=t.get("name"),
-                        code=f"SYNC-{t.get('team_type', 'UNK')}",
-                        team_type=t_type,
-                        status=TeamStatus.AVAILABLE,
-                        capacity=10,
-                        base_location=loc
-                    )
-                    self.teams.append(team)
-                logger.info(f"Successfully synced {len(self.teams)} teams dynamically from Core Service MS1")
-            else:
-                logger.warning("Core Service Sync failed. Falling back to Mock data.")
-                self._load_mock_teams()
-        except Exception as e:
-            logger.error(f"Error fetching real users from MS1: {e}. Injecting Mock Data instead.")
-            self._load_mock_teams()
+    def _sync_with_core_service(self, retries: int = 3, delay: int = 5) -> bool:
+        """Synchronise les équipes depuis le Core Service (MS1) avec retry."""
+        core_url = os.getenv("CORE_SERVICE_URL", "http://core-service:8080")
+        for attempt in range(1, retries + 1):
+            try:
+                r = requests.get(f"{core_url}/api/v1/sync/teams", timeout=5)
+                if r.status_code == 200:
+                    data = r.json()
+                    self.teams = []
+                    for t in data:
+                        t_type = TeamType.IDRT
+                        tt_raw = t.get("team_type")
+                        if tt_raw == "NATIONAL": t_type = TeamType.NDRT
+                        elif tt_raw == "REGIONAL": t_type = TeamType.RDRT
+                        
+                        loc_data = t.get("base_location", {})
+                        loc = Location(
+                            latitude=loc_data.get("lat", 36.8),
+                            longitude=loc_data.get("lon", 10.18),
+                            address=loc_data.get("name", "Unknown Base"),
+                            city=loc_data.get("region", "Tunis"),
+                            region=loc_data.get("region", "Tunis")
+                        )
+                        
+                        team = ResponseTeam(
+                            id=t.get("id"),
+                            name=t.get("name"),
+                            code=f"SYNC-{t.get('team_type', 'UNK')}",
+                            team_type=t_type,
+                            status=TeamStatus.AVAILABLE,
+                            capacity=10,
+                            base_location=loc
+                        )
+                        self.teams.append(team)
+                    logger.info(f"Successfully synced {len(self.teams)} teams from Core Service MS1")
+                    return True
+                else:
+                    logger.warning(f"Core Service returned HTTP {r.status_code} (attempt {attempt}/{retries})")
+            except Exception as e:
+                logger.warning(f"Attempt {attempt}/{retries} — Core Service unreachable: {e}")
+            if attempt < retries:
+                time.sleep(delay)
+        logger.error(f"Core Service MS1 unreachable after {retries} attempts. Falling back to Mock Data.")
+        self._load_mock_teams()
+        return False
+
+    def refresh_from_core_service(self) -> bool:
+        """Rafraîchir les équipes depuis MS1 (peut être appelé via un endpoint API)."""
+        return self._sync_with_core_service()
     
     def _load_mock_teams(self):
         """Charger des équipes de démonstration"""

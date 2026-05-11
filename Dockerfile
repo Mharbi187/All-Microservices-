@@ -4,7 +4,8 @@ FROM python:3.11-slim AS builder
 WORKDIR /app
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir --prefix=/install --timeout=300 --retries=5 -r requirements.txt
+RUN pip install --no-cache-dir --prefix=/install --timeout=300 --retries=5 -r requirements.txt && \
+    pip install --no-cache-dir --prefix=/install supervisor
 
 # ---- Runtime stage ----
 FROM python:3.11-slim
@@ -24,6 +25,7 @@ COPY app.py .
 COPY integrated_dashboard.py .
 COPY advanced_dashboard.py .
 COPY requirements.txt .
+COPY supervisord.conf /etc/supervisord.conf
 
 # Create non-root user and grant runtime write access for daemon outputs
 RUN useradd --create-home appuser \
@@ -38,5 +40,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
     CMD python -c "import requests; requests.get('http://localhost:8000/status')" || exit 1
 
-# Default: run FastAPI
-CMD ["uvicorn", "src.api:app", "--host", "0.0.0.0", "--port", "8000"]
+# Default: run supervisord which manages both the ML daemon and FastAPI
+CMD ["supervisord", "-c", "/etc/supervisord.conf"]
