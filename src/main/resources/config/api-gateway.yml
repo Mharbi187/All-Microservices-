@@ -131,6 +131,11 @@ spring:
           predicates:
             - Path=/api/v1/admin/templates/**
 
+        - id: admin-signatures
+          uri: lb://admin-service
+          predicates:
+            - Path=/api/v1/admin/signatures/**
+
         - id: admin-reports
           uri: lb://admin-service
           predicates:
