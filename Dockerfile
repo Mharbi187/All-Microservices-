@@ -21,9 +21,6 @@ COPY --from=builder /install /usr/local
 # Copy application source
 COPY src/ src/
 COPY data/ data/
-COPY app.py .
-COPY integrated_dashboard.py .
-COPY advanced_dashboard.py .
 COPY requirements.txt .
 COPY supervisord.conf /etc/supervisord.conf
 
