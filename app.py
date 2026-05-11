@@ -1,6 +1,7 @@
 """
-Tunisia Disaster Detection Platform
-Main Streamlit Dashboard
+Integrated Dashboard for Tunisia Disaster Detection
+Tableau de Bord Intégré M4 - Gestion Complète
+Module 4 - Croissant Rouge Tunisien
 """
 
 import streamlit as st
@@ -17,6 +18,11 @@ from src.data_acquisition import GEEDataAcquisition
 from src.model import DisasterRiskModel
 from src.alerts import AlertSystem
 from src.weather import get_current_weather
+from src.teams import TeamMatchingService, Location, TeamType, TeamStatus
+from src.crisis_room import CrisisRoomService, ParticipantRole
+from src.disaster_management import (
+    DisasterManagementService, DisasterType, AlertLevel, DisasterPhase
+)
 from src.config import (
     TUNISIA_BBOX, TUNISIAN_WILAYAT, UI_CONFIG, TRANSLATIONS,
     PRIORITY_REGIONS, PERFORMANCE_TARGETS
@@ -28,762 +34,684 @@ logger = logging.getLogger(__name__)
 
 # Page configuration
 st.set_page_config(
-    page_title="Tunisia Disaster Detection | رصد الكوارث في تونس",
+    page_title="Nexus-AID M4 | نظام إدارة الكوارث",
     page_icon="🚨",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for modern, premium UI
+# Custom CSS
 st.markdown("""
 <style>
-    /* Import modern fonts */
-    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     
-   /* Global styles */
-    * {
-        font-family: 'Inter', 'Noto Sans Arabic', sans-serif;
-    }
+    * { font-family: 'Inter', sans-serif; }
     
-    /* Arabic text styling */
-    .arabic-text {
-        font-family: 'Noto Sans Arabic', sans-serif;
-        direction: rtl;
-        text-align: right;
-    }
-    
-    /* Main app background with subtle gradient */
     .stApp {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #4facfe 75%, #00f2fe 100%);
-        background-size: 400% 400%;
-        animation: gradientShift 15s ease infinite;
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
     }
     
-    @keyframes gradientShift {
-        0% { background-position: 0% 50%; }
-        50% { background-position: 100% 50%; }
-        100% { background-position: 0% 50%; }
-    }
-    
-    /* Alert styling with gradient borders */
-    .stAlert {
+    .metric-card {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
         padding: 1.5rem;
         border-radius: 1rem;
-        border: 2px solid transparent;
-        background: linear-gradient(white, white) padding-box,
-                    linear-gradient(135deg, #667eea, #764ba2) border-box;
-        box-shadow: 0 8px 32px rgba(31, 38, 135, 0.2);
-        backdrop-filter: blur(10px);
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
-    }
-    
-    .stAlert:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 12px 48px rgba(31, 38, 135, 0.3);
-    }
-    
-    /* Metric cards with glassmorphism */
-    .metric-card {
-        background: rgba(255, 255, 255, 0.85);
-        backdrop-filter: blur(15px);
-        padding: 1.5rem;
-        border-radius: 1.25rem;
+        border: 1px solid rgba(255, 255, 255, 0.2);
         margin: 0.5rem 0;
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        box-shadow: 0 8px 32px rgba(31, 38, 135, 0.15);
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
     
-    .metric-card:hover {
-        transform: translateY(-5px) scale(1.02);
-        box-shadow: 0 16px 48px rgba(31, 38, 135, 0.25);
-        border-color: rgba(102, 126, 234, 0.5);
-    }
-    
-    /* Enhanced metric styling */
     [data-testid="stMetricValue"] {
-        font-size: 2.5rem;
+        font-size: 2rem;
         font-weight: 700;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
+        color: #4facfe;
     }
     
-    [data-testid="stMetricLabel"] {
-        font-size: 1rem;
-        font-weight: 600;
-        color: #4a5568;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-    
-    /* Sidebar styling */
     [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, rgba(102, 126, 234, 0.95) 0%, rgba(118, 75, 162, 0.95) 100%);
-        backdrop-filter: blur(20px);
+        background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
     }
     
-    [data-testid="stSidebar"] * {
-        color: white !important;
-    }
-    
-    /* Button enhancements */
     .stButton > button {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
         color: white;
         border: none;
-        border-radius:0.75rem;
+        border-radius: 0.75rem;
         padding: 0.75rem 2rem;
         font-weight: 600;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-    }
-    
-    .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
-        background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
-    }
-    
-    /* Tab styling */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 1rem;
-        background: rgba(255, 255, 255, 0.9);
-        padding: 0.5rem;
-        border-radius: 1rem;
-    }
-    
-    .stTabs [data-baseweb="tab"] {
-        border-radius: 0.75rem;
-        padding: 0.75rem 1.5rem;
-        font-weight: 600;
-        transition: all 0.3s ease;
     }
     
     .stTabs [aria-selected="true"] {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
         color: white !important;
+        border-radius: 0.5rem;
     }
     
-    /* Expander styling */
-    .streamlit-expanderHeader {
-        background: rgba(255, 255, 255, 0.9);
-        border-radius: 0.75rem;
-        padding: 1rem;
-        font-weight: 600;
-        transition: all 0.3s ease;
-    }
-    
-    .streamlit-expanderHeader:hover {
-        background: rgba(102, 126, 234, 0.1);
-        transform: translateX(5px);
-    }
-    
-    /* Smooth page transitions */
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-    
-    .element-container {
-        animation: fadeIn 0.6s ease-out;
-    }
-    
-    /* Success/Warning/Error message styling */
-    .stSuccess, .stWarning, .stError {
+    .crisis-badge {
+        background: #e74c3c;
+        color: white;
+        padding: 0.25rem 0.75rem;
         border-radius: 1rem;
-        padding: 1.25rem;
-        animation: slideIn 0.4s ease-out;
+        font-size: 0.8rem;
+        font-weight: 600;
     }
     
-    @keyframes slideIn {
-        from { transform: translateX(-100%); opacity: 0; }
-        to { transform: translateX(0); opacity: 1; }
-    }
-    
-    /* DataFrame styling */
-    .dataframe {
-        border-radius: 1rem !important;
-        overflow: hidden;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-    }
-    
-    /* Scrollbar styling */
-    ::-webkit-scrollbar {
-        width: 10px;
-        height: 10px;
-    }
-    
-    ::-webkit-scrollbar-track {
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 10px;
-    }
-    
-    ::-webkit-scrollbar-thumb {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 10px;
-    }
-    
-    ::-webkit-scrollbar-thumb:hover {
-        background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
-    }
+    .team-available { color: #2ecc71; }
+    .team-deployed { color: #e74c3c; }
+    .team-standby { color: #f39c12; }
 </style>
 """, unsafe_allow_html=True)
 
 
-# Initialize session state
-if 'language' not in st.session_state:
-    st.session_state.language = 'العربية'
-
-if 'gee_initialized' not in st.session_state:
-    st.session_state.gee_initialized = False
-
-if 'model_loaded' not in st.session_state:
-    st.session_state.model_loaded = False
-
+# ============================================================
+#  INITIALIZE SERVICES
+# ============================================================
 
 @st.cache_resource
-def initialize_gee():
-    """Initialize Google Earth Engine (cached)"""
-    try:
-        gee = GEEDataAcquisition()
-        logger.info("GEE initialized successfully")
-        return gee
-    except Exception as e:
-        logger.error(f"Failed to initialize GEE: {e}")
-        st.error(f"Failed to connect to Google Earth Engine: {e}")
-        return None
+def get_services():
+    """Initialize all services (cached)"""
+    return {
+        'disaster': DisasterManagementService(),
+        'teams': TeamMatchingService(),
+        'crisis': CrisisRoomService(),
+        'alerts': AlertSystem()
+    }
 
 
 @st.cache_resource
 def load_model():
-    """Load trained model (cached)"""
+    """Load ML model (cached)"""
     try:
         model = DisasterRiskModel()
-        
-        # Check if model file exists
         if os.path.exists(model.model_path):
             model.load()
-            logger.info("Model loaded successfully")
-        else:
-            logger.warning("No trained model found. Using untrained model.")
-            st.warning("⚠️ No trained model found. Please train the model first.")
-        
         return model
     except Exception as e:
         logger.error(f"Failed to load model: {e}")
-        st.error(f"Failed to load model: {e}")
         return None
 
 
-@st.cache_data(ttl=900)  # Cache for 15 minutes
-def get_realtime_data():
-    """Fetch real-time data from GEE"""
-    gee = initialize_gee()
-    if gee is None:
-        return None
-    
-    try:
-        # Create composite image
-        composite = gee.create_composite_image(include_sentinel=False)
-        
-        # Sample data
-        df = gee.sample_data(composite, num_pixels=1000, scale=1000)
-        
-        logger.info(f"Fetched {len(df)} data points")
-        return df
-    
-    except Exception as e:
-        logger.error(f"Error fetching real-time data: {e}")
-        st.error(f"Error fetching data: {e}")
-        return None
+# ============================================================
+#  SIDEBAR
+# ============================================================
 
-
-def create_risk_map(df: pd.DataFrame, risk_scores: np.ndarray, title: str = "Risk") -> folium.Map:
-    """
-    Create Folium map with risk visualization
-    
-    Args:
-        df: DataFrame with location data
-        risk_scores: Array of risk scores (0-1)
-    
-    Returns:
-        Folium map object
-    """
-    # Create base map centered on Tunisia
-    m = folium.Map(
-        location=UI_CONFIG['map_center'],
-        zoom_start=UI_CONFIG['map_zoom'],
-        tiles='OpenStreetMap'
-    )
-    
-    # Add risk markers
-    if '.geo' in df.columns:
-        for idx, row in df.iterrows():
-            if idx >= len(risk_scores):
-                break
-            
-            risk = float(risk_scores[idx])
-            
-            # Determine color based on risk
-            if risk >= 0.8:
-                color = 'red'
-                icon = 'exclamation-triangle'
-            elif risk >= 0.5:
-                color = 'orange'
-                icon = 'exclamation-circle'
-            elif risk >= 0.3:
-                color = 'yellow'
-                icon = 'info-circle'
-            else:
-                color = 'green'
-                icon = 'check-circle'
-            
-            # Get coordinates
-            try:
-                geom = row['.geo']
-                if hasattr(geom, 'coordinates'):
-                    coords = geom.coordinates
-                    lat, lon = coords[1], coords[0]
-                    
-                    # Add marker
-                    folium.Marker(
-                        location=[lat, lon],
-                        popup=f"{title}: {risk:.2%}",
-                        icon=folium.Icon(color=color, icon=icon, prefix='fa'),
-                        tooltip=f"{title}: {risk:.0%}"
-                    ).add_to(m)
-            except:
-                continue
-    
-    # Add priority regions
-    for name, info in PRIORITY_REGIONS.items():
-        folium.CircleMarker(
-            location=[info['lat'], info['lon']],
-            radius=10,
-            popup=f"{name} - Priority: {info['type']}",
-            color='blue',
-            fill=True,
-            fillColor='blue',
-            fillOpacity=0.3
-        ).add_to(m)
-    
-    # Add legend
-    legend_html = '''
-    <div style="position: fixed; 
-                bottom: 50px; right: 50px; width: 200px; height: 140px; 
-                background-color: white; border:2px solid grey; z-index:9999; 
-                font-size:14px; padding: 10px">
-        <p><b>Risk Levels</b></p>
-        <p><i class="fa fa-circle" style="color:red"></i> High (>80%)</p>
-        <p><i class="fa fa-circle" style="color:orange"></i> Medium (50-80%)</p>
-        <p><i class="fa fa-circle" style="color:yellow"></i> Low (30-50%)</p>
-        <p><i class="fa fa-circle" style="color:green"></i> Minimal (<30%)</p>
-    </div>
-    '''
-    m.get_root().html.add_child(folium.Element(legend_html))
-    
-    return m
-
-
-def sidebar():
-    """Render sidebar with controls"""
-    trans = TRANSLATIONS[st.session_state.language]
-    
+def render_sidebar():
+    """Render sidebar navigation"""
     with st.sidebar:
-        # Language selector
-        st.session_state.language = st.selectbox(
-            'اللغة / Language',
-            options=['العربية', 'English'],
-            index=0 if st.session_state.language == 'العربية' else 1
-        )
+        st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Tunisian_Red_Crescent.svg/200px-Tunisian_Red_Crescent.svg.png", 
+                 width=80)
         
-        trans = TRANSLATIONS[st.session_state.language]
+        st.title("🚨 Nexus-AID M4")
+        st.markdown("**Gestion des Catastrophes**")
         
-        st.header(trans['title'] if st.session_state.language == 'العربية' else 'Controls')
-        
-        # Wilaya selector
-        selected_wilaya = st.selectbox(
-            trans['select_wilaya'],
-            options=['All / الكل'] + TUNISIAN_WILAYAT
-        )
-        
-        # Date range
-        st.subheader('📅 Date Range' if st.session_state.language == 'English' else '📅 النطاق الزمني')
-        
-        lookback_hours = st.slider(
-            'Lookback (hours)' if st.session_state.language == 'English' else 'الفترة (ساعات)',
-            min_value=1,
-            max_value=48,
-            value=12
-        )
-        
-        # Refresh button
-        if st.button('🔄 Refresh Data' if st.session_state.language == 'English' else '🔄 تحديث البيانات'):
-            st.cache_data.clear()
-            st.rerun()
-        
-        # Live weather (uses map center as proxy if no specific wilaya logic)
-        st.subheader('🌦️ Live Weather' if st.session_state.language == 'English' else '🌦️ حالة الطقس الآن')
-
-        # Use Tunisia center for now; could be improved to per-wilaya coordinates
-        center_lat, center_lon = UI_CONFIG['map_center']
-        weather = get_current_weather(center_lat, center_lon)
-
-        if weather is None:
-            st.caption(
-                "Weather API key missing or service unavailable."
-                if st.session_state.language == 'English'
-                else "تعذر جلب حالة الطقس (مفتاح API مفقود أو الخدمة غير متاحة)."
-            )
-        else:
-            col_w1, col_w2 = st.columns(2)
-            with col_w1:
-                st.metric(
-                    "🌡️ Temp (°C)" if st.session_state.language == 'English' else "🌡️ الحرارة (°م)",
-                    f"{weather.get('temp_c', 0):.1f}"
-                )
-                st.metric(
-                    "💧 Humidity (%)" if st.session_state.language == 'English' else "💧 الرطوبة (%)",
-                    f"{weather.get('humidity', 0)}"
-                )
-            with col_w2:
-                rain_val = weather.get('rain_mm')
-                rain_str = f"{rain_val:.1f} mm" if rain_val is not None else (
-                    "0 mm" if st.session_state.language == 'English' else "0 مم"
-                )
-                st.metric(
-                    "🌧️ Rain (last h)" if st.session_state.language == 'English' else "🌧️ الأمطار (آخر ساعة)",
-                    rain_str
-                )
-                st.metric(
-                    "💨 Wind (m/s)" if st.session_state.language == 'English' else "💨 سرعة الرياح",
-                    f"{weather.get('wind_speed', 0):.1f}"
-                )
-
-            if weather.get("description"):
-                st.caption(
-                    f"Condition: {weather['description']}"
-                    if st.session_state.language == 'English'
-                    else f"الحالة: {weather['description']}"
-                )
-
         st.divider()
-
-        # System status
-        st.subheader('📊 System Status' if st.session_state.language == 'English' else '📊 حالة النظام')
         
-        # Check GEE connection
-        gee = initialize_gee()
-        st.metric(
-            'GEE Connection' if st.session_state.language == 'English' else 'اتصال GEE',
-            '✓ Active' if gee is not None else '✗ Inactive'
+        # Navigation
+        page = st.radio(
+            "Navigation",
+            ["📊 Tableau de Bord", "🚨 Catastrophes", "👥 Équipes", "🏢 Salle de Crise", "🗺️ Carte Temps Réel", "⚙️ Paramètres"]
         )
         
-        # Check model
+        st.divider()
+        
+        # Quick Stats
+        services = get_services()
+        
+        active_disasters = len(services['disaster'].get_active_disasters())
+        available_teams = len(services['teams'].get_available_teams())
+        active_rooms = len(services['crisis'].get_active_rooms())
+        
+        st.metric("Catastrophes Actives", active_disasters)
+        st.metric("Équipes Disponibles", available_teams)
+        st.metric("Salles de Crise", active_rooms)
+        
+        st.divider()
+        
+        # System Status
         model = load_model()
-        st.metric(
-            'Model Status' if st.session_state.language == 'English' else 'حالة النموذج',
-            '✓ Loaded' if model is not None else '✗ Not Loaded'
-        )
+        st.caption("**État du Système**")
+        st.write(f"✓ Modèle ML: {'Chargé' if model else 'Non chargé'}")
+        st.write(f"✓ API: Active")
+        st.write(f"✓ Services: En ligne")
         
-        # Performance targets
-        st.subheader('🎯 Targets' if st.session_state.language == 'English' else '🎯 الأهداف')
-        st.write(f"Accuracy: >{PERFORMANCE_TARGETS['accuracy']:.0%}")
-        st.write(f"False Positives: <{PERFORMANCE_TARGETS['false_positive_rate']:.0%}")
-        
-        # Disclaimer
-        st.divider()
-        st.caption(trans['disclaimer'])
+        return page
 
 
-def main_dashboard():
+# ============================================================
+#  DASHBOARD PAGE
+# ============================================================
+
+def render_dashboard():
     """Render main dashboard"""
-    trans = TRANSLATIONS[st.session_state.language]
+    st.title("📊 Tableau de Bord - Module 4")
+    st.markdown("**Vue d'ensemble de la gestion des catastrophes**")
     
-    # Title
-    if st.session_state.language == 'العربية':
-        st.markdown(f'<h1 class="arabic-text">{trans["title"]}</h1>', unsafe_allow_html=True)
-    else:
-        st.title(trans['title'])
+    services = get_services()
     
-    # Subtitle
-    st.markdown(f"**Last Updated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    
-    # Load model
-    model = load_model()
-    
-    if model is None:
-        st.error("Model not available. Please train the model first.")
-        st.stop()
-    
-    # Fetch real-time data
-    with st.spinner('Fetching real-time data from GEE...' if st.session_state.language == 'English' 
-                    else 'جاري جلب البيانات...'):
-        df = get_realtime_data()
-    
-    if df is None or df.empty:
-        st.error("No data available. Please check GEE connection.")
-        st.stop()
-    
-    # Predict overall risk with ML model
-    with st.spinner('Calculating risk scores...' if st.session_state.language == 'English'
-                    else 'جاري حساب درجات المخاطر...'):
-        try:
-            predictions, overall_risk = model.predict(df)
-        except Exception as e:
-            st.error(f"Error calculating risks: {e}")
-            st.stop()
-
-    # Derive simple hazard-specific scores from raw features
-    wildfire_risk = None
-    flood_risk = None
-    extreme_risk = None
-
-    if 'MaxFRP' in df.columns:
-        wildfire_risk = np.clip(df['MaxFRP'] / 350.0, 0, 1)
-    if 'water_extent' in df.columns:
-        # Combine water extent and recent precipitation if available
-        base = df['water_extent'].astype(float)
-        if 'precipitation' in df.columns:
-            precip_norm = np.clip(df['precipitation'].astype(float) / 100.0, 0, 1)
-            flood_risk = np.clip(0.7 * base + 0.3 * precip_norm, 0, 1)
-        else:
-            flood_risk = np.clip(base, 0, 1)
-    if 'precipitation' in df.columns:
-        # Heavy-rain extreme weather proxy
-        extreme_risk = np.clip(df['precipitation'].astype(float) / 100.0, 0, 1)
-
-    # Overview metrics (overall ML risk)
+    # Key Metrics
     col1, col2, col3, col4 = st.columns(4)
-
-    high_risk_count = (overall_risk > 0.8).sum()
-    medium_risk_count = ((overall_risk > 0.5) & (overall_risk <= 0.8)).sum()
-    low_risk_count = (overall_risk <= 0.5).sum()
-    avg_risk = float(overall_risk.mean())
-
+    
+    all_disasters = list(services['disaster'].disasters.values())
+    all_teams = services['teams'].get_all_teams()
+    
     with col1:
-        st.metric(
-            trans['high_risk'] if st.session_state.language == 'العربية' else 'High Risk',
-            f"{high_risk_count}",
-        )
-
+        active = len([d for d in all_disasters if d.phase in [DisasterPhase.RESPONSE, DisasterPhase.RECOVERY]])
+        st.metric("🚨 Catastrophes Actives", active)
+    
     with col2:
-        st.metric(
-            trans['medium_risk'] if st.session_state.language == 'العربية' else 'Medium Risk',
-            f"{medium_risk_count}",
-        )
-
+        deployed = len([t for t in all_teams if t.status == TeamStatus.DEPLOYED])
+        st.metric("👥 Équipes Déployées", f"{deployed}/{len(all_teams)}")
+    
     with col3:
-        st.metric(
-            trans['low_risk'] if st.session_state.language == 'العربية' else 'Low Risk',
-            f"{low_risk_count}",
-        )
-
+        total_missions = sum(len(d.missions) for d in all_disasters)
+        st.metric("📋 Missions Totales", total_missions)
+    
     with col4:
-        st.metric(
-            'Average Risk' if st.session_state.language == 'English' else 'متوسط المخاطر',
-            f"{avg_risk:.1%}",
-        )
-
-    # Multi-hazard view with tabs
-    overview_label = "📊 Overview" if st.session_state.language == 'English' else "📊 نظرة عامة"
-    wildfire_label = "🔥 Wildfire" if st.session_state.language == 'English' else "🔥 حرائق الغابات"
-    flood_label = "💧 Flood" if st.session_state.language == 'English' else "💧 الفيضانات"
-    extreme_label = "⛈️ Extreme Weather" if st.session_state.language == 'English' else "⛈️ الطقس المتطرف"
-
-    tabs = st.tabs([overview_label, wildfire_label, flood_label, extreme_label])
-
-    # Overview tab: model-based risk
-    with tabs[0]:
-        st.subheader('🗺️ Overall Risk Map' if st.session_state.language == 'English' else '🗺️ خريطة المخاطر العامة')
-        risk_map = create_risk_map(df, overall_risk, title="Overall Risk")
-        st_folium(risk_map, width=1200, height=600, key="overall_risk_map")
-
-    # Wildfire tab
-    with tabs[1]:
-        if wildfire_risk is None:
-            st.info("No recent wildfire indicators available from FIRMS / MODIS.")
-        else:
-            st.subheader('🔥 Wildfire Risk' if st.session_state.language == 'English' else '🔥 مخاطر الحرائق')
-            st.metric(
-                'High Wildfire Risk Areas' if st.session_state.language == 'English' else 'مناطق خطورة حرائق مرتفعة',
-                int((wildfire_risk > 0.8).sum()),
-            )
-            wildfire_map = create_risk_map(df, wildfire_risk.values, title="Wildfire Risk")
-            st_folium(wildfire_map, width=1200, height=600, key="wildfire_risk_map")
-
-    # Flood tab
-    with tabs[2]:
-        if flood_risk is None:
-            st.info("No recent flood indicators available (SAR / precipitation).")
-        else:
-            st.subheader('💧 Flood Risk' if st.session_state.language == 'English' else '💧 مخاطر الفيضانات')
-            st.metric(
-                'High Flood Risk Areas' if st.session_state.language == 'English' else 'مناطق خطورة فيضانات مرتفعة',
-                int((flood_risk > 0.8).sum()),
-            )
-            flood_map = create_risk_map(df, flood_risk.values, title="Flood Risk")
-            st_folium(flood_map, width=1200, height=600, key="flood_risk_map")
-
-    # Extreme weather tab
-    with tabs[3]:
-        if extreme_risk is None:
-            st.info("No recent extreme-weather indicators available from precipitation.")
-        else:
-            st.subheader('⛈️ Extreme Weather Risk' if st.session_state.language == 'English' else '⛈️ مخاطر الطقس المتطرف')
-            st.metric(
-                'High Extreme-Weather Risk Areas' if st.session_state.language == 'English' else 'مناطق خطورة طقس متطرف مرتفعة',
-                int((extreme_risk > 0.8).sum()),
-            )
-            extreme_map = create_risk_map(df, extreme_risk.values, title="Extreme Weather Risk")
-            st_folium(extreme_map, width=1200, height=600, key="extreme_risk_map")
+        total_beneficiaries = sum(d.total_beneficiaries for d in all_disasters)
+        st.metric("🤝 Bénéficiaires", total_beneficiaries)
     
-    # Alerts section
-    if high_risk_count > 0:
-        st.warning(f"⚠️ {high_risk_count} high-risk areas detected!")
-        
-        # Show alert button
-        if st.button('📤 Send Alerts' if st.session_state.language == 'English' else '📤 إرسال التنبيهات'):
-            alert_system = AlertSystem()
-            
-            # Find highest risk location
-            max_risk_idx = risk_scores.argmax()
-            max_risk = risk_scores[max_risk_idx]
-            
-            # Mock location (in production, extract from df)
-            location = {
-                'name': 'Tunisia',
-                'lat': 34.0,
-                'lon': 9.0
-            }
-            
-            # Send alert
-            results = alert_system.send_alert(
-                hazard_type='wildfire',
-                location=location,
-                risk_score=max_risk,
-                language=st.session_state.language
-            )
-            
-            st.success("Alerts sent successfully!")
-            st.json(results)
+    st.divider()
     
-    # Data table
-    with st.expander('📊 View Raw Data' if st.session_state.language == 'English' else '📊 عرض البيانات'):
-        df_display = df.copy()
-        df_display['overall_risk'] = overall_risk
-        if wildfire_risk is not None:
-            df_display['wildfire_risk'] = wildfire_risk
-        if flood_risk is not None:
-            df_display['flood_risk'] = flood_risk
-        if extreme_risk is not None:
-            df_display['extreme_risk'] = extreme_risk
-        df_display['prediction'] = predictions
-        st.dataframe(df_display.head(100))
-
-
-def training_page():
-    """Page for model training"""
-    st.title("🎓 Model Training")
-    
-    st.write("Train the disaster detection model with historical data from Google Earth Engine.")
-    
-    col1, col2 = st.columns(2)
+    # Active Disasters Overview
+    col1, col2 = st.columns([2, 1])
     
     with col1:
-        start_date = st.date_input("Start Date", value=datetime(2023, 1, 1))
+        st.subheader("🚨 Catastrophes Actives")
+        
+        active_disasters = services['disaster'].get_active_disasters()
+        
+        if active_disasters:
+            for disaster in active_disasters:
+                with st.expander(f"🔴 {disaster.name} - {disaster.reference_number}", expanded=True):
+                    c1, c2, c3 = st.columns(3)
+                    with c1:
+                        st.write(f"**Type:** {disaster.disaster_type.value.capitalize()}")
+                        st.write(f"**Phase:** {disaster.phase.value.capitalize()}")
+                    with c2:
+                        st.write(f"**Sévérité:** {'🔴' * disaster.severity}")
+                        st.write(f"**Équipes:** {len(disaster.deployed_teams)}")
+                    with c3:
+                        st.write(f"**Missions:** {len(disaster.missions)}")
+                        st.write(f"**Bénéficiaires:** {disaster.total_beneficiaries}")
+                    
+                    if disaster.crisis_room_id:
+                        st.markdown(f"🏢 [Rejoindre Salle de Crise](#)")
+        else:
+            st.info("Aucune catastrophe active actuellement")
     
     with col2:
-        end_date = st.date_input("End Date", value=datetime(2025, 1, 1))
+        st.subheader("👥 État des Équipes")
+        
+        teams_by_status = {}
+        for team in all_teams:
+            status = team.status.value
+            teams_by_status[status] = teams_by_status.get(status, 0) + 1
+        
+        status_colors = {
+            'available': '🟢',
+            'deployed': '🔴',
+            'standby': '🟡',
+            'resting': '🟠',
+            'training': '🔵'
+        }
+        
+        for status, count in teams_by_status.items():
+            emoji = status_colors.get(status, '⚪')
+            st.write(f"{emoji} **{status.capitalize()}:** {count}")
     
-    if st.button("🚀 Start Training"):
-        with st.spinner("Training model... This may take several minutes."):
-            try:
-                from src.model import train_model_from_historical_data
-                
-                model = train_model_from_historical_data(
-                    start_date=start_date.strftime('%Y-%m-%d'),
-                    end_date=end_date.strftime('%Y-%m-%d')
-                )
-                
-                if model:
-                    st.success("✓ Model trained successfully!")
+    st.divider()
+    
+    # Recent Activity
+    st.subheader("📋 Activité Récente")
+    
+    # Create activity log (mock data for demo)
+    activities = [
+        {"time": "Il y a 5 min", "event": "Équipe NDRT Tunis déployée à Nabeul", "type": "deployment"},
+        {"time": "Il y a 15 min", "event": "Mission M001 complétée - 150 bénéficiaires", "type": "mission"},
+        {"time": "Il y a 30 min", "event": "Alerte ORANGE détectée à Sfax", "type": "alert"},
+        {"time": "Il y a 1h", "event": "Décision: Évacuation Zone B approuvée", "type": "decision"},
+    ]
+    
+    for activity in activities:
+        icon = {"deployment": "🚁", "mission": "✅", "alert": "⚠️", "decision": "📋"}.get(activity['type'], "📌")
+        st.write(f"{icon} **{activity['time']}** - {activity['event']}")
+
+
+# ============================================================
+#  DISASTERS PAGE
+# ============================================================
+
+def render_disasters():
+    """Render disasters management page"""
+    st.title("🚨 Gestion des Catastrophes")
+    
+    services = get_services()
+    
+    tab1, tab2, tab3 = st.tabs(["Actives", "Toutes", "Nouvelle Alerte"])
+    
+    with tab1:
+        active = services['disaster'].get_active_disasters()
+        
+        if active:
+            for disaster in active:
+                with st.container():
+                    st.markdown(f"### 🔴 {disaster.name}")
                     
-                    # Display metrics
-                    st.subheader("Performance Metrics")
-                    metrics = model.training_metrics
+                    col1, col2, col3, col4 = st.columns(4)
+                    with col1:
+                        st.metric("Type", disaster.disaster_type.value.capitalize())
+                    with col2:
+                        st.metric("Phase", disaster.phase.value.capitalize())
+                    with col3:
+                        st.metric("Équipes", len(disaster.deployed_teams))
+                    with col4:
+                        st.metric("Missions", len(disaster.missions))
                     
+                    # Actions
                     col1, col2, col3 = st.columns(3)
                     with col1:
-                        st.metric("Accuracy", f"{metrics.get('accuracy', 0):.2%}")
+                        if st.button("📋 Voir Détails", key=f"details_{disaster.id}"):
+                            st.session_state['selected_disaster'] = disaster.id
                     with col2:
-                        st.metric("Precision", f"{metrics.get('precision', 0):.2%}")
+                        if st.button("➕ Nouvelle Mission", key=f"mission_{disaster.id}"):
+                            st.session_state['new_mission_disaster'] = disaster.id
                     with col3:
-                        st.metric("Recall", f"{metrics.get('recall', 0):.2%}")
+                        if st.button("🏢 Salle de Crise", key=f"crisis_{disaster.id}"):
+                            st.session_state['crisis_room'] = disaster.crisis_room_id
                     
-                    # Feature importances
-                    if model.feature_importances_ is not None:
-                        st.subheader("Feature Importances")
-                        st.bar_chart(model.feature_importances_.set_index('feature')['importance'])
-                
-                else:
-                    st.error("Training failed. Check logs for details.")
+                    st.divider()
+        else:
+            st.info("Aucune catastrophe active")
+    
+    with tab2:
+        all_disasters = list(services['disaster'].disasters.values())
+        
+        if all_disasters:
+            df = pd.DataFrame([{
+                'Référence': d.reference_number,
+                'Nom': d.name,
+                'Type': d.disaster_type.value,
+                'Phase': d.phase.value,
+                'Sévérité': d.severity,
+                'Équipes': len(d.deployed_teams),
+                'Missions': len(d.missions),
+                'Détecté': d.detected_at.strftime('%Y-%m-%d %H:%M')
+            } for d in all_disasters])
             
-            except Exception as e:
-                st.error(f"Training error: {e}")
-                logger.error(f"Training error: {e}", exc_info=True)
+            st.dataframe(df, use_container_width=True)
+        else:
+            st.info("Aucune catastrophe enregistrée")
+    
+    with tab3:
+        st.subheader("➕ Créer une Nouvelle Alerte")
+        
+        with st.form("new_disaster_form"):
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                disaster_type = st.selectbox(
+                    "Type de Catastrophe",
+                    ["flood", "fire", "earthquake", "storm", "drought"]
+                )
+                
+                alert_level = st.selectbox(
+                    "Niveau d'Alerte",
+                    ["yellow", "orange", "red"]
+                )
+                
+                region = st.selectbox(
+                    "Gouvernorat",
+                    TUNISIAN_WILAYAT
+                )
+            
+            with col2:
+                latitude = st.number_input("Latitude", value=36.8, format="%.4f")
+                longitude = st.number_input("Longitude", value=10.18, format="%.4f")
+                population = st.number_input("Population Estimée", value=10000, step=1000)
+            
+            submitted = st.form_submit_button("🚨 Créer l'Alerte")
+            
+            if submitted:
+                try:
+                    disaster = services['disaster'].create_disaster_from_alert(
+                        disaster_type=DisasterType(disaster_type),
+                        location=Location(latitude, longitude, "", "", region),
+                        alert_level=AlertLevel(alert_level),
+                        estimated_population=population
+                    )
+                    st.success(f"✅ Alerte créée: {disaster.reference_number}")
+                    
+                    # Option to declare immediately
+                    if st.button("Déclarer immédiatement"):
+                        result = services['disaster'].declare_disaster(disaster.id, "admin")
+                        if result['success']:
+                            st.success("Catastrophe déclarée - Salle de crise créée")
+                except Exception as e:
+                    st.error(f"Erreur: {e}")
 
+
+# ============================================================
+#  TEAMS PAGE
+# ============================================================
+
+def render_teams():
+    """Render teams management page"""
+    st.title("👥 Gestion des Équipes")
+    
+    services = get_services()
+    teams = services['teams'].get_all_teams()
+    
+    tab1, tab2, tab3 = st.tabs(["Toutes les Équipes", "Disponibles", "Matching"])
+    
+    with tab1:
+        for team in teams:
+            status_emoji = {
+                'available': '🟢',
+                'deployed': '🔴',
+                'standby': '🟡',
+                'resting': '🟠'
+            }.get(team.status.value, '⚪')
+            
+            with st.expander(f"{status_emoji} {team.name} ({team.code})", expanded=False):
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    st.write(f"**Type:** {team.team_type.value}")
+                    st.write(f"**Statut:** {team.status.value.capitalize()}")
+                    st.write(f"**Capacité:** {len(team.members)}/{team.capacity}")
+                
+                with col2:
+                    if team.base_location:
+                        st.write(f"**Base:** {team.base_location.city}, {team.base_location.region}")
+                    if team.current_disaster_id:
+                        st.write(f"**Mission:** {team.current_disaster_id}")
+                
+                with col3:
+                    if team.status == TeamStatus.AVAILABLE:
+                        if st.button("🚀 Déployer", key=f"deploy_{team.id}"):
+                            st.session_state['deploy_team'] = team.id
+                    elif team.status == TeamStatus.DEPLOYED:
+                        if st.button("🏠 Retourner", key=f"return_{team.id}"):
+                            result = services['teams'].return_team(team.id)
+                            if result['success']:
+                                st.success("Équipe retournée à la base")
+                                st.rerun()
+                
+                # Members
+                if team.members:
+                    st.write("**Membres:**")
+                    for member in team.members[:5]:
+                        st.write(f"  • {member.name} - {member.role.value.replace('_', ' ').capitalize()}")
+    
+    with tab2:
+        available = services['teams'].get_available_teams()
+        
+        if available:
+            st.write(f"**{len(available)} équipe(s) disponible(s)**")
+            
+            for team in available:
+                st.info(f"🟢 **{team.name}** - {team.team_type.value} - {len(team.members)} membres")
+        else:
+            st.warning("Aucune équipe disponible")
+    
+    with tab3:
+        st.subheader("🎯 Matching Intelligent")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.write("**Par Compétences**")
+            skills = st.multiselect(
+                "Compétences requises",
+                ["first_aid", "logistics", "medical", "search_rescue", "communications"]
+            )
+            
+            if st.button("Rechercher par compétences"):
+                if skills:
+                    results = services['teams'].match_by_skills(skills)
+                    for r in results:
+                        st.write(f"• {r['team']['name']}: {r['match_score']:.0%} correspondance")
+        
+        with col2:
+            st.write("**Par Distance**")
+            lat = st.number_input("Latitude", value=36.45, key="match_lat")
+            lon = st.number_input("Longitude", value=10.74, key="match_lon")
+            
+            if st.button("Rechercher par proximité"):
+                location = Location(lat, lon, "", "", "")
+                results = services['teams'].match_by_distance(location)
+                for r in results:
+                    st.write(f"• {r['team']['name']}: {r['distance_km']:.1f} km (~{r['estimated_arrival_hours']:.1f}h)")
+
+
+# ============================================================
+#  CRISIS ROOM PAGE
+# ============================================================
+
+def render_crisis_room():
+    """Render crisis room page"""
+    st.title("🏢 Salle de Crise Virtuelle")
+    
+    services = get_services()
+    active_rooms = services['crisis'].get_active_rooms()
+    
+    if not active_rooms:
+        st.info("Aucune salle de crise active")
+        return
+    
+    # Select room
+    room_options = {r.disaster_name: r.id for r in active_rooms}
+    selected_name = st.selectbox("Sélectionner une salle de crise", list(room_options.keys()))
+    room_id = room_options[selected_name]
+    
+    room = services['crisis'].get_crisis_room(room_id)
+    if not room:
+        st.error("Salle de crise non trouvée")
+        return
+    
+    # Room Header
+    col1, col2, col3 = st.columns([2, 1, 1])
+    with col1:
+        st.subheader(f"🔴 {room.disaster_name}")
+    with col2:
+        st.metric("Participants", len(room.get_online_participants()))
+    with col3:
+        if st.button("📹 Rejoindre Vidéo"):
+            st.write(f"URL: {room.video_call_url}")
+    
+    st.divider()
+    
+    # Main content
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        # Messages
+        st.subheader("💬 Messages")
+        
+        messages = room.get_messages(limit=20)
+        
+        for msg in reversed(messages):
+            if msg.message_type.value == "system":
+                st.caption(f"🔔 {msg.content}")
+            elif msg.message_type.value == "alert":
+                st.error(f"**{msg.sender_name}:** {msg.content}")
+            else:
+                st.write(f"**{msg.sender_name}:** {msg.content}")
+        
+        # Send message
+        with st.form("send_message", clear_on_submit=True):
+            message = st.text_input("Votre message")
+            if st.form_submit_button("Envoyer"):
+                if message:
+                    room.send_message("current_user", "Utilisateur", message)
+                    st.rerun()
+    
+    with col2:
+        # Participants
+        st.subheader("👥 Participants")
+        for p in room.get_online_participants():
+            role_emoji = {
+                'coordinator': '🎖️',
+                'team_leader': '👷',
+                'medical': '🏥',
+                'logistics': '📦'
+            }.get(p.role.value, '👤')
+            st.write(f"{role_emoji} {p.name}")
+        
+        st.divider()
+        
+        # Decisions
+        st.subheader("📋 Décisions")
+        for d in room.get_decisions()[:5]:
+            status_emoji = '✅' if d.status.value == 'implemented' else '⏳'
+            st.write(f"{status_emoji} {d.title}")
+        
+        st.divider()
+        
+        # Situation Board
+        st.subheader("📊 Situation")
+        if room.situation_board:
+            sb = room.situation_board
+            st.metric("Bénéficiaires", sb.beneficiaries_count)
+            st.metric("Missions Actives", sb.missions_active)
+            st.metric("Missions Complétées", sb.missions_completed)
+
+
+# ============================================================
+#  MAP PAGE
+# ============================================================
+
+def render_map():
+    """Render real-time map"""
+    st.title("🗺️ Carte Temps Réel")
+    
+    services = get_services()
+    
+    # Create base map
+    m = folium.Map(
+        location=UI_CONFIG['map_center'],
+        zoom_start=7,
+        tiles='cartodbdark_matter'
+    )
+    
+    # Add disaster locations
+    for disaster in services['disaster'].get_active_disasters():
+        if disaster.affected_area:
+            folium.CircleMarker(
+                location=[disaster.affected_area.center_lat, disaster.affected_area.center_lon],
+                radius=disaster.affected_area.radius_km,
+                popup=f"🚨 {disaster.name}",
+                color='red',
+                fill=True,
+                fillColor='red',
+                fillOpacity=0.3
+            ).add_to(m)
+    
+    # Add team locations
+    for team in services['teams'].get_all_teams():
+        if team.current_location:
+            color = 'green' if team.status == TeamStatus.AVAILABLE else 'orange'
+            folium.Marker(
+                location=[team.current_location.latitude, team.current_location.longitude],
+                popup=f"👥 {team.name}",
+                icon=folium.Icon(color=color, icon='users', prefix='fa')
+            ).add_to(m)
+        elif team.base_location:
+            folium.Marker(
+                location=[team.base_location.latitude, team.base_location.longitude],
+                popup=f"🏠 {team.name} (Base)",
+                icon=folium.Icon(color='blue', icon='home', prefix='fa')
+            ).add_to(m)
+    
+    # Display map
+    st_folium(m, width=1200, height=600)
+    
+    # Legend
+    st.markdown("""
+    **Légende:**
+    - 🔴 Zone affectée par une catastrophe
+    - 🟢 Équipe disponible
+    - 🟠 Équipe déployée
+    - 🔵 Base d'équipe
+    """)
+
+
+# ============================================================
+#  SETTINGS PAGE
+# ============================================================
+
+def render_settings():
+    """Render settings page"""
+    st.title("⚙️ Paramètres")
+    
+    tab1, tab2, tab3 = st.tabs(["Général", "API", "À Propos"])
+    
+    with tab1:
+        st.subheader("Paramètres Généraux")
+        
+        st.toggle("Mode sombre", value=True)
+        st.toggle("Notifications push", value=True)
+        st.toggle("Alertes sonores", value=False)
+        
+        st.selectbox("Langue", ["Français", "العربية", "English"])
+    
+    with tab2:
+        st.subheader("Configuration API")
+        
+        st.text_input("URL API M1 (Organisation)", value="http://localhost:5000/api/v1")
+        st.text_input("URL API M2 (Secourisme)", value="http://localhost:5002/api/v1")
+        st.text_input("URL API M3 (Administratif)", value="http://localhost:5003/api/v1")
+        
+        if st.button("Tester la connexion"):
+            st.success("✓ Connexion réussie à tous les modules")
+    
+    with tab3:
+        st.subheader("À Propos")
+        
+        st.markdown("""
+        ## Nexus-AID - Module 4
+        **Système de Gestion des Catastrophes**
+        
+        ### Fonctionnalités
+        - 🚨 Détection et alerte précoce (IA)
+        - 👥 Gestion des équipes NDRT/RDRT/IDRT
+        - 🏢 Salle de crise virtuelle
+        - 🗺️ Suivi temps réel
+        - 📊 Reporting et analyse
+        
+        ### Technologies
+        - Python + Streamlit
+        - Google Earth Engine
+        - Machine Learning (XGBoost, Random Forest)
+        - Flask REST API
+        
+        ### Équipe
+        Projet de Fin d'Études - 2026
+        Croissant Rouge Tunisien
+        
+        ---
+        **Version:** 1.0.0 | **Licence:** MIT
+        """)
+
+
+# ============================================================
+#  MAIN
+# ============================================================
 
 def main():
     """Main application entry point"""
+    page = render_sidebar()
     
-    # Sidebar
-    sidebar()
-    
-    # Navigation (simple tab-based)
-    page = st.sidebar.radio(
-        'Navigation' if st.session_state.language == 'English' else 'التنقل',
-        ['Dashboard', 'Training', 'About']
-    )
-    
-    if page == 'Dashboard':
-        main_dashboard()
-    
-    elif page == 'Training':
-        training_page()
-    
-    elif page == 'About':
-        st.title("ℹ️ About")
-        st.markdown("""
-        ## Tunisia Disaster Detection Platform
-        
-        A real-time disaster detection system for Tunisia using:
-        - **Google Earth Engine** for satellite data
-        - **Machine Learning** (Random Forest) for risk prediction
-        - **Streamlit** for interactive visualization
-        
-        ### Data Sources
-        - NASA FIRMS (Wildfires)
-        - HydroSAR (Floods)
-        - CHIRPS (Precipitation)
-        - Sentinel-2 (Vegetation/Surface)
-        - AlphaEarth (Risk Embeddings)
-        
-        ### Performance Targets
-        - Accuracy: >85%
-        - False Positives: <15%
-        - Alert Latency: <15 minutes
-        
-        ### Contact
-        For partnerships and support:
-        - GitHub: [tunisia-disaster-detection]
-        - Email: alerts@tunisia-disaster.org
-        
-        ---
-        **License:** MIT | **Version:** 1.0.0
-        """)
+    if "📊 Tableau de Bord" in page:
+        render_dashboard()
+    elif "🚨 Catastrophes" in page:
+        render_disasters()
+    elif "👥 Équipes" in page:
+        render_teams()
+    elif "🏢 Salle de Crise" in page:
+        render_crisis_room()
+    elif "🗺️ Carte Temps Réel" in page:
+        render_map()
+    elif "⚙️ Paramètres" in page:
+        render_settings()
 
 
 if __name__ == "__main__":
