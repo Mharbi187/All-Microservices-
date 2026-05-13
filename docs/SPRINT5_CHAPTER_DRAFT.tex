@@ -1,0 +1,170 @@
+﻿\chapter{Sprint 5 : D\'etection des catastrophes et centre de commandement}
+
+\section{Introduction du sprint}
+Ce sprint a consolid\'e le \textbf{module MS4} de Nexus-AID en production interne :
+\begin{itemize}
+    \item d\'etection multi-source des risques (satellite, m\'et\'eo, sismique),
+    \item centre de commandement op\'erationnel (radar, crisis room, dispatch),
+    \item int\'egration microservices via API Gateway et bus d'\'ev\'enements RabbitMQ.
+\end{itemize}
+
+L'objectif principal du sprint a \'et\'e de passer d'un prototype de d\'etection \`a une \textbf{cha\^ine op\'erationnelle de bout en bout} entre MS4, le frontend, MS1 (core-service) et MS3 (admin-service).
+
+\section{Objectifs du sprint}
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{|p{1.5cm}|X|p{2cm}|p{2cm}|}
+\hline
+\textbf{ID} & \textbf{Objectif} & \textbf{Priorit\'e} & \textbf{Statut} \\
+\hline
+US5.1 & Mettre en place une surveillance temps r\'eel des 24 gouvernorats avec score de risque par r\'egion. & Critique & \cmark \\
+\hline
+US5.2 & Exposer une API unifi\'ee (radar, monitoring, crisis room, dispatch, logistique). & Critique & \cmark \\
+\hline
+US5.3 & Impl\'ementer une Crisis Room collaborative avec WebSocket temps r\'eel. & Critique & \cmark \\
+\hline
+US5.4 & Synchroniser les \'equipes depuis MS1 et supporter le d\'eploiement op\'erationnel. & Haute & \cmark \\
+\hline
+US5.5 & Ajouter l'estimation logistique automatique (ressources + co\^uts). & Haute & \cmark \\
+\hline
+US5.6 & Brancher la diffusion d'alertes vers RabbitMQ avec fiabilisation des publications. & Haute & \cmark \\
+\hline
+US5.7 & Int\'egrer les \'ecrans frontend de commandement (radar + crisis room). & Haute & \cmark \\
+\hline
+US5.8 & Formaliser la readiness autorit\'e (checklist, statut Go/No-Go). & Moyenne & Partiel \\
+\hline
+\end{tabularx}
+\caption{Objectifs r\'eels du Sprint 5 (bas\'es sur l'impl\'ementation)}
+\end{table}
+
+\section{Conception et architecture retenues}
+\subsection{Architecture microservices}
+Le sprint s'appuie sur l'orchestration multi-services (fichier \texttt{main/docker-compose.yml}) :
+\begin{itemize}
+    \item \textbf{MS4} : \texttt{disaster-detection} (API FastAPI) + \texttt{disaster-daemon} (cycle de d\'etection),
+    \item \textbf{Gateway} : routage REST/WS via \texttt{api-gateway},
+    \item \textbf{Bus \'ev\'enementiel} : \texttt{rabbitmq},
+    \item \textbf{MS1} : \texttt{core-service} (interventions, \'equipes),
+    \item \textbf{MS3} : \texttt{admin-service} (SitRep, journal d'\'ev\'enements),
+    \item \textbf{UI} : \texttt{nexus-aid-frontend}.
+\end{itemize}
+
+\subsection{Flux fonctionnel Sprint 5}
+\begin{enumerate}[label=\arabic*.]
+    \item Le daemon MS4 balaie les wilayats et met \`a jour \texttt{data/cache/radar\_cache.json}.
+    \item Le frontend consomme \texttt{/api/v1/radar} toutes les 5 secondes.
+    \item En cas de risque \'elev\'e, MS4 publie un \texttt{disaster.alert} sur \texttt{nexusaid.exchange}.
+    \item MS1 consomme l'alerte et cr\'ee une intervention d'urgence.
+    \item MS3 consomme la m\^eme alerte et cr\'ee un brouillon SitRep + trace audit.
+    \item Les op\'erateurs ouvrent une Crisis Room et pilotent dispatch + logistique en temps r\'eel.
+\end{enumerate}
+
+\section{R\'ealisation technique du sprint}
+\subsection{Moteur de d\'etection et de fusion multi-source (MS4)}
+\begin{itemize}
+    \item \textbf{Cycle daemon} : \texttt{src/daemon.py} (intervalle 15 minutes, 24 wilayats).
+    \item \textbf{Sources} : satellite (GEE), embeddings AlphaEarth, OpenWeather, USGS.
+    \item \textbf{Sch\'ema canonique} : \texttt{src/feature\_schema.py} + \texttt{canonical-v1}.
+    \item \textbf{Inf\'erence partag\'ee} : \texttt{src/inference\_shared.py} (classification type de catastrophe + d\'edoublonnage d'alertes).
+    \item \textbf{Mod\`ele ML} : \texttt{src/model.py} (Random Forest/XGBoost/Ensemble, validation du sch\'ema des features au chargement).
+    \item \textbf{Tra\c{c}abilit\'e} : audit CSV par cycle via \texttt{logs/audit.csv}.
+\end{itemize}
+
+\subsection{API unifi\'ee et endpoints op\'erationnels}
+L'API FastAPI (\texttt{src/api.py}) expose les routes cl\'es du sprint :
+\begin{itemize}
+    \item \texttt{/status}, \texttt{/api/v1/radar}, \texttt{/realtime},
+    \item \texttt{/api/v1/disasters/monitor} (carte HTML Folium),
+    \item \texttt{/api/v1/crisis-room/*} (cr\'eation, participants, messages, summary),
+    \item \texttt{/api/v1/teams/available}, \texttt{/api/v1/teams/dispatch},
+    \item \texttt{/api/v1/disasters/\{id\}/logistics} (estimation ressources/co\^uts),
+    \item WebSocket : \texttt{/ws/crisis/\{room\_id\}}.
+\end{itemize}
+
+\textbf{Note d'alignement :} le fichier \texttt{src/api\_integration.py} (Flask) existe encore comme couche legacy, mais le runtime actif du sprint repose sur \texttt{src/api.py}.
+
+\subsection{Crisis Room et coordination C2}
+La couche C2 a \'et\'e impl\'ement\'ee autour de :
+\begin{itemize}
+    \item \texttt{src/crisis\_room.py} : mod\`eles m\'etier (participants, messages, d\'ecisions, situation board),
+    \item WebSocket broadcast dans \texttt{src/api.py} (\texttt{NEW\_MESSAGE}, \texttt{TEAM\_DEPLOYED}, \texttt{CPR\_METRICS\_UPDATE}),
+    \item endpoint CPR : \texttt{/api/v1/crisis-room/\{room\_id\}/cpr-metrics}.
+\end{itemize}
+
+\subsection{Gestion des \'equipes et logistique}
+\begin{itemize}
+    \item \texttt{src/teams.py} : synchronisation depuis MS1 (\texttt{/api/v1/sync/teams}) avec fallback mock en cas d'indisponibilit\'e.
+    \item \texttt{src/disaster\_management.py} : cycle de vie catastrophe, missions, reporting de cl\^oture.
+    \item \texttt{src/resource\_estimation.py} : plan d'approvisionnement prioris\'e + estimation co\^ut total.
+\end{itemize}
+
+\subsection{Int\'egration frontend (poste de commandement)}
+La couche UI du sprint est visible dans \texttt{nexus-aid-frontend} :
+\begin{itemize}
+    \item \texttt{src/pages/domains/CatastrophesPage.tsx} : moniteur satellite (\texttt{/api/v1/disasters/monitor}),
+    \item \texttt{src/pages/crisis/Dashboard.tsx} : radar national/r\'egional + KPIs + flux d'incidents,
+    \item \texttt{src/pages/crisis/CrisisRoomPage.tsx} : salle de commandement,
+    \item \texttt{src/hooks/useRadar.ts} : polling radar toutes les 5s,
+    \item \texttt{src/hooks/useCrisisSocket.ts} : WebSocket temps r\'eel avec reconnexion,
+    \item \texttt{src/services/crisisApi.ts} et \texttt{src/services/radarApi.ts} : consommation des endpoints MS4.
+\end{itemize}
+
+\section{Int\'egration RabbitMQ inter-modules}
+\subsection{Publication depuis MS4}
+\texttt{src/messaging.py} publie \texttt{disaster.alert} sur \texttt{nexusaid.exchange} avec :
+\begin{itemize}
+    \item retry exponentiel,
+    \item seuil max de retries configurable,
+    \item compteurs succ\`es/\'echecs expos\'es par \texttt{/status}.
+\end{itemize}
+
+\subsection{Consommation par MS1 et MS3}
+\begin{itemize}
+    \item \textbf{MS1} (\texttt{core-service/src/main/java/.../messaging/EventConsumer.java}) : validation sch\'ema, d\'eduplication temporelle, cr\'eation d'intervention d'urgence.
+    \item \textbf{MS3} (\texttt{admin-service/src/main/java/.../messaging/EventConsumer.java}) : cr\'eation automatique d'un brouillon SitRep et persistance d'audit.
+\end{itemize}
+
+\section{Qualit\'e, s\'ecurit\'e et validation}
+\subsection{M\'ecanismes de robustesse livr\'es}
+\begin{itemize}
+    \item cache radar atomique et statut de fra\^icheur (\texttt{running}/\texttt{stale}),
+    \item fallback m\'et\'eo si source satellite pr\'ecipitations d\'egrad\'ee,
+    \item scan de secrets en CI (\texttt{scripts/secret\_scan.sh}, \texttt{.github/workflows/ci.yml}),
+    \item image Docker durcie (non-root + healthcheck, \texttt{Dockerfile}),
+    \item validation JWT c\^ot\'e gateway et v\'erification locale sur endpoint logistique.
+\end{itemize}
+
+\subsection{Tests disponibles dans le sprint}
+\begin{itemize}
+    \item 15 fichiers de tests Python dans \texttt{disaster-detection/tests},
+    \item test d'int\'egration WebSocket CPR : \texttt{test\_cpr\_metrics\_flow.py},
+    \item batterie de coh\'erence mod\`ele : \texttt{test\_model\_correctness.py}, \texttt{test\_multi\_hazard.py}.
+\end{itemize}
+
+\textbf{Observation d'ex\'ecution locale :} l'ex\'ecution directe de \texttt{pytest} n'a pas pu \^etre r\'ealis\'ee dans cet environnement sans installation pr\'ealable des d\'ependances.
+
+\subsection{Rapports de validation disponibles}
+Des rapports de test terrain/monitoring sont pr\'esents dans \texttt{disaster-detection/docs} :
+\begin{itemize}
+    \item \texttt{MAHDIA\_VERIFIED\_REPORT.md},
+    \item \texttt{MAHDIA\_REALTIME\_REPORT.md},
+    \item \texttt{AUTHORITY\_READINESS\_STATUS\_2026-04-16.md}.
+\end{itemize}
+
+\section{Bilan du sprint}
+\subsection{Acquis majeurs}
+\begin{itemize}
+    \item Pipeline op\'erationnel complet \textbf{d\'etection \(\rightarrow\) commandement \(\rightarrow\) coordination \(\rightarrow\) remont\'ee \'ev\'enementielle}.
+    \item Int\'egration r\'eelle entre MS4, frontend, gateway, RabbitMQ, MS1 et MS3.
+    \item Mise en place d'une base solide pour les op\'erations de crise multi-acteurs.
+\end{itemize}
+
+\subsection{Points \`a poursuivre au sprint suivant}
+\begin{itemize}
+    \item finaliser la validation autorit\'e (go/no-go) avec preuves op\'erationnelles compl\`etes,
+    \item industrialiser les campagnes de backtesting sur incidents r\'eels,
+    \item renforcer l'automatisation de validation continue (tests live, observabilit\'e, SLO runtime).
+\end{itemize}
+
+\section{Conclusion}
+Ce sprint 5 transforme le module catastrophe en un \textbf{socle C2 exploitable} : surveillance temps r\'eel, d\'ecision collaborative, dispatch des \'equipes, logistique et propagation d'alertes inter-modules. Il constitue une avanc\'ee structurante du projet Nexus-AID vers une exploitation terrain contr\^ol\'ee et tra\c{c}able.
