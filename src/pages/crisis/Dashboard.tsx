@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Layout, Typography, Badge, Row, Col, Button, Alert, Space, Tag } from 'antd';
+import { Layout, Typography, Badge, Row, Col, Button, Alert, Space, Tag, message } from 'antd';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FullscreenExitOutlined, FullscreenOutlined, ReloadOutlined } from '@ant-design/icons';
+import { FullscreenExitOutlined, FullscreenOutlined, ReloadOutlined, FireOutlined } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Sidebar from '@/components/crisis/Sidebar';
 import RadarMap from '@/components/crisis/RadarMap';
@@ -94,6 +94,16 @@ export default function Dashboard() {
         return () => window.clearInterval(interval);
     }, [refreshResponderCount]);
 
+    const handleTriggerDemo = async () => {
+        try {
+            message.loading({ content: 'Injecting Jendouba Wildfire...', key: 'demo' });
+            await crisisApi.triggerSimulation();
+            message.success({ content: 'Simulation active! Radar incoming.', key: 'demo', duration: 3 });
+        } catch (e) {
+            message.error({ content: 'Simulation backend unreachable.', key: 'demo' });
+        }
+    };
+
     const telemetryColor = !isConnected ? '#f87171' : isLive ? '#4ade80' : '#facc15';
 
     const panelTitle = panel === 'radar'
@@ -143,6 +153,13 @@ export default function Dashboard() {
                     </div>
 
                     <Space size={10} wrap>
+                        <Button
+                            icon={<FireOutlined />}
+                            style={{ background: '#7c3aed', color: 'white', borderColor: '#7c3aed', fontWeight: 600 }}
+                            onClick={handleTriggerDemo}
+                        >
+                            JURY DEMO
+                        </Button>
                         {selectedHighRisk && selectedWilaya && (
                             <Button danger type="primary" onClick={() => openRoomCreation(selectedWilaya)}>
                                 Activate Crisis Room

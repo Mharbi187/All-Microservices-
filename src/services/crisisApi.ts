@@ -1,6 +1,16 @@
 import apiClient from '@/services/api';
 
 export const crisisApi = {
+    triggerSimulation: async () => {
+        const res = await apiClient.post('/simulation/trigger', {
+            wilaya_name: 'Jendouba',
+            disaster_type: 'WILDFIRE',
+            risk_score: 0.95,
+            lat: 36.9542,
+            lon: 8.7589
+        });
+        return res.data;
+    },
     getRoomSummary: async (roomId: string) => {
         const res = await apiClient.get(`/crisis-room/${roomId}/summary`);
         return res.data;
