@@ -173,6 +173,13 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 # --- MODELS ---
+class SimulationRequest(BaseModel):
+    wilaya_name: str = "Jendouba"
+    disaster_type: str = "WILDFIRE"
+    risk_score: float = 0.95
+    lat: float = 36.9542
+    lon: float = 8.7589
+
 class RiskPoint(BaseModel):
     lat: float
     lon: float
@@ -269,6 +276,47 @@ def get_cached_radar() -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Failed to read radar cache: {e}")
         raise HTTPException(status_code=500, detail="Failed to read cache data.")
+
+@app.post("/api/v1/simulation/trigger")
+def trigger_demo_disaster(req: SimulationRequest):
+    """
+    JURY PRESENTATION MODE:
+    Directly injects a critical disaster into the ML radar cache so the React Frontend
+    shows the alerts immediately, bypassing the Google Earth Engine 15-min daemon.
+    """
+    try:
+        if os.path.exists(CACHE_PATH):
+            with open(CACHE_PATH, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+        else:
+            data = {"timestamp": datetime.utcnow().isoformat(), "daemon_status": "demo", "wilayats": {}, "cycle": 0}
+        
+        # Inject the mock disaster
+        data["wilayats"][req.wilaya_name] = {
+            "coordinates": {"lat": req.lat, "lon": req.lon},
+            "risk_score": req.risk_score,
+            "confidence_pct": 98.5,
+            "disaster_type": req.disaster_type,
+            "satellite": {
+                "precipitation_7d_mm": 0.0,
+                "max_frp": 320.5
+            },
+            "weather": {
+                "temperature": 45.0,
+                "wind_speed": 75.0
+            }
+        }
+        data["timestamp"] = datetime.utcnow().isoformat()
+        data["daemon_status"] = "demo_active"
+        
+        os.makedirs(os.path.dirname(CACHE_PATH), exist_ok=True)
+        with open(CACHE_PATH, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2)
+            
+        return {"success": True, "message": f"Demo disaster triggered at {req.wilaya_name}", "data": data["wilayats"][req.wilaya_name]}
+    except Exception as e:
+        logger.error(f"Failed to trigger demo disaster: {e}")
+        raise HTTPException(status_code=500, detail="Simulation failed")
 
 @app.get("/realtime", response_model=RealtimeResponse)
 def realtime() -> RealtimeResponse:
