@@ -131,6 +131,22 @@ CACHE_PATH = os.path.join(BASE_DIR, "data", "cache", "radar_cache.json")
 # Initialize DB Tables
 init_db()
 
+# --- EUREKA REGISTRATION ---
+@app.on_event("startup")
+async def startup_event():
+    try:
+        import py_eureka_client.eureka_client as eureka_client
+        eureka_url = os.environ.get("EUREKA_SERVER_URL", "http://eureka-server:8761/eureka")
+        await eureka_client.init_async(
+            eureka_server=eureka_url,
+            app_name="disaster-detection",
+            instance_port=8000,
+            instance_host=os.getenv("HOSTNAME", "disaster-detection")
+        )
+        logger.info(f"Registered MS4 with Eureka at {eureka_url}")
+    except Exception as e:
+        logger.warning(f"Eureka Registration omitted or failed: {e}")
+
 # -- GLOBAL C2 SERVICES (Singleton) --
 crisis_service = CrisisRoomService()
 team_service = TeamMatchingService()
