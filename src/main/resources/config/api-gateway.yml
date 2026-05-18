@@ -161,10 +161,15 @@ spring:
         # (Events & News are routed to core-service above)
 
         # MS4 - Disaster Detection (REST)
+        - id: disaster-simulation
+          uri: ${DISASTER_DETECTION_URL:http://disaster-detection:8000}
+          predicates:
+            - Path=/api/v1/simulation/**
+
         - id: disaster-api
           uri: ${DISASTER_DETECTION_URL:http://disaster-detection:8000}
           predicates:
-            - Path=/api/v1/disasters/**, /api/v1/radar, /api/v1/crisis-room/**, /api/v1/teams/**, /api/v1/logistics/**
+            - Path=/api/v1/disasters/**,/api/v1/radar,/api/v1/crisis-room/**,/api/v1/teams/**,/api/v1/logistics/**
 
         # Unified FastAPI WebSocket
         - id: disaster-ws
