@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="fr"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>VolunteerOnboardingService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core-service</a> &gt; <a href="index.source.html" class="el_package">com.nexusaid.core.service</a> &gt; <span class="el_source">VolunteerOnboardingService.java</span></div><h1>VolunteerOnboardingService.java</h1><pre class="source lang-java linenums">package com.nexusaid.core.service;
+
+import com.nexusaid.core.entity.*;
+import com.nexusaid.core.entity.enums.*;
+import com.nexusaid.core.repository.*;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.*;
+
+@Service
+@RequiredArgsConstructor
+public class VolunteerOnboardingService {
+
+    private final VolunteerExtendedProfileRepository extProfileRepo;
+    private final VolunteerCertificationRepository certRepo;
+    private final SecourismeCertificationRepository catalogRepo;
+    private final VolunteerRepository volunteerRepo;
+    private final UserRepository userRepo;
+    private final CommitteeRoleRepository roleRepo;
+
+    // ─── Get Extended Profile ─────────────────────────────────────────────────
+
+    public VolunteerExtendedProfile getExtendedProfile(UUID volunteerId) {
+<span class="nc" id="L29">        return extProfileRepo.findByVolunteerId(volunteerId)</span>
+<span class="nc" id="L30">                .orElseGet(() -&gt; {</span>
+<span class="nc" id="L31">                    VolunteerExtendedProfile p = new VolunteerExtendedProfile();</span>
+<span class="nc" id="L32">                    p.setVolunteerId(volunteerId);</span>
+<span class="nc" id="L33">                    return p;</span>
+                });
+    }
+
+    public boolean isProfileCompleted(UUID volunteerId) {
+<span class="nc" id="L38">        return extProfileRepo.findByVolunteerId(volunteerId)</span>
+<span class="nc" id="L39">                .map(VolunteerExtendedProfile::isProfileCompleted)</span>
+<span class="nc" id="L40">                .orElse(false);</span>
+    }
+
+    // ─── Save/Submit Extended Profile ────────────────────────────────────────
+
+    @Transactional
+    public VolunteerExtendedProfile saveExtendedProfile(UUID volunteerId, Map&lt;String, Object&gt; data) {
+<span class="nc" id="L47">        VolunteerExtendedProfile profile = extProfileRepo.findByVolunteerId(volunteerId)</span>
+<span class="nc" id="L48">                .orElseGet(() -&gt; {</span>
+<span class="nc" id="L49">                    VolunteerExtendedProfile p = new VolunteerExtendedProfile();</span>
+<span class="nc" id="L50">                    p.setVolunteerId(volunteerId);</span>
+<span class="nc" id="L51">                    return p;</span>
+                });
+
+        // Map data
+<span class="nc bnc" id="L55" title="All 2 branches missed.">        if (data.containsKey(&quot;phone&quot;))</span>
+<span class="nc" id="L56">            profile.setPhone((String) data.get(&quot;phone&quot;));</span>
+<span class="nc bnc" id="L57" title="All 2 branches missed.">        if (data.containsKey(&quot;emergencyContactName&quot;))</span>
+<span class="nc" id="L58">            profile.setEmergencyContactName((String) data.get(&quot;emergencyContactName&quot;));</span>
+<span class="nc bnc" id="L59" title="All 2 branches missed.">        if (data.containsKey(&quot;emergencyContactPhone&quot;))</span>
+<span class="nc" id="L60">            profile.setEmergencyContactPhone((String) data.get(&quot;emergencyContactPhone&quot;));</span>
+<span class="nc bnc" id="L61" title="All 2 branches missed.">        if (data.containsKey(&quot;emergencyContactRelation&quot;))</span>
+<span class="nc" id="L62">            profile.setEmergencyContactRelation((String) data.get(&quot;emergencyContactRelation&quot;));</span>
+<span class="nc bnc" id="L63" title="All 2 branches missed.">        if (data.containsKey(&quot;photoUrl&quot;))</span>
+<span class="nc" id="L64">            profile.setPhotoUrl((String) data.get(&quot;photoUrl&quot;));</span>
+<span class="nc bnc" id="L65" title="All 2 branches missed.">        if (data.containsKey(&quot;photoPublicId&quot;))</span>
+<span class="nc" id="L66">            profile.setPhotoPublicId((String) data.get(&quot;photoPublicId&quot;));</span>
+<span class="nc bnc" id="L67" title="All 4 branches missed.">        if (data.containsKey(&quot;educationLevel&quot;) &amp;&amp; data.get(&quot;educationLevel&quot;) != null) {</span>
+            try {
+<span class="nc" id="L69">                profile.setEducationLevel(EducationLevel.valueOf((String) data.get(&quot;educationLevel&quot;)));</span>
+<span class="nc" id="L70">            } catch (IllegalArgumentException ignored) {}</span>
+        }
+<span class="nc bnc" id="L72" title="All 2 branches missed.">        if (data.containsKey(&quot;specializationDomain&quot;))</span>
+<span class="nc" id="L73">            profile.setSpecializationDomain((String) data.get(&quot;specializationDomain&quot;));</span>
+<span class="nc bnc" id="L74" title="All 2 branches missed.">        if (data.containsKey(&quot;trainingCoursesAttended&quot;))</span>
+<span class="nc" id="L75">            profile.setTrainingCoursesAttended((String) data.get(&quot;trainingCoursesAttended&quot;));</span>
+<span class="nc bnc" id="L76" title="All 4 branches missed.">        if (data.containsKey(&quot;realIntegrationDate&quot;) &amp;&amp; data.get(&quot;realIntegrationDate&quot;) != null) {</span>
+            try {
+<span class="nc" id="L78">                profile.setRealIntegrationDate(LocalDate.parse((String) data.get(&quot;realIntegrationDate&quot;)));</span>
+<span class="nc" id="L79">            } catch (Exception ignored) {}</span>
+        }
+<span class="nc bnc" id="L81" title="All 2 branches missed.">        if (data.containsKey(&quot;otherSkills&quot;))</span>
+<span class="nc" id="L82">            profile.setOtherSkills((String) data.get(&quot;otherSkills&quot;));</span>
+
+        // Calculate completion score
+<span class="nc" id="L85">        int score = calculateScore(profile);</span>
+<span class="nc" id="L86">        profile.setProfileCompletionScore(score);</span>
+
+        // Mark as completed if score &gt;= 80
+<span class="nc bnc" id="L89" title="All 4 branches missed.">        if (score &gt;= 80 &amp;&amp; !profile.isProfileCompleted()) {</span>
+<span class="nc" id="L90">            profile.setProfileCompleted(true);</span>
+<span class="nc" id="L91">            profile.setSubmittedAt(LocalDateTime.now());</span>
+
+            // Update user first_login_completed
+<span class="nc" id="L94">            userRepo.findById(volunteerId).ifPresent(u -&gt; {</span>
+<span class="nc" id="L95">                u.setFirstLoginCompleted(true);</span>
+<span class="nc" id="L96">                userRepo.save(u);</span>
+<span class="nc" id="L97">            });</span>
+        }
+
+<span class="nc" id="L100">        return extProfileRepo.save(profile);</span>
+    }
+
+    // ─── Score Calculation ────────────────────────────────────────────────────
+
+    public int calculateScore(VolunteerExtendedProfile p) {
+<span class="nc" id="L106">        int score = 0;</span>
+<span class="nc" id="L107">        int total = 10;</span>
+<span class="nc bnc" id="L108" title="All 4 branches missed.">        if (p.getPhone() != null &amp;&amp; !p.getPhone().isBlank()) score++;</span>
+<span class="nc bnc" id="L109" title="All 4 branches missed.">        if (p.getEmergencyContactName() != null &amp;&amp; !p.getEmergencyContactName().isBlank()) score++;</span>
+<span class="nc bnc" id="L110" title="All 4 branches missed.">        if (p.getEmergencyContactPhone() != null &amp;&amp; !p.getEmergencyContactPhone().isBlank()) score++;</span>
+<span class="nc bnc" id="L111" title="All 4 branches missed.">        if (p.getEmergencyContactRelation() != null &amp;&amp; !p.getEmergencyContactRelation().isBlank()) score++;</span>
+<span class="nc bnc" id="L112" title="All 4 branches missed.">        if (p.getPhotoUrl() != null &amp;&amp; !p.getPhotoUrl().isBlank()) score++;</span>
+<span class="nc bnc" id="L113" title="All 2 branches missed.">        if (p.getEducationLevel() != null) score++;</span>
+<span class="nc bnc" id="L114" title="All 4 branches missed.">        if (p.getSpecializationDomain() != null &amp;&amp; !p.getSpecializationDomain().isBlank()) score++;</span>
+<span class="nc bnc" id="L115" title="All 4 branches missed.">        if (p.getTrainingCoursesAttended() != null &amp;&amp; !p.getTrainingCoursesAttended().isBlank()) score++;</span>
+<span class="nc bnc" id="L116" title="All 2 branches missed.">        if (p.getRealIntegrationDate() != null) score++;</span>
+<span class="nc bnc" id="L117" title="All 4 branches missed.">        if (p.getOtherSkills() != null &amp;&amp; !p.getOtherSkills().isBlank()) score++;</span>
+<span class="nc" id="L118">        return (score * 100) / total;</span>
+    }
+
+    // ─── Admin: Review Extended Profile ──────────────────────────────────────
+
+    /**
+     * RESP_JEUNESSE_NATIONAL can edit; PRESIDENT_NATIONAL can approve.
+     */
+    @Transactional
+    public VolunteerExtendedProfile adminUpdateExtendedProfile(
+            UUID volunteerId, UUID requestingUserId, Map&lt;String, Object&gt; data, boolean approve) {
+
+<span class="nc" id="L130">        verifyAdminAccess(requestingUserId, approve);</span>
+
+<span class="nc" id="L132">        VolunteerExtendedProfile profile = extProfileRepo.findByVolunteerId(volunteerId)</span>
+<span class="nc" id="L133">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;Extended profile not found&quot;));</span>
+
+        // Apply edits (same mapping)
+<span class="nc" id="L136">        saveExtendedProfile(volunteerId, data);</span>
+
+<span class="nc bnc" id="L138" title="All 2 branches missed.">        if (approve) {</span>
+<span class="nc" id="L139">            profile.setReviewedBy(requestingUserId);</span>
+<span class="nc" id="L140">            profile.setReviewedAt(LocalDateTime.now());</span>
+<span class="nc bnc" id="L141" title="All 2 branches missed.">            if (data.containsKey(&quot;reviewNotes&quot;))</span>
+<span class="nc" id="L142">                profile.setReviewNotes((String) data.get(&quot;reviewNotes&quot;));</span>
+        }
+<span class="nc" id="L144">        return extProfileRepo.save(profile);</span>
+    }
+
+    private void verifyAdminAccess(UUID requestingUserId, boolean needsApproval) {
+<span class="nc" id="L148">        User user = userRepo.findById(requestingUserId)</span>
+<span class="nc" id="L149">                .orElseThrow(() -&gt; new AccessDeniedException(&quot;User not found&quot;));</span>
+<span class="nc bnc" id="L150" title="All 2 branches missed.">        if (user.getType() == UserType.ADMIN) return;</span>
+
+<span class="nc" id="L152">        List&lt;CommitteeRole&gt; roles = roleRepo.findByVolunteerId(requestingUserId);</span>
+<span class="nc" id="L153">        boolean isNationalRJ = roles.stream().anyMatch(r -&gt;</span>
+<span class="nc bnc" id="L154" title="All 2 branches missed.">                r.getTitle() == RoleTitle.RESP_JEUNESSE</span>
+<span class="nc bnc" id="L155" title="All 2 branches missed.">                &amp;&amp; r.getCommittee().getType() == CommitteeType.NATIONAL</span>
+<span class="nc bnc" id="L156" title="All 2 branches missed.">                &amp;&amp; r.getStatus() == CommitteeRoleStatus.APPROVED);</span>
+<span class="nc" id="L157">        boolean isNationalPresident = roles.stream().anyMatch(r -&gt;</span>
+<span class="nc bnc" id="L158" title="All 2 branches missed.">                r.getTitle() == RoleTitle.PRESIDENT</span>
+<span class="nc bnc" id="L159" title="All 2 branches missed.">                &amp;&amp; r.getCommittee().getType() == CommitteeType.NATIONAL</span>
+<span class="nc bnc" id="L160" title="All 2 branches missed.">                &amp;&amp; r.getStatus() == CommitteeRoleStatus.APPROVED);</span>
+
+<span class="nc bnc" id="L162" title="All 4 branches missed.">        if (needsApproval &amp;&amp; !isNationalPresident) {</span>
+<span class="nc" id="L163">            throw new AccessDeniedException(&quot;Only the National President can approve extended profiles.&quot;);</span>
+        }
+<span class="nc bnc" id="L165" title="All 6 branches missed.">        if (!needsApproval &amp;&amp; !isNationalRJ &amp;&amp; !isNationalPresident) {</span>
+<span class="nc" id="L166">            throw new AccessDeniedException(&quot;Only RESP_JEUNESSE_NATIONAL or PRESIDENT_NATIONAL can edit extended profiles.&quot;);</span>
+        }
+<span class="nc" id="L168">    }</span>
+
+    // ─── Certifications ──────────────────────────────────────────────────────
+
+    public List&lt;SecourismeCertification&gt; getAvailableCertifications() {
+<span class="nc" id="L173">        return catalogRepo.findByActiveTrueOrderByLevel();</span>
+    }
+
+    public List&lt;VolunteerCertification&gt; getMyCertifications(UUID volunteerId) {
+<span class="nc" id="L177">        List&lt;VolunteerCertification&gt; certs = certRepo.findByVolunteerId(volunteerId);</span>
+        // Enrich with catalogue data
+<span class="nc" id="L179">        certs.forEach(vc -&gt; catalogRepo.findById(vc.getCertificationId()).ifPresent(cat -&gt; {</span>
+<span class="nc" id="L180">            vc.setCertificationCode(cat.getCode());</span>
+<span class="nc" id="L181">            vc.setCertificationLabel(cat.getLabel());</span>
+<span class="nc" id="L182">        }));</span>
+<span class="nc" id="L183">        return certs;</span>
+    }
+
+    @Transactional
+    public VolunteerCertification addCertification(UUID volunteerId, UUID certId,
+                                                   LocalDate dateObtained, LocalDate dateExpiry,
+                                                   String issuedBy, UUID addedBy) {
+<span class="nc bnc" id="L190" title="All 2 branches missed.">        if (certRepo.existsByVolunteerIdAndCertificationId(volunteerId, certId)) {</span>
+<span class="nc" id="L191">            throw new IllegalArgumentException(&quot;Certification already exists for this volunteer&quot;);</span>
+        }
+<span class="nc" id="L193">        SecourismeCertification cat = catalogRepo.findById(certId)</span>
+<span class="nc" id="L194">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;Certification not found&quot;));</span>
+<span class="nc bnc" id="L195" title="All 2 branches missed.">        if (!cat.isActive()) throw new IllegalArgumentException(&quot;Certification is not active&quot;);</span>
+
+<span class="nc" id="L197">        VolunteerCertification vc = VolunteerCertification.builder()</span>
+<span class="nc" id="L198">                .volunteerId(volunteerId)</span>
+<span class="nc" id="L199">                .certificationId(certId)</span>
+<span class="nc" id="L200">                .dateObtained(dateObtained)</span>
+<span class="nc" id="L201">                .dateExpiry(dateExpiry)</span>
+<span class="nc" id="L202">                .issuedBy(issuedBy)</span>
+<span class="nc bnc" id="L203" title="All 4 branches missed.">                .status(dateExpiry != null &amp;&amp; dateExpiry.isBefore(LocalDate.now()) ? &quot;EXPIRED&quot; : &quot;ACTIVE&quot;)</span>
+<span class="nc" id="L204">                .addedBy(addedBy)</span>
+<span class="nc" id="L205">                .build();</span>
+<span class="nc" id="L206">        return certRepo.save(vc);</span>
+    }
+
+    @Transactional
+    public void removeCertification(UUID volunteerId, UUID certId, UUID requestingUserId) {
+<span class="nc" id="L211">        verifyCanEditCertification(requestingUserId, certId);</span>
+<span class="nc" id="L212">        certRepo.findByVolunteerIdAndCertificationId(volunteerId, certId)</span>
+<span class="nc" id="L213">                .ifPresent(certRepo::delete);</span>
+<span class="nc" id="L214">    }</span>
+
+    private void verifyCanEditCertification(UUID requestingUserId, UUID certId) {
+<span class="nc" id="L217">        User user = userRepo.findById(requestingUserId)</span>
+<span class="nc" id="L218">                .orElseThrow(() -&gt; new AccessDeniedException(&quot;User not found&quot;));</span>
+<span class="nc bnc" id="L219" title="All 2 branches missed.">        if (user.getType() == UserType.ADMIN) return;</span>
+
+<span class="nc" id="L221">        List&lt;CommitteeRole&gt; roles = roleRepo.findByVolunteerId(requestingUserId);</span>
+<span class="nc" id="L222">        boolean hasPermission = roles.stream().anyMatch(r -&gt;</span>
+<span class="nc bnc" id="L223" title="All 4 branches missed.">                (r.getTitle() == RoleTitle.RESP_SECOURISME || r.getTitle() == RoleTitle.RESP_JEUNESSE</span>
+<span class="nc bnc" id="L224" title="All 2 branches missed.">                        || r.getTitle() == RoleTitle.PRESIDENT)</span>
+<span class="nc bnc" id="L225" title="All 2 branches missed.">                &amp;&amp; r.getCommittee().getType() == CommitteeType.NATIONAL</span>
+<span class="nc bnc" id="L226" title="All 2 branches missed.">                &amp;&amp; r.getStatus() == CommitteeRoleStatus.APPROVED);</span>
+<span class="nc bnc" id="L227" title="All 2 branches missed.">        if (!hasPermission) throw new AccessDeniedException(&quot;Not authorized to manage certifications&quot;);</span>
+<span class="nc" id="L228">    }</span>
+
+    // ─── Dashboard Stats ─────────────────────────────────────────────────────
+
+    public Map&lt;String, Object&gt; getCompletenessStats() {
+<span class="nc" id="L233">        Map&lt;String, Object&gt; stats = new LinkedHashMap&lt;&gt;();</span>
+<span class="nc" id="L234">        stats.put(&quot;totalCompleted&quot;, extProfileRepo.countCompleted());</span>
+<span class="nc" id="L235">        stats.put(&quot;totalIncomplete&quot;, extProfileRepo.countIncomplete());</span>
+<span class="nc" id="L236">        stats.put(&quot;averageScore&quot;, extProfileRepo.averageCompletionScore());</span>
+<span class="nc" id="L237">        return stats;</span>
+    }
+
+    // ─── CRUD Certification Catalogue (admin) ─────────────────────────────────
+
+    @Transactional
+    public SecourismeCertification createCertification(SecourismeCertification cert, UUID requestingUserId) {
+<span class="nc" id="L244">        verifyCanEditCertification(requestingUserId, null);</span>
+<span class="nc" id="L245">        return catalogRepo.save(cert);</span>
+    }
+
+    @Transactional
+    public SecourismeCertification updateCertification(UUID certId, SecourismeCertification updated, UUID requestingUserId) {
+<span class="nc" id="L250">        verifyCanEditCertification(requestingUserId, certId);</span>
+<span class="nc" id="L251">        SecourismeCertification existing = catalogRepo.findById(certId)</span>
+<span class="nc" id="L252">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;Certification not found&quot;));</span>
+<span class="nc" id="L253">        existing.setLabel(updated.getLabel());</span>
+<span class="nc" id="L254">        existing.setDescription(updated.getDescription());</span>
+<span class="nc" id="L255">        existing.setLevel(updated.getLevel());</span>
+<span class="nc" id="L256">        existing.setActive(updated.isActive());</span>
+<span class="nc" id="L257">        existing.setEditableBy(updated.getEditableBy());</span>
+<span class="nc" id="L258">        return catalogRepo.save(existing);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

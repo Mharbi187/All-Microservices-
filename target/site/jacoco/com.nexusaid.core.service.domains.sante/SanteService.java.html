@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="fr"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SanteService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core-service</a> &gt; <a href="index.source.html" class="el_package">com.nexusaid.core.service.domains.sante</a> &gt; <span class="el_source">SanteService.java</span></div><h1>SanteService.java</h1><pre class="source lang-java linenums">package com.nexusaid.core.service.domains.sante;
+
+import com.nexusaid.core.entity.Committee;
+import com.nexusaid.core.entity.domains.sante.ActionChief;
+import com.nexusaid.core.entity.domains.sante.BeneficiaryHealthFile;
+import com.nexusaid.core.entity.domains.sante.BloodDonation;
+import com.nexusaid.core.entity.domains.sante.HealthAction;
+import com.nexusaid.core.repository.CommitteeRepository;
+import com.nexusaid.core.repository.domains.sante.ActionChiefRepository;
+import com.nexusaid.core.repository.domains.sante.BeneficiaryHealthFileRepository;
+import com.nexusaid.core.repository.domains.sante.BloodDonationRepository;
+import com.nexusaid.core.repository.domains.sante.HealthActionRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+public class SanteService {
+
+    private final HealthActionRepository healthActionRepository;
+    private final BloodDonationRepository bloodDonationRepository;
+    private final BeneficiaryHealthFileRepository beneficiaryRepo;
+    private final ActionChiefRepository actionChiefRepository;
+    private final CommitteeRepository committeeRepository;
+
+    @Transactional
+    public HealthAction createAction(UUID committeeId, HealthAction action) {
+<span class="nc" id="L32">        Committee committee = committeeRepository.findById(committeeId)</span>
+<span class="nc" id="L33">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;Committee not found&quot;));</span>
+<span class="nc" id="L34">        action.setCommittee(committee);</span>
+<span class="nc" id="L35">        action.setStatus(&quot;PLANNED&quot;);</span>
+<span class="nc" id="L36">        return healthActionRepository.save(action);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;HealthAction&gt; getActionsForCommittee(UUID committeeId) {
+<span class="nc" id="L41">        return healthActionRepository.findByCommitteeId(committeeId);</span>
+    }
+
+    @Transactional
+    public BloodDonation recordBloodDonation(BloodDonation donation) {
+<span class="nc" id="L46">        return bloodDonationRepository.save(donation);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;BloodDonation&gt; getAllBloodDonations() {
+<span class="nc" id="L51">        return bloodDonationRepository.findAll();</span>
+    }
+
+    @Transactional
+    public BeneficiaryHealthFile addHealthFile(BeneficiaryHealthFile file) {
+<span class="nc" id="L56">        return beneficiaryRepo.save(file);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;BeneficiaryHealthFile&gt; getHealthFilesForIntervention(UUID interventionId) {
+<span class="nc" id="L61">        return beneficiaryRepo.findByInterventionId(interventionId);</span>
+    }
+
+    @Transactional
+    public ActionChief assignActionChief(ActionChief chief, UUID designatedBy) {
+<span class="nc" id="L66">        chief.setDesignatedBy(designatedBy);</span>
+<span class="nc" id="L67">        chief.setStatus(&quot;ACTIVE&quot;);</span>
+<span class="nc" id="L68">        return actionChiefRepository.save(chief);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

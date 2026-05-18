@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="fr"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>VffService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core-service</a> &gt; <a href="index.source.html" class="el_package">com.nexusaid.core.service.domains.vff</a> &gt; <span class="el_source">VffService.java</span></div><h1>VffService.java</h1><pre class="source lang-java linenums">package com.nexusaid.core.service.domains.vff;
+
+import com.nexusaid.core.entity.domains.vff.ProtectionCampaign;
+import com.nexusaid.core.entity.domains.vff.VictimCase;
+import com.nexusaid.core.entity.domains.vff.VictimSupportPath;
+import com.nexusaid.core.repository.domains.vff.ProtectionCampaignRepository;
+import com.nexusaid.core.repository.domains.vff.VictimCaseRepository;
+import com.nexusaid.core.repository.domains.vff.VictimSupportPathRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+public class VffService {
+
+    private final VictimCaseRepository victimCaseRepository;
+    private final VictimSupportPathRepository supportPathRepository;
+    private final ProtectionCampaignRepository campaignRepository;
+
+    @Transactional
+    public VictimCase reportVictimCase(VictimCase victimCase, UUID volunteerId) {
+<span class="nc" id="L28">        victimCase.setAssignedVolunteerId(volunteerId);</span>
+        // Ensure a unique case reference is provided or generated securely here
+<span class="nc bnc" id="L30" title="All 2 branches missed.">        if (victimCase.getCaseReference() == null) {</span>
+<span class="nc" id="L31">            victimCase.setCaseReference(&quot;VFF-&quot; + UUID.randomUUID().toString().substring(0, 8).toUpperCase());</span>
+        }
+<span class="nc" id="L33">        return victimCaseRepository.save(victimCase);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;VictimCase&gt; getAllCases() {
+<span class="nc" id="L38">        return victimCaseRepository.findAll();</span>
+    }
+
+    @Transactional
+    public VictimSupportPath initializeSupportPath(UUID caseId, VictimSupportPath supportPath) {
+        // Only one active path per case
+<span class="nc" id="L44">        Optional&lt;VictimSupportPath&gt; existing = supportPathRepository.findByVictimCaseId(caseId);</span>
+<span class="nc bnc" id="L45" title="All 2 branches missed.">        if (existing.isPresent()) {</span>
+<span class="nc" id="L46">            throw new IllegalStateException(&quot;A support path already exists for this case.&quot;);</span>
+        }
+        
+<span class="nc" id="L49">        supportPath.setVictimCaseId(caseId);</span>
+<span class="nc" id="L50">        supportPath.setCurrentStage(&quot;REPORTED&quot;);</span>
+<span class="nc" id="L51">        return supportPathRepository.save(supportPath);</span>
+    }
+
+    @Transactional
+    public VictimSupportPath updateSupportPath(UUID caseId, VictimSupportPath updates) {
+<span class="nc" id="L56">        VictimSupportPath existing = supportPathRepository.findByVictimCaseId(caseId)</span>
+<span class="nc" id="L57">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;Support path not found for case&quot;));</span>
+        
+<span class="nc bnc" id="L59" title="All 2 branches missed.">        if (updates.getMedicalFollowUp() != null) existing.setMedicalFollowUp(updates.getMedicalFollowUp());</span>
+<span class="nc bnc" id="L60" title="All 2 branches missed.">        if (updates.getPsychologicalFollowUp() != null) existing.setPsychologicalFollowUp(updates.getPsychologicalFollowUp());</span>
+<span class="nc bnc" id="L61" title="All 2 branches missed.">        if (updates.getLegalFollowUp() != null) existing.setLegalFollowUp(updates.getLegalFollowUp());</span>
+<span class="nc bnc" id="L62" title="All 2 branches missed.">        if (updates.getShelterInfo() != null) existing.setShelterInfo(updates.getShelterInfo());</span>
+<span class="nc bnc" id="L63" title="All 2 branches missed.">        if (updates.getCurrentStage() != null) existing.setCurrentStage(updates.getCurrentStage());</span>
+        
+<span class="nc" id="L65">        existing.setPoliceReport(updates.isPoliceReport());</span>
+<span class="nc bnc" id="L66" title="All 2 branches missed.">        if (updates.getCourtCaseRef() != null) existing.setCourtCaseRef(updates.getCourtCaseRef());</span>
+        
+<span class="nc" id="L68">        return supportPathRepository.save(existing);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public Optional&lt;VictimSupportPath&gt; getSupportPath(UUID caseId) {
+<span class="nc" id="L73">        return supportPathRepository.findByVictimCaseId(caseId);</span>
+    }
+
+    @Transactional
+    public ProtectionCampaign launchCampaign(ProtectionCampaign campaign) {
+<span class="nc" id="L78">        return campaignRepository.save(campaign);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;ProtectionCampaign&gt; getAllCampaigns() {
+<span class="nc" id="L83">        return campaignRepository.findAll();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

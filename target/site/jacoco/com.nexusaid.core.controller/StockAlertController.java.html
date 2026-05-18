@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="fr"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>StockAlertController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core-service</a> &gt; <a href="index.source.html" class="el_package">com.nexusaid.core.controller</a> &gt; <span class="el_source">StockAlertController.java</span></div><h1>StockAlertController.java</h1><pre class="source lang-java linenums">package com.nexusaid.core.controller;
+
+import com.nexusaid.core.entity.StockAlert;
+import com.nexusaid.core.entity.enums.AlertSeverity;
+import com.nexusaid.core.entity.enums.AlertType;
+import com.nexusaid.core.security.UserDetailsImpl;
+import com.nexusaid.core.service.StockAlertService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.UUID;
+
+@RestController
+@RequestMapping(&quot;/api/v1/inventory/alerts&quot;)
+@RequiredArgsConstructor
+public class StockAlertController {
+
+    private final StockAlertService alertService;
+
+    @GetMapping
+    @PreAuthorize(&quot;hasAnyRole('PRESIDENT', 'RESP_SANTE', 'RESP_SECOURISME', 'RESP_ACTION_SOCIALE')&quot;)
+    public ResponseEntity&lt;List&lt;StockAlert&gt;&gt; getActiveAlerts() {
+<span class="nc" id="L27">        return ResponseEntity.ok(alertService.getActiveAlerts());</span>
+    }
+
+    @GetMapping(&quot;/item/{itemId}&quot;)
+    @PreAuthorize(&quot;hasAnyRole('PRESIDENT', 'RESP_SANTE', 'RESP_SECOURISME', 'RESP_ACTION_SOCIALE')&quot;)
+    public ResponseEntity&lt;List&lt;StockAlert&gt;&gt; getAlertsForItem(@PathVariable UUID itemId) {
+<span class="nc" id="L33">        return ResponseEntity.ok(alertService.getAlertsForItem(itemId));</span>
+    }
+
+    @PostMapping(&quot;/trigger&quot;)
+    @PreAuthorize(&quot;hasAnyRole('PRESIDENT', 'RESP_SANTE', 'RESP_SECOURISME', 'RESP_ACTION_SOCIALE')&quot;)
+    public ResponseEntity&lt;StockAlert&gt; triggerAlert(
+            @RequestParam UUID itemId,
+            @RequestParam AlertType type,
+            @RequestParam AlertSeverity severity) {
+<span class="nc" id="L42">        return ResponseEntity.ok(alertService.createAlert(itemId, type, severity));</span>
+    }
+
+    @PostMapping(&quot;/{id}/resolve&quot;)
+    @PreAuthorize(&quot;hasAnyRole('PRESIDENT', 'RESP_SANTE', 'RESP_SECOURISME', 'RESP_ACTION_SOCIALE')&quot;)
+    public ResponseEntity&lt;StockAlert&gt; resolveAlert(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+<span class="nc" id="L50">        return ResponseEntity.ok(alertService.resolveAlert(id, userDetails.getUser().getId()));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

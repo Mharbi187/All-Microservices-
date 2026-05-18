@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="fr"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CloudinaryService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core-service</a> &gt; <a href="index.source.html" class="el_package">com.nexusaid.core.service</a> &gt; <span class="el_source">CloudinaryService.java</span></div><h1>CloudinaryService.java</h1><pre class="source lang-java linenums">package com.nexusaid.core.service;
+
+import com.cloudinary.Cloudinary;
+import com.cloudinary.utils.ObjectUtils;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+
+import java.io.IOException;
+import java.util.Map;
+
+/**
+ * Service for administrative Cloudinary operations.
+ */
+@Service
+@RequiredArgsConstructor
+<span class="fc" id="L17">@Slf4j</span>
+public class CloudinaryService {
+
+    private final Cloudinary cloudinary;
+
+    /**
+     * Deletes an image from Cloudinary by its public ID.
+     * 
+     * @param publicId the public ID of the image to delete.
+     */
+    public void deleteImage(String publicId) {
+<span class="nc bnc" id="L28" title="All 4 branches missed.">        if (publicId == null || publicId.isEmpty()) {</span>
+<span class="nc" id="L29">            return;</span>
+        }
+
+        try {
+<span class="nc" id="L33">            log.info(&quot;Attempting to delete image from Cloudinary: {}&quot;, publicId);</span>
+<span class="nc" id="L34">            Map&lt;String, Object&gt; result = cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());</span>
+
+<span class="nc bnc" id="L36" title="All 2 branches missed.">            if (&quot;ok&quot;.equals(result.get(&quot;result&quot;))) {</span>
+<span class="nc" id="L37">                log.info(&quot;Successfully deleted image from Cloudinary: {}&quot;, publicId);</span>
+            } else {
+<span class="nc" id="L39">                log.warn(&quot;Cloudinary deletion returned non-ok result for {}: {}&quot;, publicId, result);</span>
+            }
+<span class="nc" id="L41">        } catch (IOException e) {</span>
+<span class="nc" id="L42">            log.error(&quot;Failed to delete image from Cloudinary: {}&quot;, publicId, e);</span>
+            // We don't throw an exception here to avoid breaking the main flow
+            // if the deletion fails (e.g., image already manualy deleted).
+<span class="nc" id="L45">        }</span>
+<span class="nc" id="L46">    }</span>
+
+    /**
+     * Uploads a file (image or document) to Cloudinary.
+     *
+     * @param fileData the file bytes
+     * @param folder the folder name in Cloudinary
+     * @param filename the original filename
+     * @return map with the upload results containing keys like 'url' and 'public_id'
+     * @throws IOException if upload fails
+     */
+    public Map&lt;String, Object&gt; uploadFile(byte[] fileData, String folder, String filename) throws IOException {
+<span class="nc" id="L58">        String resourceType = &quot;auto&quot;; // allows Cloudinary to decide based on file (raw for pdfs sometimes)</span>
+<span class="nc bnc" id="L59" title="All 6 branches missed.">        if (filename != null &amp;&amp; (filename.toLowerCase().endsWith(&quot;.pdf&quot;) || filename.toLowerCase().endsWith(&quot;.docx&quot;))) {</span>
+<span class="nc" id="L60">            resourceType = &quot;raw&quot;; // Force raw for documents to avoid issues on some Cloudinary setups</span>
+        }
+        
+<span class="nc" id="L63">        Map&lt;String, Object&gt; options = ObjectUtils.asMap(</span>
+                &quot;folder&quot;, folder,
+                &quot;resource_type&quot;, resourceType
+        );
+<span class="nc" id="L67">        log.info(&quot;Uploading file to Cloudinary in folder: {}&quot;, folder);</span>
+<span class="nc" id="L68">        return cloudinary.uploader().upload(fileData, options);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="fr"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SocialService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core-service</a> &gt; <a href="index.source.html" class="el_package">com.nexusaid.core.service.domains.social</a> &gt; <span class="el_source">SocialService.java</span></div><h1>SocialService.java</h1><pre class="source lang-java linenums">package com.nexusaid.core.service.domains.social;
+
+import com.nexusaid.core.entity.domains.social.Family;
+import com.nexusaid.core.entity.domains.social.SocialAction;
+import com.nexusaid.core.entity.domains.social.VulnerabilityScore;
+import com.nexusaid.core.repository.domains.social.FamilyRepository;
+import com.nexusaid.core.repository.domains.social.SocialActionRepository;
+import com.nexusaid.core.repository.domains.social.VulnerabilityScoreRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class SocialService {
+
+    private final FamilyRepository familyRepository;
+    private final VulnerabilityScoreRepository scoreRepository;
+    private final SocialActionRepository actionRepository;
+    private final VulnerabilityScoringEngine scoringEngine;
+
+    // ===== Families =====
+
+    @Transactional
+    public Family registerFamily(Family family) {
+<span class="nc" id="L30">        family.setStatus(&quot;ACTIVE&quot;);</span>
+<span class="nc" id="L31">        return familyRepository.save(family);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;Family&gt; getAllFamilies() {
+<span class="nc" id="L36">        return familyRepository.findAll();</span>
+    }
+
+    @Transactional(readOnly = true)
+    public Optional&lt;Family&gt; getFamilyById(UUID familyId) {
+<span class="nc" id="L41">        return familyRepository.findById(familyId);</span>
+    }
+
+    @Transactional
+    public Family updateFamily(UUID familyId, Family updated) {
+<span class="nc" id="L46">        return familyRepository.findById(familyId).map(existing -&gt; {</span>
+<span class="nc" id="L47">            existing.setFamilyName(updated.getFamilyName());</span>
+<span class="nc" id="L48">            existing.setHeadOfFamily(updated.getHeadOfFamily());</span>
+<span class="nc" id="L49">            existing.setMembers(updated.getMembers());</span>
+<span class="nc" id="L50">            existing.setAddress(updated.getAddress());</span>
+<span class="nc" id="L51">            existing.setGpsCoordinates(updated.getGpsCoordinates());</span>
+<span class="nc" id="L52">            existing.setNeedsType(updated.getNeedsType());</span>
+<span class="nc" id="L53">            existing.setUrgentNeeds(updated.getUrgentNeeds());</span>
+<span class="nc" id="L54">            existing.setEventTags(updated.getEventTags());</span>
+<span class="nc" id="L55">            existing.setStatus(updated.getStatus());</span>
+<span class="nc" id="L56">            return familyRepository.save(existing);</span>
+<span class="nc" id="L57">        }).orElseThrow(() -&gt; new RuntimeException(&quot;Family not found: &quot; + familyId));</span>
+    }
+
+    // ===== Vulnerability Scores (with AI Engine) =====
+
+    @Transactional
+    public VulnerabilityScore calculateAndSaveScore(UUID familyId, VulnerabilityScore scoreInput) {
+<span class="nc" id="L64">        Family family = familyRepository.findById(familyId)</span>
+<span class="nc" id="L65">                .orElseThrow(() -&gt; new RuntimeException(&quot;Family not found: &quot; + familyId));</span>
+
+<span class="nc" id="L67">        Optional&lt;VulnerabilityScore&gt; previousScore = scoreRepository.findTopByFamilyIdOrderByCalculatedAtDesc(familyId);</span>
+
+        // Use the scoring engine if factors are provided, otherwise save raw
+<span class="nc bnc" id="L70" title="All 4 branches missed.">        if (scoreInput.getFactors() != null &amp;&amp; !scoreInput.getFactors().isEmpty()) {</span>
+<span class="nc" id="L71">            VulnerabilityScore computed = scoringEngine.calculate(family, scoreInput.getFactors(), previousScore);</span>
+<span class="nc" id="L72">            return scoreRepository.save(computed);</span>
+        }
+
+        // Fallback: manual score entry
+<span class="nc" id="L76">        scoreInput.setFamilyId(familyId);</span>
+<span class="nc bnc" id="L77" title="All 2 branches missed.">        if (scoreInput.getTrend() == null)</span>
+<span class="nc" id="L78">            scoreInput.setTrend(&quot;STABLE&quot;);</span>
+<span class="nc" id="L79">        return scoreRepository.save(scoreInput);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public Optional&lt;VulnerabilityScore&gt; getLatestScoreForFamily(UUID familyId) {
+<span class="nc" id="L84">        return scoreRepository.findTopByFamilyIdOrderByCalculatedAtDesc(familyId);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;VulnerabilityScore&gt; getScoreHistory(UUID familyId) {
+<span class="nc" id="L89">        return scoreRepository.findByFamilyId(familyId);</span>
+    }
+
+    // ===== Social Actions =====
+
+    @Transactional
+    public SocialAction performAction(SocialAction action, UUID performedBy) {
+<span class="nc" id="L96">        action.setPerformedBy(performedBy);</span>
+
+        // Update family's last visit date
+<span class="nc" id="L99">        familyRepository.findById(action.getFamilyId()).ifPresent(family -&gt; {</span>
+<span class="nc" id="L100">            family.setLastVisitDate(LocalDateTime.now());</span>
+<span class="nc" id="L101">            familyRepository.save(family);</span>
+<span class="nc" id="L102">        });</span>
+
+<span class="nc" id="L104">        return actionRepository.save(action);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;SocialAction&gt; getActionsForFamily(UUID familyId) {
+<span class="nc" id="L109">        return actionRepository.findByFamilyId(familyId);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;SocialAction&gt; getAllActions() {
+<span class="nc" id="L114">        return actionRepository.findAll();</span>
+    }
+
+    // ===== Analytics =====
+
+    @Transactional(readOnly = true)
+    public Map&lt;String, Object&gt; getAnalytics() {
+<span class="nc" id="L121">        Map&lt;String, Object&gt; analytics = new LinkedHashMap&lt;&gt;();</span>
+
+<span class="nc" id="L123">        List&lt;Family&gt; allFamilies = familyRepository.findAll();</span>
+<span class="nc" id="L124">        List&lt;SocialAction&gt; allActions = actionRepository.findAll();</span>
+
+        // KPI counts
+<span class="nc" id="L127">        analytics.put(&quot;totalFamilies&quot;, allFamilies.size());</span>
+<span class="nc" id="L128">        analytics.put(&quot;totalMembers&quot;, allFamilies.stream().mapToInt(Family::getMembers).sum());</span>
+<span class="nc" id="L129">        analytics.put(&quot;activeFamilies&quot;, allFamilies.stream().filter(f -&gt; &quot;ACTIVE&quot;.equals(f.getStatus())).count());</span>
+<span class="nc" id="L130">        analytics.put(&quot;totalActions&quot;, allActions.size());</span>
+
+        // Families by status
+<span class="nc" id="L133">        Map&lt;String, Long&gt; byStatus = allFamilies.stream()</span>
+<span class="nc" id="L134">                .collect(Collectors.groupingBy(Family::getStatus, Collectors.counting()));</span>
+<span class="nc" id="L135">        analytics.put(&quot;familiesByStatus&quot;, byStatus);</span>
+
+        // Actions by type
+<span class="nc" id="L138">        Map&lt;String, Long&gt; byActionType = allActions.stream()</span>
+<span class="nc bnc" id="L139" title="All 2 branches missed.">                .filter(a -&gt; a.getActionType() != null)</span>
+<span class="nc" id="L140">                .collect(Collectors.groupingBy(SocialAction::getActionType, Collectors.counting()));</span>
+<span class="nc" id="L141">        analytics.put(&quot;actionsByType&quot;, byActionType);</span>
+
+        // Needs distribution
+<span class="nc" id="L144">        Map&lt;String, Long&gt; needsDist = allFamilies.stream()</span>
+<span class="nc bnc" id="L145" title="All 2 branches missed.">                .filter(f -&gt; f.getNeedsType() != null)</span>
+<span class="nc" id="L146">                .flatMap(f -&gt; f.getNeedsType().stream())</span>
+<span class="nc" id="L147">                .collect(Collectors.groupingBy(n -&gt; n, Collectors.counting()));</span>
+<span class="nc" id="L148">        analytics.put(&quot;needsDistribution&quot;, needsDist);</span>
+
+        // Urgent cases count
+<span class="nc" id="L151">        long urgentCount = allFamilies.stream()</span>
+<span class="nc bnc" id="L152" title="All 4 branches missed.">                .filter(f -&gt; f.getUrgentNeeds() != null &amp;&amp; !f.getUrgentNeeds().isEmpty())</span>
+<span class="nc" id="L153">                .count();</span>
+<span class="nc" id="L154">        analytics.put(&quot;urgentCases&quot;, urgentCount);</span>
+
+        // Event tag distribution (Ramadan, Rentrée, etc.)
+<span class="nc" id="L157">        Map&lt;String, Long&gt; eventDist = allFamilies.stream()</span>
+<span class="nc bnc" id="L158" title="All 2 branches missed.">                .filter(f -&gt; f.getEventTags() != null)</span>
+<span class="nc" id="L159">                .flatMap(f -&gt; f.getEventTags().stream())</span>
+<span class="nc" id="L160">                .collect(Collectors.groupingBy(e -&gt; e, Collectors.counting()));</span>
+<span class="nc" id="L161">        analytics.put(&quot;eventTagDistribution&quot;, eventDist);</span>
+
+        // Vulnerability score distribution (bands)
+<span class="nc" id="L164">        List&lt;VulnerabilityScore&gt; latestScores = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L165" title="All 2 branches missed.">        for (Family family : allFamilies) {</span>
+<span class="nc" id="L166">            scoreRepository.findTopByFamilyIdOrderByCalculatedAtDesc(family.getId())</span>
+<span class="nc" id="L167">                    .ifPresent(latestScores::add);</span>
+<span class="nc" id="L168">        }</span>
+<span class="nc" id="L169">        Map&lt;String, Long&gt; scoreBands = new LinkedHashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L170" title="All 2 branches missed.">        scoreBands.put(&quot;critical&quot;, latestScores.stream().filter(s -&gt; s.getScore() &gt;= 76).count());</span>
+<span class="nc bnc" id="L171" title="All 4 branches missed.">        scoreBands.put(&quot;high&quot;, latestScores.stream().filter(s -&gt; s.getScore() &gt;= 51 &amp;&amp; s.getScore() &lt; 76).count());</span>
+<span class="nc bnc" id="L172" title="All 4 branches missed.">        scoreBands.put(&quot;moderate&quot;, latestScores.stream().filter(s -&gt; s.getScore() &gt;= 26 &amp;&amp; s.getScore() &lt; 51).count());</span>
+<span class="nc bnc" id="L173" title="All 2 branches missed.">        scoreBands.put(&quot;low&quot;, latestScores.stream().filter(s -&gt; s.getScore() &lt; 26).count());</span>
+<span class="nc" id="L174">        analytics.put(&quot;vulnerabilityBands&quot;, scoreBands);</span>
+
+        // Trend overview
+<span class="nc" id="L177">        Map&lt;String, Long&gt; trends = latestScores.stream()</span>
+<span class="nc" id="L178">                .collect(Collectors.groupingBy(VulnerabilityScore::getTrend, Collectors.counting()));</span>
+<span class="nc" id="L179">        analytics.put(&quot;trendOverview&quot;, trends);</span>
+
+        // Priority families (top 10 most vulnerable)
+<span class="nc" id="L182">        List&lt;Map&lt;String, Object&gt;&gt; priorityFamilies = latestScores.stream()</span>
+<span class="nc" id="L183">                .sorted(VulnerabilityScoringEngine::compareByPriority)</span>
+<span class="nc" id="L184">                .limit(10)</span>
+<span class="nc" id="L185">                .map(score -&gt; {</span>
+<span class="nc" id="L186">                    Map&lt;String, Object&gt; entry = new LinkedHashMap&lt;&gt;();</span>
+<span class="nc" id="L187">                    entry.put(&quot;familyId&quot;, score.getFamilyId());</span>
+<span class="nc" id="L188">                    entry.put(&quot;score&quot;, score.getScore());</span>
+<span class="nc" id="L189">                    entry.put(&quot;trend&quot;, score.getTrend());</span>
+<span class="nc" id="L190">                    familyRepository.findById(score.getFamilyId()).ifPresent(f -&gt; {</span>
+<span class="nc" id="L191">                        entry.put(&quot;familyName&quot;, f.getFamilyName());</span>
+<span class="nc" id="L192">                        entry.put(&quot;members&quot;, f.getMembers());</span>
+<span class="nc" id="L193">                    });</span>
+<span class="nc" id="L194">                    return entry;</span>
+                })
+<span class="nc" id="L196">                .collect(Collectors.toList());</span>
+<span class="nc" id="L197">        analytics.put(&quot;priorityFamilies&quot;, priorityFamilies);</span>
+
+<span class="nc" id="L199">        return analytics;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>
