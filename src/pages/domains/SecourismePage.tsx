@@ -55,8 +55,8 @@ const SecourismePage: React.FC = () => {
                 secourismeService.getEquipment(user.committeeId).catch(() => []),
                 secourismeService.getDevices(user.committeeId).catch(() => []),
             ]);
-            setEquipment(eq || []);
-            setDevices(dv || []);
+            setEquipment(Array.isArray(eq) ? eq : []);
+            setDevices(Array.isArray(dv) ? dv : []);
         } catch (error) {
             console.error("Failed to load secourisme data", error);
         } finally {
