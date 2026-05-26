@@ -2,13 +2,10 @@ package com.nexusaid.core.entity.domains.secourisme;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.nexusaid.core.entity.Committee;
-import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.Type;
 
 import java.time.LocalDate;
-import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -28,13 +25,13 @@ public class RescueEquipment {
     private String name;
 
     @Column(nullable = false)
-    private String type; // e.g., Defibrillator, Oxygen Tank, First Aid Kit
+    private String type;
 
-    @Column(name = "serial_number")
-    private String serialNumber;
+    @Column(name = "quantity")
+    private Integer quantity;
 
-    @Column(name = "last_maintenance_date")
-    private LocalDate lastMaintenanceDate;
+    @Column(name = "status")
+    private String status;
 
     @Column(name = "next_maintenance_date")
     private LocalDate nextMaintenanceDate;
@@ -42,13 +39,8 @@ public class RescueEquipment {
     @Column
     private String condition; // e.g., Good, Needs Maintenance, Out of Service
 
-    private String status; // OPERATIONAL, MAINTENANCE, BROKEN
-
-    private Integer quantity;
-
     @Column(name = "last_inspection_date")
     private LocalDate lastInspectionDate;
-
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "committee_id", nullable = false)

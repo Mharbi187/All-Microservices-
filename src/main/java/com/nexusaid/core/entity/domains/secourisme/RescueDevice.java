@@ -52,3 +52,4 @@ public class RescueDevice {
     @JoinColumn(name = "committee_id", nullable = false)
     private Committee committee;
 }
+
