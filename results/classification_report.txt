@@ -1,0 +1,14 @@
+Disaster Detection Model – Classification Report
+Generated : 2026-05-24 21:53:45 UTC
+Model     : C:\Users\user\Desktop\Nexus-Aid\Nexus-AID-Workspace\disaster-detection\data\models\disaster_model.pkl
+Data      : C:\Users\user\Desktop\Nexus-Aid\Nexus-AID-Workspace\disaster-detection\data\tunisia_final_balanced_training.csv
+========================================================
+
+               precision    recall  f1-score   support
+
+ Low Risk (0)       0.00      0.00      0.00        16
+High Risk (1)       0.74      1.00      0.85        45
+
+     accuracy                           0.74        61
+    macro avg       0.37      0.50      0.42        61
+ weighted avg       0.54      0.74      0.63        61
