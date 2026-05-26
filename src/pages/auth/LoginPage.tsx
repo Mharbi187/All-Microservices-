@@ -32,13 +32,17 @@ const LoginPage: React.FC = () => {
             await store.fetchProfile();
             navigate('/dashboard');
         } catch (err: unknown) {
-            const axiosErr = err as { response?: { data?: { error?: string, message?: string } } };
-            const errorType = axiosErr?.response?.data?.error || '';
-            const errorMessage = axiosErr?.response?.data?.message || 'Email ou mot de passe incorrect';
+            // authStore throws a typed object { accountStatus?, message } for non-token responses
+            const typedErr = err as { accountStatus?: string; message?: string; response?: { data?: { error?: string, message?: string } } };
 
-            if (errorType === 'Account Pending Approval') {
+            const accountStatus = typedErr?.accountStatus;
+            const errorMessage = typedErr?.message
+                || typedErr?.response?.data?.message
+                || 'Email ou mot de passe incorrect';
+
+            if (accountStatus === 'PENDING') {
                 setStatusModal({ visible: true, type: 'PENDING' });
-            } else if (errorType === 'Account Suspended') {
+            } else if (accountStatus === 'SUSPENDED') {
                 setStatusModal({ visible: true, type: 'SUSPENDED' });
             } else {
                 setError(errorMessage);
@@ -315,10 +319,10 @@ const LoginPage: React.FC = () => {
         }
       `}</style>
 
-            <AccountStatusModal 
-                visible={statusModal.visible} 
-                status={statusModal.type} 
-                onClose={() => setStatusModal({ ...statusModal, visible: false })} 
+            <AccountStatusModal
+                visible={statusModal.visible}
+                status={statusModal.type}
+                onClose={() => setStatusModal({ ...statusModal, visible: false })}
             />
         </motion.div>
     );

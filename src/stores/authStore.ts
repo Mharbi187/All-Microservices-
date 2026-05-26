@@ -37,11 +37,27 @@ export const useAuthStore = create<AuthState>()(
                     // 1. Call login API — returns { token, id, email, fullName, message }
                     const authResponse = await authService.login(credentials);
 
-                    // 2. Store JWT token
+                    // 2. If no token was returned, the account is PENDING, blocked, or invalid.
+                    //    Throw a typed error so LoginPage can show the appropriate UI.
+                    if (!authResponse.token) {
+                        const msg = authResponse.message || 'Login failed.';
+                        const err: { accountStatus?: string; message: string } = { message: msg };
+
+                        if (msg.includes('PENDING')) {
+                            err.accountStatus = 'PENDING';
+                        } else if (msg.includes('SUSPENDED') || msg.includes('locked')) {
+                            err.accountStatus = 'SUSPENDED';
+                        }
+
+                        set({ isLoading: false });
+                        throw err;
+                    }
+
+                    // 3. Store JWT token
                     localStorage.setItem(config.tokenKey, authResponse.token);
 
-                    // 3. Build initial user object
-                    const nameParts = authResponse.fullName.split(' ');
+                    // 4. Build initial user object
+                    const nameParts = (authResponse.fullName || '').split(' ');
                     const user: User = {
                         id: authResponse.id,
                         email: authResponse.email,
