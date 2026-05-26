@@ -175,10 +175,15 @@ spring:
         # (Events & News are routed to core-service above)
 
         # MS4 - Disaster Detection (Module 4: Catastrophes) — REST API
+        - id: disaster-simulation
+          uri: ${DISASTER_DETECTION_URL:http://disaster-detection:8000}
+          predicates:
+            - Path=/api/v1/simulation/**
+
         - id: disaster-api
           uri: ${DISASTER_DETECTION_URL:http://disaster-detection:8000}
           predicates:
-            - Path=/api/v1/disasters/**, /api/v1/radar, /api/v1/crisis-room/**, /api/v1/teams/**, /api/v1/logistics/**, /api/v1/simulation/**
+            - Path=/api/v1/disasters/**,/api/v1/radar,/api/v1/crisis-room/**,/api/v1/teams/**,/api/v1/logistics/**
 
         # WebSocket for real-time disaster data
         - id: disaster-ws
