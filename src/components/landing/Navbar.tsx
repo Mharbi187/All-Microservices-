@@ -1,46 +1,43 @@
 // ============================================================
-// Navbar — Glass-morphism fixed navigation with mobile menu
+// Navbar — Light responsive CRT nav
+// White bg, logo left, links center (desktop), hamburger right
 // ============================================================
 
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import Logo from '@/components/common/Logo';
-import ThemeToggle from '@/components/common/ThemeToggle';
-import { IconMenu, IconX } from '@/components/common/SvgIcons';
+import { useUIStore } from '../../stores/uiStore';
 
 const navLinks = [
-    { label: 'Services', href: '/#modules' },
-    { label: 'Actualités & Publications', href: '/#news' },
-    { label: 'Contact', href: '/#contact' },
+    { label: 'Accueil', href: '/' },
     { label: 'À Propos', href: '/about' },
+    { label: 'Modules', href: '/#modules' },
+    { label: 'Actualités', href: '/#news' },
+    { label: 'Contact', href: '/#contact' },
 ];
-
 
 const Navbar: React.FC = () => {
     const [scrolled, setScrolled] = useState(false);
     const [mobileOpen, setMobileOpen] = useState(false);
     const location = useLocation();
 
+    const themeMode = useUIStore(s => s.themeMode);
+    const dark = themeMode === 'dark';
+    const toggleTheme = useUIStore(s => s.toggleTheme);
+
     useEffect(() => {
-        const handleScroll = () => setScrolled(window.scrollY > 50);
-        window.addEventListener('scroll', handleScroll);
-        return () => window.removeEventListener('scroll', handleScroll);
+        const onScroll = () => setScrolled(window.scrollY > 50);
+        window.addEventListener('scroll', onScroll, { passive: true });
+        return () => window.removeEventListener('scroll', onScroll);
     }, []);
 
-    // Close mobile menu on route change
-    useEffect(() => {
-        setMobileOpen(false);
-    }, [location]);
+    useEffect(() => { setMobileOpen(false); }, [location]);
 
     const handleAnchorClick = (e: React.MouseEvent, href: string) => {
         if (href.startsWith('/#')) {
             const id = href.replace('/#', '');
             const el = document.getElementById(id);
-            if (el) {
-                e.preventDefault();
-                el.scrollIntoView({ behavior: 'smooth' });
-            }
+            if (el) { e.preventDefault(); el.scrollIntoView({ behavior: 'smooth' }); }
         }
     };
 
@@ -48,237 +45,313 @@ const Navbar: React.FC = () => {
         <nav
             style={{
                 position: 'fixed',
-                top: 0,
-                left: 0,
-                right: 0,
+                top: 0, left: 0, right: 0,
                 zIndex: 100,
-                padding: scrolled ? '12px 48px' : '16px 48px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                background: scrolled ? 'var(--nav-bg-scrolled)' : 'var(--nav-bg)',
-                backdropFilter: 'var(--glass-blur)',
-                WebkitBackdropFilter: 'var(--glass-blur)',
-                borderBottom: '1px solid var(--glass-border)',
-                transition: 'all 0.4s ease',
+                padding: scrolled ? '10px 32px' : '14px 32px',
+                background: scrolled ? (dark ? 'rgba(18,18,20,0.95)' : 'rgba(255,255,255,0.98)') : (dark ? 'rgba(18,18,20,0.85)' : 'rgba(255,255,255,0.93)'),
+                backdropFilter: 'blur(16px)',
+                WebkitBackdropFilter: 'blur(16px)',
+                borderBottom: scrolled ? (dark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(200,16,46,0.12)') : (dark ? '1px solid rgba(255,255,255,0.04)' : '1px solid rgba(0,0,0,0.05)'),
+                boxShadow: scrolled ? '0 2px 24px rgba(0,0,0,0.08)' : '0 1px 4px rgba(0,0,0,0.03)',
+                transition: 'all 0.3s cubic-bezier(0.4,0,0.2,1)',
             }}
         >
-            <Logo size="md" linkTo="/" />
+            {/* ── Logo ── */}
+            <Link
+                to="/"
+                style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, zIndex: 2 }}
+            >
+                <img
+                    src="/logo.jpg"
+                    alt="CRT"
+                    style={{
+                        width: 38, height: 38,
+                        borderRadius: '50%',
+                        objectFit: 'cover',
+                        border: '2px solid rgba(200,16,46,0.18)',
+                        flexShrink: 0,
+                    }}
+                />
+                <div style={{ lineHeight: 1.25 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: dark ? '#F4F4F5' : '#1A1A2E', fontFamily: 'var(--font-display)', letterSpacing: '-0.01em' }}>
+                        Nexus<span style={{ color: dark ? '#FC8181' : '#C8102E' }}>-AID</span>
+                    </div>
+                    <div style={{ fontSize: 9.5, color: dark ? '#A1A1AA' : '#9CA3AF', fontWeight: 400, letterSpacing: '0.03em' }}>
+                        Croissant-Rouge Tunisien
+                    </div>
+                </div>
+            </Link>
 
-            {/* Desktop Links */}
+            {/* ── Desktop Links (absolutely centred) ── */}
             <ul
-                className="hidden lg:flex items-center gap-9"
-                style={{ listStyle: 'none' }}
+                style={{
+                    listStyle: 'none',
+                    display: 'flex',
+                    gap: 30,
+                    position: 'absolute',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    margin: 0, padding: 0,
+                }}
+                className="nav-desktop-links"
             >
                 {navLinks.map((link) => {
-                    const isPage = !link.href.startsWith('/#');
-                    const linkStyle: React.CSSProperties = {
+                    const isAnchor = link.href.startsWith('/#');
+                    const isActive = !isAnchor && location.pathname === link.href;
+                    const base: React.CSSProperties = {
                         textDecoration: 'none',
-                        color: 'var(--text-secondary)',
-                        fontSize: 14,
-                        fontWeight: 500,
-                        letterSpacing: '0.04em',
-                        transition: 'color 0.3s',
+                        fontSize: 13.5,
+                        fontWeight: isActive ? 600 : 500,
+                        color: isActive ? '#C8102E' : (dark ? '#A1A1AA' : '#374151'),
+                        letterSpacing: '0.02em',
+                        transition: 'color 0.22s ease',
+                        whiteSpace: 'nowrap',
                         position: 'relative',
+                        paddingBottom: 3,
                     };
-                    const hoverIn = (e: React.MouseEvent) => ((e.currentTarget as HTMLElement).style.color = 'var(--text-primary)');
-                    const hoverOut = (e: React.MouseEvent) => ((e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)');
-                    const underline = (
-                        <span
-                            style={{
-                                position: 'absolute',
-                                bottom: -4,
-                                left: 0,
-                                right: 0,
-                                height: 1,
-                                background: 'var(--red)',
-                                transform: 'scaleX(0)',
-                                transition: 'transform 0.3s',
-                            }}
-                            className="group-hover:scale-x-100"
-                        />
+                    const inner = (
+                        <>
+                            {link.label}
+                            {isActive && (
+                                <span style={{
+                                    position: 'absolute', bottom: 0, left: 0, right: 0,
+                                    height: 2, borderRadius: 1,
+                                    background: '#C8102E',
+                                }} />
+                            )}
+                        </>
                     );
                     return (
                         <li key={link.label}>
-                            {isPage ? (
-                                <Link to={link.href} className="relative group" style={linkStyle} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>
-                                    {link.label}{underline}
-                                </Link>
+                            {isAnchor ? (
+                                <a href={link.href} style={base}
+                                    onClick={(e) => handleAnchorClick(e, link.href)}
+                                    onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = '#C8102E')}
+                                    onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = isActive ? '#C8102E' : (dark ? '#A1A1AA' : '#374151'))}
+                                >{inner}</a>
                             ) : (
-                                <a href={link.href} onClick={(e) => handleAnchorClick(e, link.href)} className="relative group" style={linkStyle} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>
-                                    {link.label}{underline}
-                                </a>
+                                <Link to={link.href} style={base}
+                                    onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = '#C8102E')}
+                                    onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = isActive ? '#C8102E' : (dark ? '#A1A1AA' : '#374151'))}
+                                >{inner}</Link>
                             )}
                         </li>
                     );
                 })}
             </ul>
 
-            {/* Desktop Actions */}
-            <div className="hidden lg:flex items-center gap-3">
-                <ThemeToggle />
-                <Link
-                    to="/login"
+            {/* ── Desktop CTAs ── */}
+            <div
+                className="nav-desktop-cta"
+                style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, zIndex: 2 }}
+            >
+                <button
+                    onClick={toggleTheme}
                     style={{
-                        padding: '9px 22px',
+                        width: 36, height: 36,
+                        borderRadius: '50%',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: dark ? 'rgba(255,255,255,0.05)' : 'transparent',
+                        border: dark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(200,16,46,0.15)',
+                        color: dark ? '#F4F4F5' : '#C8102E',
+                        cursor: 'pointer',
+                        transition: 'all 0.22s ease',
+                        marginRight: 4,
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = dark ? 'rgba(255,255,255,0.1)' : 'rgba(200,16,46,0.06)'; e.currentTarget.style.borderColor = dark ? 'rgba(255,255,255,0.2)' : '#C8102E'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = dark ? 'rgba(255,255,255,0.05)' : 'transparent'; e.currentTarget.style.borderColor = dark ? 'rgba(255,255,255,0.1)' : 'rgba(200,16,46,0.15)'; e.currentTarget.style.transform = 'none'; }}
+                    aria-label="Changer le thème"
+                >
+                    {themeMode === 'light' ? (
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                    ) : (
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                    )}
+                </button>
+                <Link to="/login"
+                    style={{
+                        padding: '7px 16px',
                         borderRadius: 100,
-                        border: '1px solid var(--glass-border)',
+                        border: dark ? '1.5px solid rgba(255,255,255,0.15)' : '1.5px solid rgba(200,16,46,0.28)',
                         background: 'transparent',
-                        color: 'var(--text-primary)',
-                        fontSize: 14,
+                        color: dark ? '#F4F4F5' : '#C8102E',
+                        fontSize: 13,
                         fontWeight: 500,
                         textDecoration: 'none',
-                        backdropFilter: 'blur(6px)',
-                        transition: 'all 0.3s',
+                        transition: 'all 0.22s ease',
+                        whiteSpace: 'nowrap',
                     }}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = 'var(--pink)';
-                        e.currentTarget.style.color = 'var(--pink)';
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = 'var(--glass-border)';
-                        e.currentTarget.style.color = 'var(--text-primary)';
-                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = dark ? 'rgba(255,255,255,0.1)' : 'rgba(200,16,46,0.06)'; e.currentTarget.style.borderColor = dark ? 'rgba(255,255,255,0.3)' : '#C8102E'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = dark ? 'rgba(255,255,255,0.15)' : 'rgba(200,16,46,0.28)'; }}
                 >
                     Connexion
                 </Link>
-                <Link
-                    to="/register"
+                <Link to="/register"
                     style={{
-                        padding: '9px 24px',
+                        padding: '8px 20px',
                         borderRadius: 100,
-                        border: 'none',
-                        background: 'var(--red)',
-                        color: 'white',
-                        fontSize: 14,
+                        background: '#C8102E',
+                        color: '#fff',
+                        fontSize: 13,
                         fontWeight: 600,
                         textDecoration: 'none',
-                        boxShadow: '0 4px 20px rgba(241,3,22,0.35)',
-                        transition: 'all 0.3s',
+                        boxShadow: '0 3px 12px rgba(200,16,46,0.36)',
+                        transition: 'all 0.22s ease',
+                        whiteSpace: 'nowrap',
                     }}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'var(--crimson)';
-                        e.currentTarget.style.transform = 'translateY(-1px)';
-                        e.currentTarget.style.boxShadow = '0 6px 28px rgba(241,3,22,0.5)';
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'var(--red)';
-                        e.currentTarget.style.transform = 'none';
-                        e.currentTarget.style.boxShadow = '0 4px 20px rgba(241,3,22,0.35)';
-                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = '#9B0B22'; e.currentTarget.style.boxShadow = '0 5px 18px rgba(200,16,46,0.48)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = '#C8102E'; e.currentTarget.style.boxShadow = '0 3px 12px rgba(200,16,46,0.36)'; e.currentTarget.style.transform = 'none'; }}
                 >
                     S'inscrire
                 </Link>
             </div>
 
-            {/* Mobile Menu Button */}
-            <div className="flex lg:hidden items-center gap-3">
-                <ThemeToggle />
-                <button
-                    onClick={() => setMobileOpen(!mobileOpen)}
-                    style={{
-                        width: 38,
-                        height: 38,
-                        borderRadius: '50%',
-                        border: '1px solid var(--glass-border)',
-                        background: 'var(--glass-bg)',
-                        backdropFilter: 'blur(8px)',
-                        color: 'var(--text-primary)',
-                        fontSize: 20,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                    }}
-                    aria-label="Toggle mobile menu"
-                >
-                    {mobileOpen ? <IconX size={18} /> : <IconMenu size={18} />}
-                </button>
-            </div>
+            {/* ── Mobile hamburger ── */}
+            <button
+                className="nav-mobile-btn"
+                onClick={() => setMobileOpen(!mobileOpen)}
+                aria-label={mobileOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
+                style={{
+                    flexShrink: 0,
+                    zIndex: 2,
+                    width: 40, height: 40,
+                    borderRadius: 12,
+                    border: dark ? '1.5px solid rgba(255,255,255,0.1)' : '1.5px solid rgba(200,16,46,0.2)',
+                    background: mobileOpen ? (dark ? 'rgba(255,255,255,0.1)' : 'rgba(200,16,46,0.06)') : 'transparent',
+                    cursor: 'pointer',
+                    display: 'none',       /* hidden on desktop via CSS */
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexDirection: 'column',
+                    gap: 4,
+                    transition: 'all 0.25s ease',
+                    padding: 0,
+                }}
+            >
+                {/* Animated burger lines */}
+                <span style={{
+                    display: 'block', width: 18, height: 1.8, borderRadius: 2,
+                    background: dark ? '#F4F4F5' : '#374151',
+                    transform: mobileOpen ? 'rotate(45deg) translate(4px,4px)' : 'none',
+                    transition: 'transform 0.3s ease',
+                }} />
+                <span style={{
+                    display: 'block', width: 18, height: 1.8, borderRadius: 2,
+                    background: dark ? '#F4F4F5' : '#374151',
+                    opacity: mobileOpen ? 0 : 1,
+                    transition: 'opacity 0.2s ease',
+                }} />
+                <span style={{
+                    display: 'block', width: 18, height: 1.8, borderRadius: 2,
+                    background: dark ? '#F4F4F5' : '#374151',
+                    transform: mobileOpen ? 'rotate(-45deg) translate(4px,-4px)' : 'none',
+                    transition: 'transform 0.3s ease',
+                }} />
+            </button>
 
-            {/* Mobile Menu */}
+            {/* ── Mobile Drawer ── */}
             <AnimatePresence>
                 {mobileOpen && (
                     <motion.div
-                        initial={{ opacity: 0, y: -20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
-                        transition={{ duration: 0.3 }}
+                        initial={{ opacity: 0, y: -10, scale: 0.97 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -10, scale: 0.97 }}
+                        transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
                         style={{
                             position: 'absolute',
-                            top: '100%',
-                            left: 0,
-                            right: 0,
-                            background: 'var(--nav-bg-scrolled)',
-                            backdropFilter: 'var(--glass-blur)',
-                            WebkitBackdropFilter: 'var(--glass-blur)',
-                            borderBottom: '1px solid var(--glass-border)',
-                            padding: '24px',
+                            top: 'calc(100% + 8px)',
+                            left: 12, right: 12,
+                            background: dark ? '#1E1E22' : '#fff',
+                            border: dark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(200,16,46,0.1)',
+                            borderRadius: 18,
+                            padding: '16px 12px',
+                            boxShadow: '0 16px 48px rgba(0,0,0,0.2)',
                             display: 'flex',
                             flexDirection: 'column',
-                            gap: 16,
+                            gap: 2,
                         }}
                     >
-                        {navLinks.map((link) => {
-                            const isPage = !link.href.startsWith('/#');
-                            const mobileStyle: React.CSSProperties = {
-                                textDecoration: 'none',
-                                color: 'var(--text-secondary)',
-                                fontSize: 16,
-                                fontWeight: 500,
-                                padding: '8px 0',
-                                borderBottom: '1px solid var(--card-border)',
-                                display: 'block',
+                        {navLinks.map((link, i) => {
+                            const isAnchor = link.href.startsWith('/#');
+                            const ms: React.CSSProperties = {
+                                textDecoration: 'none', color: dark ? '#E4E4E7' : '#374151',
+                                fontSize: 15, fontWeight: 500,
+                                padding: '11px 14px', borderRadius: 11,
+                                display: 'block', transition: 'all 0.18s',
                             };
-                            return isPage ? (
-                                <Link key={link.label} to={link.href} onClick={() => setMobileOpen(false)} style={mobileStyle}>
-                                    {link.label}
-                                </Link>
-                            ) : (
-                                <a key={link.label} href={link.href} onClick={(e) => { handleAnchorClick(e, link.href); setMobileOpen(false); }} style={mobileStyle}>
-                                    {link.label}
-                                </a>
+                            return (
+                                <motion.div
+                                    key={link.label}
+                                    initial={{ opacity: 0, x: -8 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: i * 0.04 }}
+                                >
+                                    {isAnchor ? (
+                                        <a href={link.href} style={ms}
+                                            onClick={(e) => { handleAnchorClick(e, link.href); setMobileOpen(false); }}
+                                            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(200,16,46,0.06)'; e.currentTarget.style.color = '#C8102E'; }}
+                                            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#374151'; }}
+                                        >{link.label}</a>
+                                    ) : (
+                                        <Link to={link.href} style={ms}
+                                            onClick={() => setMobileOpen(false)}
+                                            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(200,16,46,0.06)'; e.currentTarget.style.color = '#C8102E'; }}
+                                            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#374151'; }}
+                                        >{link.label}</Link>
+                                    )}
+                                </motion.div>
                             );
                         })}
-                        <div className="flex gap-3 pt-2">
-                            <Link
-                                to="/login"
-                                onClick={() => setMobileOpen(false)}
+                        <div style={{ height: 1, background: dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)', margin: '6px 2px' }} />
+                        <div style={{ padding: '0 4px', marginBottom: '8px' }}>
+                            <button
+                                onClick={toggleTheme}
                                 style={{
-                                    flex: 1,
-                                    textAlign: 'center',
-                                    padding: '12px',
-                                    borderRadius: 12,
-                                    border: '1px solid var(--glass-border)',
-                                    color: 'var(--text-primary)',
-                                    textDecoration: 'none',
-                                    fontSize: 14,
-                                    fontWeight: 500,
+                                    width: '100%',
+                                    display: 'flex', alignItems: 'center', gap: 12,
+                                    padding: '11px 14px', borderRadius: 11,
+                                    background: dark ? 'rgba(255,255,255,0.05)' : 'rgba(200,16,46,0.04)',
+                                    border: dark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(200,16,46,0.1)',
+                                    color: dark ? '#F4F4F5' : '#C8102E',
+                                    fontSize: 15, fontWeight: 500,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.18s'
                                 }}
                             >
+                                {themeMode === 'light' ? (
+                                    <><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg> Mode Sombre</>
+                                ) : (
+                                    <><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg> Mode Clair</>
+                                )}
+                            </button>
+                        </div>
+                        <div style={{ display: 'flex', gap: 8, padding: '2px' }}>
+                            <Link to="/login" onClick={() => setMobileOpen(false)} style={{ flex: 1, textAlign: 'center', padding: '11px', borderRadius: 10, border: dark ? '1.5px solid rgba(255,255,255,0.15)' : '1.5px solid rgba(200,16,46,0.25)', color: dark ? '#F4F4F5' : '#C8102E', textDecoration: 'none', fontSize: 14, fontWeight: 500 }}>
                                 Connexion
                             </Link>
-                            <Link
-                                to="/register"
-                                onClick={() => setMobileOpen(false)}
-                                style={{
-                                    flex: 1,
-                                    textAlign: 'center',
-                                    padding: '12px',
-                                    borderRadius: 12,
-                                    background: 'var(--red)',
-                                    color: 'white',
-                                    textDecoration: 'none',
-                                    fontSize: 14,
-                                    fontWeight: 600,
-                                }}
-                            >
+                            <Link to="/register" onClick={() => setMobileOpen(false)} style={{ flex: 1, textAlign: 'center', padding: '11px', borderRadius: 10, background: '#C8102E', color: '#fff', textDecoration: 'none', fontSize: 14, fontWeight: 600 }}>
                                 S'inscrire
                             </Link>
                         </div>
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* ── Responsive CSS ── */}
+            <style>{`
+                .nav-desktop-links { display: flex; }
+                .nav-desktop-cta   { display: flex; }
+                .nav-mobile-btn    { display: none !important; }
+
+                @media (max-width: 900px) {
+                    .nav-desktop-links { display: none !important; }
+                    .nav-desktop-cta   { display: none !important; }
+                    .nav-mobile-btn    { display: flex !important; }
+                }
+            `}</style>
         </nav>
     );
 };

@@ -7,9 +7,10 @@ import { lazy, Suspense } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { Outlet } from 'react-router-dom';
 import MainLayout from '@/layouts/MainLayout';
+import DonorLayout from '@/layouts/DonorLayout';
 import AuthLayout from '@/layouts/AuthLayout';
 import LandingLayout from '@/layouts/LandingLayout';
-import { useAuthStore } from '@/stores';
+import { useAuthStore, useUIStore } from '@/stores';
 
 // ---- Full-screen loading page shown during lazy chunk loading ----
 const PageLoader = () => (
@@ -59,10 +60,27 @@ const withLoader = (element: React.ReactNode) => (
 // ---- Auth Guard: redirect to /login if not authenticated ----
 const ProtectedRoute: React.FC = () => {
     const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+    const user = useAuthStore((s) => s.user);
     if (!isAuthenticated) {
         return <Navigate to="/login" replace />;
     }
+    if (user?.type === 'DONOR') {
+        return <Navigate to="/donor/dashboard" replace />;
+    }
     return <MainLayout />;
+};
+
+// ---- Donor Protected Route: redirects donors to /donor/dashboard ----
+const DonorProtectedRoute: React.FC = () => {
+    const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+    const user = useAuthStore((s) => s.user);
+    if (!isAuthenticated) {
+        return <Navigate to="/login" replace />;
+    }
+    if (user?.type && user.type !== 'DONOR') {
+        return <Navigate to="/dashboard" replace />;
+    }
+    return <DonorLayout />;
 };
 
 const FullscreenProtectedRoute: React.FC = () => {
@@ -98,6 +116,13 @@ const ResourcesPage = lazy(() => import('@/pages/volunteer/ResourcesPage'));
 const YouthSpacePage = lazy(() => import('@/pages/volunteer/YouthSpacePage'));
 const QuizPage = lazy(() => import('@/pages/volunteer/QuizPage'));
 
+// ---- Donor-specific pages ----
+const DonorDashboardPage = lazy(() => import('@/pages/donor/DonorDashboardPage'));
+const DonorMapPage = lazy(() => import('@/pages/donor/DonorMapPage'));
+const MakeDonationPage = lazy(() => import('@/pages/donor/MakeDonationPage'));
+const DonorReceiptsPage = lazy(() => import('@/pages/donor/DonorReceiptsPage'));
+const DonorNotificationsPage = lazy(() => import('@/pages/donor/DonorNotificationsPage'));
+
 // ---- Domain-specific pages ----
 const SecourismePage = lazy(() => import('@/pages/domains/SecourismePage'));
 const DiffusionPage = lazy(() => import('@/pages/domains/DiffusionPage'));
@@ -132,6 +157,23 @@ export const router = createBrowserRouter([
         children: [
             { index: true, element: withLoader(<HomePage />) },
             { path: 'about', element: withLoader(<AboutPage />) },
+        ],
+    },
+
+    // ---- Donor Space Routes (dedicated DonorLayout, DONOR role only) ----
+    {
+        path: '/donor',
+        element: <DonorProtectedRoute />,
+        children: [
+            { index: true, element: <Navigate to="/donor/dashboard" replace /> },
+            { path: 'dashboard', element: withLoader(<DonorDashboardPage />) },
+            { path: 'map', element: withLoader(<DonorMapPage />) },
+            { path: 'donate', element: withLoader(<MakeDonationPage />) },
+            { path: 'receipts', element: withLoader(<DonorReceiptsPage />) },
+            { path: 'notifications', element: withLoader(<DonorNotificationsPage />) },
+            { path: 'news', element: withLoader(<NewsPage />) },
+            { path: 'profile', element: withLoader(<MyProfilePage />) },
+            { path: 'complaints', element: withLoader(<MyComplaintsPage />) },
         ],
     },
 

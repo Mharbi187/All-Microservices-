@@ -3,6 +3,7 @@
 // ============================================================
 
 import { motion } from 'framer-motion';
+import { useUIStore } from '@/stores/uiStore';
 
 const stats = [
     { value: '24', label: 'Gouvernorats couverts' },
@@ -12,14 +13,17 @@ const stats = [
 ];
 
 const StatsBand: React.FC = () => {
+    const { themeMode } = useUIStore();
+    const dark = themeMode === 'dark';
+
     return (
         <div
             className="stats-band-grid"
             style={{
                 padding: '60px 80px',
-                background: 'var(--stats-band-bg)',
-                borderTop: '1px solid var(--stats-band-border)',
-                borderBottom: '1px solid var(--stats-band-border)',
+                background: dark ? '#12141C' : '#FFFFFF',
+                borderTop: `1px solid ${dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
+                borderBottom: `1px solid ${dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
                 display: 'grid',
                 gridTemplateColumns: 'repeat(4, 1fr)',
                 gap: 40,
@@ -41,14 +45,14 @@ const StatsBand: React.FC = () => {
                         style={{
                             fontSize: 48,
                             fontWeight: 900,
-                            color: 'var(--red)',
-                            display: 'block',
-                            lineHeight: 1,
-                        }}
-                    >
-                        {stat.value}
-                    </span>
-                    <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 8 }}>
+                        color: dark ? '#FC8181' : '#C8102E',
+                        display: 'block',
+                        lineHeight: 1,
+                    }}
+                >
+                    {stat.value}
+                </span>
+                <div style={{ fontSize: 13, color: dark ? '#A0AEC0' : '#718096', marginTop: 8 }}>
                         {stat.label}
                     </div>
                 </motion.div>
