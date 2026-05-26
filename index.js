@@ -2,6 +2,7 @@
 
 const express = require('express');
 const puppeteer = require('puppeteer-core');
+const Eureka = require('eureka-js-client').Eureka;
 
 const app = express();
 app.use(express.json({ limit: '10mb' }));
@@ -9,6 +10,44 @@ app.use(express.json({ limit: '10mb' }));
 // Path to system-installed Chromium (set via env or default Alpine/Debian path)
 const CHROMIUM_PATH = process.env.CHROMIUM_PATH || '/usr/bin/chromium-browser';
 const PORT = process.env.PORT || 3001;
+const EUREKA_URL = process.env.EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE || 'http://eureka-server:8761/eureka/apps/';
+
+const eurekaClient = new Eureka({
+  instance: {
+    app: 'pdf-service',
+    hostName: 'pdf-service', // Automatically mapped in Docker bridge networks
+    ipAddr: '127.0.0.1',
+    statusPageUrl: `http://pdf-service:${PORT}/health`,
+    port: {
+      '$': PORT,
+      '@enabled': 'true',
+    },
+    vipAddress: 'pdf-service',
+    dataCenterInfo: {
+      '@class': 'com.netflix.appinfo.InstanceInfo$DefaultDataCenterInfo',
+      name: 'MyOwn',
+    },
+  },
+  eureka: {
+    serviceUrls: {
+      default: [
+        EUREKA_URL
+      ]
+    },
+  },
+});
+
+eurekaClient.start();
+
+// Make sure to unregister on exit
+process.on('SIGINT', () => {
+  eurekaClient.stop();
+  process.exit();
+});
+process.on('SIGTERM', () => {
+  eurekaClient.stop();
+  process.exit();
+});
 
 /**
  * POST /render
@@ -65,7 +104,7 @@ app.post('/render', async (req, res) => {
     res.send(pdf);
 
   } catch (err) {
-    if (browser) await browser.close().catch(() => {});
+    if (browser) await browser.close().catch(() => { });
     console.error('[pdf-service] Render error:', err.message);
     res.status(500).json({ error: 'PDF generation failed.', details: err.message });
   }
