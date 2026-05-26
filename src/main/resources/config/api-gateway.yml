@@ -172,11 +172,11 @@ spring:
           predicates:
             - Path=/ws/**
 
-        # Unified Frontend (Catch-all only for UI routes)
+        # Unified Frontend — all SPA pages + public static assets
         - id: main-frontend
-          uri: ${FRONTEND_URL:http://frontend:80}
+          uri: ${FRONTEND_URL:http://nexus-aid-frontend:80}
           predicates:
-            - Path=/,/index.html,/assets/**,/favicon**,/static/**,/manifest.json,/robots.txt
+            - Path=/,/index.html,/assets/**,/favicon**,/static/**,/manifest.json,/robots.txt,/logo.jpg,/images/**,/logos/**,/login,/register,/dashboard/**,/volunteers/**,/volunteers,/committees/**,/committees,/settings,/donations,/stocks,/secourisme,/diffusion,/jeunesse,/sante,/social,/immigration,/vff,/catastrophes,/radar,/reporting/**,/volunteer/**,/validation-queue,/audit-logs
           filters:
             - SetResponseHeader=X-Frame-Options, SAMEORIGIN
 
