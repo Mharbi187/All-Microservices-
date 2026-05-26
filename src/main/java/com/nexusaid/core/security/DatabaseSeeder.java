@@ -16,7 +16,17 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import com.nexusaid.core.entity.donations.DonationNeed;
+import com.nexusaid.core.entity.donations.Donation;
+import com.nexusaid.core.entity.donations.DonationReceipt;
+import com.nexusaid.core.repository.donations.DonationNeedRepository;
+import com.nexusaid.core.repository.donations.DonationRepository;
+import com.nexusaid.core.repository.donations.DonationReceiptRepository;
+import com.nexusaid.core.repository.DonorRepository;
+import com.nexusaid.core.repository.UserRepository;
+
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Configuration
@@ -125,5 +135,97 @@ public class DatabaseSeeder {
         role.setVolunteer(volunteer);
         role.setTitle(title);
         repo.save(role);
+    }
+
+    @Bean
+    public CommandLineRunner seedDonations(
+            CommitteeRepository committeeRepository,
+            DonationNeedRepository needRepository,
+            DonationRepository donationRepository,
+            DonationReceiptRepository receiptRepository,
+            DonorRepository donorRepository,
+            UserRepository userRepository) {
+        return args -> {
+            if (needRepository.count() > 0) {
+                System.out.println("Donation needs already seeded. Skipping.");
+                return;
+            }
+
+            System.out.println("Starting Database Seeding for Donation Needs...");
+
+            List<Committee> committees = committeeRepository.findAll();
+            if (committees.isEmpty()) {
+                System.out.println("No committees found. Skipping donation need seeding.");
+                return;
+            }
+
+            // Find key committees by region/name
+            Committee tunis = committees.stream().filter(c -> c.getName().contains("Tunis")).findFirst().orElse(committees.get(0));
+            Committee sousse = committees.stream().filter(c -> c.getName().contains("Sousse")).findFirst().orElse(committees.get(0));
+            Committee sfax = committees.stream().filter(c -> c.getName().contains("Sfax")).findFirst().orElse(committees.get(0));
+            Committee bizerte = committees.stream().filter(c -> c.getName().contains("Bizerte")).findFirst().orElse(committees.get(0));
+            Committee nabeul = committees.stream().filter(c -> c.getName().contains("Nabeul")).findFirst().orElse(committees.get(0));
+            Committee kairouan = committees.stream().filter(c -> c.getName().contains("Kairouan")).findFirst().orElse(committees.get(0));
+
+            // 1. Create Needs
+            DonationNeed need1 = createNeed(tunis, "Alimentaire", "URGENT", "Besoin urgent de 200 paniers alimentaires de première nécessité pour les familles vulnérables de la banlieue de Tunis.", "200 paniers", 120, needRepository);
+            DonationNeed need2 = createNeed(sousse, "Médical", "NORMAL", "Besoin de 50 kits de secours de base (pansements, désinfectants, bandages) pour les interventions locales.", "50 kits", 340, needRepository);
+            DonationNeed need3 = createNeed(sfax, "Équipement", "LOW", "Appel à contribution pour 10 tentes d'urgence d'une capacité de 6 personnes pour renforcer notre stock de réserve.", "10 tentes", 50, needRepository);
+            DonationNeed need4 = createNeed(bizerte, "Vêtements", "URGENT", "Distribution hivernale : collecte urgente de vêtements chauds et couvertures pour enfants en bas âge.", "150 couvertures", 80, needRepository);
+            DonationNeed need5 = createNeed(nabeul, "Urgence", "NORMAL", "Fonds de secours d'urgence pour la prise en charge immédiate des sinistrés suite aux récentes inondations locales.", "Fonds d'urgence", 200, needRepository);
+            DonationNeed need6 = createNeed(kairouan, "Alimentaire", "LOW", "Collecte de denrées non périssables pour soutenir les banques alimentaires scolaires de la région.", "500 kg riz/pates", 150, needRepository);
+
+            // 2. Create sample donations & receipts
+            var donors = donorRepository.findAll();
+            var users = userRepository.findAll();
+            if (!donors.isEmpty() && !users.isEmpty()) {
+                var donor = donors.get(0);
+                var admin = users.get(0);
+
+                // Sample validated donation
+                Donation don1 = createDonation(donor, need1, "Alimentaire", "Don de 150 paniers alimentaires", "150", "VALIDATED", donationRepository);
+                createReceipt(don1, admin, "Don validé par le responsable régional de Tunis", receiptRepository);
+
+                // Sample pending donation
+                createDonation(donor, need2, "Médical", "Don de 20 kits de secours", "20", "PENDING_RECEPTION", donationRepository);
+            }
+
+            System.out.println("Donation Needs Seeding Complete!");
+        };
+    }
+
+    private DonationNeed createNeed(Committee c, String type, String priority, String desc, String qty, int beneficiaries, DonationNeedRepository repo) {
+        DonationNeed need = new DonationNeed();
+        need.setCommittee(c);
+        need.setType(type);
+        need.setPriority(priority);
+        need.setDescription(desc);
+        need.setQuantityNeeded(qty);
+        need.setBeneficiaries(beneficiaries);
+        need.setStatus("OPEN");
+        return repo.save(need);
+    }
+
+    private Donation createDonation(com.nexusaid.core.entity.Donor donor, DonationNeed need, String type, String desc, String qty, String status, DonationRepository repo) {
+        Donation d = new Donation();
+        d.setDonationNumber("DON-2026-" + (System.currentTimeMillis() % 100000));
+        d.setDonor(donor);
+        d.setNeed(need);
+        d.setDonationType(type);
+        d.setDescription(desc);
+        d.setQuantity(qty);
+        d.setStatus(status);
+        return repo.save(d);
+    }
+
+    private void createReceipt(Donation d, com.nexusaid.core.entity.User validator, String note, DonationReceiptRepository repo) {
+        DonationReceipt r = new DonationReceipt();
+        r.setReceiptNumber("REC-2026-" + (System.currentTimeMillis() % 100000));
+        r.setDonation(d);
+        r.setValidatedAt(LocalDateTime.now());
+        r.setValidatedBy(validator);
+        r.setValidationNote(note);
+        r.setCreatedAt(LocalDateTime.now());
+        repo.save(r);
     }
 }
