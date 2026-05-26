@@ -18,7 +18,7 @@ class PersonDetector:
     Deliberately does NOT run pose estimation — that belongs to Layer 4 (MediaPipe).
     """
 
-    def __init__(self, model_path: str = "yolov8n.pt", conf: float = 0.4) -> None:
+    def __init__(self, model_path: str = "yolov8n.pt", conf: float = 0.25) -> None:
         """
         Args:
             model_path: Path to a YOLO detection model (NOT yolov8n-pose.pt).

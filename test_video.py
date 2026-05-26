@@ -82,7 +82,12 @@ async def main():
 
         cv2.imshow("CPR Pipeline Offline Test", frame)
         
-    # Quick print of the classifier classes by initializing layer5 directly
+        # Required for OpenCV to render the window and allow the user to exit using the 'q' key
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            print("User cancelled.")
+            break
+
+        
     from cpr_vision_system.pipeline.layer5_classifier import VictimClassifier
     print("Initializing classifier directly...")
     vc = VictimClassifier()

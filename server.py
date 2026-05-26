@@ -15,8 +15,10 @@ Run with:
 
 import json
 import traceback
+import os
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+import py_eureka_client.eureka_client as eureka_client
 
 from cpr_vision_system.pipeline import CPRPipeline
 
@@ -28,10 +30,23 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # Tighten to your app domain in production
+    allow_origins=["*"],   
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.on_event("startup")
+async def startup_event():
+    eureka_server = os.environ.get("EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE", "http://eureka-server:8761/eureka")
+    # Initialize py_eureka_client dynamically on startup
+    await eureka_client.init_async(eureka_server=eureka_server,
+                                   app_name="cpr-assistant",
+                                   instance_port=8000)
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    await eureka_client.stop_async()
 
 
 @app.get("/health")

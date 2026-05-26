@@ -117,19 +117,14 @@ class PoseEstimator:
         frame_h: int,
     ) -> Optional[List]:
         """
-        Run MediaPipe on the full frame, then populate a 33-slot list.
-        Landmarks whose (x,y) fall outside the 20%-padded person bbox are
-        left as None — they belong to the other person in frame.
-
-        ⚠️  Do NOT set visibility=0 for out-of-bbox landmarks.
-        That would cause check_visibility() to silently freeze all corrections.
-        Use None instead and handle None in check_visibility().
+        Run MediaPipe on the full frame, verify it found the right person via centroid,
+        and populate the 33-slot list with all joints unconditionally.
         """
         results = model.process(frame_rgb)
         if not results.pose_landmarks:
             return None
 
-        # Compute padded bbox in normalized (0–1) coordinates
+        # Compute padded bbox in normalized (0-1) coordinates
         pad_x = (person["x2"] - person["x1"]) * self.BBOX_PAD_FRAC
         pad_y = (person["y2"] - person["y1"]) * self.BBOX_PAD_FRAC
         bx1 = max(0.0, (person["x1"] - pad_x) / frame_w)
@@ -137,16 +132,33 @@ class PoseEstimator:
         by1 = max(0.0, (person["y1"] - pad_y) / frame_h)
         by2 = min(1.0, (person["y2"] + pad_y) / frame_h)
 
-        # Allocate 33-slot list (index-stable, matches MediaPipe PoseLandmark enum)
+        lms_raw = results.pose_landmarks.landmark
+        
+        # Calculate centroid of tracked pose to ensure we found the assigned person
+        # (Using shoulders and hips)
+        cx, cy, count = 0.0, 0.0, 0
+        for idx in [11, 12, 23, 24]: # Left/Right Shoulder, Left/Right Hip
+            if lms_raw[idx].visibility > 0.5:
+                cx += lms_raw[idx].x
+                cy += lms_raw[idx].y
+                count += 1
+                
+        if count > 0:
+            cx /= count
+            cy /= count
+            # Only accept this pose if the centroid is within this person's padded bbox
+            if not (bx1 <= cx <= bx2 and by1 <= cy <= by2):
+                return None  # The MP Pose found someone else
+
+        # If it belongs to this person, ACCEPT ALL landmarks unconditionally.
+        # This keeps the wrists/arms even when extended fully downward in CPR.
         lms: List[Optional[dict]] = [None] * 33
-        for i, lm in enumerate(results.pose_landmarks.landmark):
-            if bx1 <= lm.x <= bx2 and by1 <= lm.y <= by2:
-                lms[i] = {
-                    "x": lm.x,
-                    "y": lm.y,
-                    "z": lm.z,
-                    "visibility": lm.visibility,
-                    "index": i,
-                }
-            # else: leave as None — this landmark belongs to the other person
+        for i, lm in enumerate(lms_raw):
+            lms[i] = {
+                "x": lm.x,
+                "y": lm.y,
+                "z": lm.z,
+                "visibility": lm.visibility,
+                "index": i,
+            }
         return lms
