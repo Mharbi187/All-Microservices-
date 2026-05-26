@@ -43,12 +43,15 @@ export interface ImageProps {
 export interface TableColumn {
   id: string;
   title: string;
-  type: 'txt' | 'num' | 'bool' | 'date';
+  type: 'txt' | 'num' | 'bool' | 'date' | 'select' | 'badge' | 'url' | 'email';
   width: number;
   align: 'left' | 'center' | 'right';
   visible: boolean;
   frozen?: boolean;
+  selectOptions?: { value: string; label: string }[];
+  badgeOptions?: { value: string; label: string; color: string }[];
 }
+
 
 export interface TableRow {
   id: string;

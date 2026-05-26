@@ -61,6 +61,8 @@ export interface User {
     committeeId?: string;
     committeeName?: string;
     status?: AccountStatus;
+    /** Whether the volunteer has completed the post-approval extended profile form */
+    firstLoginCompleted?: boolean;
     // Volunteer-specific
     matricule?: string;
     skills?: string;
@@ -104,6 +106,7 @@ export interface RegisterData {
     // Donor fields
     preferredCategories?: string;
     targetZones?: string;
+    captchaToken?: string;
 }
 
 // ---- Profile Response (matches backend /profiles/me flat response) ----
@@ -122,6 +125,7 @@ export interface ProfileResponse {
     userType: UserType;
     accountStatus: AccountStatus;
     roles: ProfileRoleEntry[];
+    firstLoginCompleted?: boolean;
     // Volunteer fields
     matricule?: string;
     cin?: string;
@@ -130,6 +134,7 @@ export interface ProfileResponse {
     dateAdhesion?: string;
     phone?: string;
     avatar?: string;
+    committeeId?: string;
 }
 
 // ---- Committee / Organization Types ----
@@ -157,6 +162,7 @@ export interface CommitteeOverview {
     parentCommitteeName?: string;
     roles: CommitteeRoleInfo[];
     totalVolunteers: number;
+    pendingVolunteers: number;
     // Governance
     mandateStartDate?: string;
     mandateEndDate?: string;

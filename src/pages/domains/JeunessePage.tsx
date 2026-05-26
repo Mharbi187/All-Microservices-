@@ -309,7 +309,22 @@ const JeunessePage: React.FC = () => {
             {/* MODALS & DRAWERS */}
             <Modal open={isBuilderOpen} onCancel={() => setIsBuilderOpen(false)} footer={null} width={1000} title="Générateur de Formulaire Jeunesse">
                 <YouthFormBuilder
-                    onSave={() => { setIsBuilderOpen(false); loadData(); }}
+                    onSave={async (data) => {
+                        try {
+                            await jeunesseService.createTemplate({
+                                title: data.title,
+                                description: data.description,
+                                questions: JSON.stringify(data.questions),
+                                targetLevel: data.targetLevel,
+                                committeeId: data.targetCommitteeIds.length > 0 ? data.targetCommitteeIds[0] : 'ALL'
+                            } as any);
+                            messageApi.success('Formulaire publié avec succès');
+                            setIsBuilderOpen(false);
+                            loadData();
+                        } catch (error) {
+                            notification.error({ message: "Erreur", description: "Impossible de publier le formulaire." });
+                        }
+                    }}
                     onCancel={() => setIsBuilderOpen(false)}
                     userLevel={userLevel}
                     userCommitteeId={selectedCommittee}

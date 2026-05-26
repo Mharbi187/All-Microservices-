@@ -18,7 +18,7 @@ export default function ReportingNotificationsPage() {
     setLoading(true);
     try {
       const myReports = await adminReportService.getMyReports();
-      setAssignedReports(Array.isArray(myReports) ? myReports : (myReports?.content || myReports?.data || []));
+      setAssignedReports(Array.isArray(myReports) ? myReports : ((myReports as any)?.content || (myReports as any)?.data || []));
     } catch {
       // ignore
     } finally {

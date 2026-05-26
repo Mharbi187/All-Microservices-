@@ -37,7 +37,7 @@ const RegisterPage: React.FC = () => {
     const [acceptTerms, setAcceptTerms] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
-    const [committees, setCommittees] = useState<{id: string; name: string; type: string}[]>([]);
+    const [committees, setCommittees] = useState<{ id: string; name: string; type: string }[]>([]);
 
     // Form fields
     const [firstName, setFirstName] = useState('');
@@ -49,7 +49,7 @@ const RegisterPage: React.FC = () => {
 
     // Fetch real committees on mount
     useEffect(() => {
-        apiClient.get<{id: string; name: string; type: string; region: string}[]>(
+        apiClient.get<{ id: string; name: string; type: string; region: string }[]>(
             '/onboarding/public/committees/all'
         )
             .then(res => setCommittees(res.data))
@@ -71,6 +71,7 @@ const RegisterPage: React.FC = () => {
                 phone,
                 userType: 'VOLUNTEER' as UserType,
                 committeeId: selectedCommittee || undefined,
+                captchaToken: 'local-bypass',
             });
             setSuccess(result.message || 'Inscription réussie ! Votre compte est en attente de validation.');
             setTimeout(() => navigate('/login'), 3000);
