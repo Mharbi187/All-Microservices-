@@ -12,7 +12,8 @@ import {
 } from '@ant-design/icons';
 import { useUIStore } from '@/stores';
 import { useNavigate } from 'react-router-dom';
-import { notificationService, DonorNotification as ApiNotification } from '@/services/notificationService';
+import { notificationService } from '@/services/notificationService';
+import type { DonorNotification as ApiNotification } from '@/services/notificationService';
 
 const { Title, Text } = Typography;
 
@@ -351,3 +352,5 @@ const DonorNotificationsPage: React.FC = () => {
 };
 
 export default DonorNotificationsPage;
+
+

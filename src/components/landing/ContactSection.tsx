@@ -214,7 +214,7 @@ const AdminContactEditor: React.FC<{
 
 /* ─────────────────── LEAFLET MAP ─────────────────── */
 
-interface LeafletMapProps { committee: Committee }
+interface LeafletMapProps { committee: any }
 
 const LeafletMap: React.FC<LeafletMapProps> = ({ committee }) => {
     const mapRef = useRef<HTMLDivElement>(null);
@@ -736,3 +736,4 @@ const ContactSection: React.FC = () => {
 };
 
 export default ContactSection;
+

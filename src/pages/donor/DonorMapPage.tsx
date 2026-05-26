@@ -15,7 +15,8 @@ import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { useUIStore } from '@/stores';
-import { donationService, DonationNeed } from '@/services/donationService';
+import type { DonationNeed } from '@/services/donationService';
+import { donationService } from '@/services/donationService';
 
 const { Title, Text } = Typography;
 
@@ -621,3 +622,5 @@ const DonorMapPage: React.FC = () => {
 };
 
 export default DonorMapPage;
+
+

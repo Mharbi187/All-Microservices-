@@ -3,7 +3,7 @@
 // Lists all donation receipts with status, QR, photo, PDF download
 // ============================================================
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Typography, Space, Tag, Button, Input, Select, Modal, Divider, Badge } from 'antd';
 import {
     FileProtectOutlined, SearchOutlined, DownloadOutlined,
@@ -12,7 +12,8 @@ import {
     HeartOutlined,
 } from '@ant-design/icons';
 import { useUIStore } from '@/stores';
-import { donationService, DonationReceipt as ApiDonationReceipt } from '@/services/donationService';
+import { donationService } from '@/services/donationService';
+import type { DonationReceipt as ApiDonationReceipt } from '@/services/donationService';
 
 const { Title, Text } = Typography;
 
@@ -42,7 +43,7 @@ const QRVisual: React.FC<{ donationId: string; size?: number; isDark?: boolean }
     let seed = donationId.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
     const rand = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
     const gridSize = 8;
-    const cells: JSX.Element[] = [];
+    const cells: React.ReactNode[] = [];
     const isFinderPattern = (r: number, c: number) =>
         (r < 2 && c < 2) || (r < 2 && c >= gridSize - 2) || (r >= gridSize - 2 && c < 2);
 
@@ -503,3 +504,5 @@ const DonorReceiptsPage: React.FC = () => {
 };
 
 export default DonorReceiptsPage;
+
+

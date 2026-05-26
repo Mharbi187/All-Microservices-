@@ -3,7 +3,7 @@
 // 4-step workflow: Select Need → Details → Photo Proof → QR Code
 // ============================================================
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
     Typography, Space, Tag, Button, Steps, Input, Select,
@@ -16,7 +16,8 @@ import {
     FileProtectOutlined,
 } from '@ant-design/icons';
 import { useUIStore, useAuthStore } from '@/stores';
-import { donationService, DonationNeed, DonationCreateDto } from '@/services/donationService';
+import { donationService } from '@/services/donationService';
+import type { DonationNeed, DonationCreateDto } from '@/services/donationService';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -373,7 +374,7 @@ const Step4QRCode: React.FC<{
     // Generate a visual QR representation (pattern-based, not functional)
     const generateQRPattern = () => {
         const size = 10;
-        const cells: JSX.Element[] = [];
+        const cells: React.ReactNode[] = [];
         // Seed-based pseudo-random pattern
         let seed = qrData.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
         const rand = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
@@ -845,3 +846,5 @@ const MakeDonationPage: React.FC = () => {
 };
 
 export default MakeDonationPage;
+
+

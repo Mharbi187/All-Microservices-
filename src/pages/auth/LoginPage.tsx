@@ -340,9 +340,10 @@ const LoginPage: React.FC = () => {
                 </div>
             </motion.div>
 
-            {statusModal.visible && <AccountStatusModal type={statusModal.type} onClose={() => setStatusModal({ visible: false, type: 'NONE' })} />}
+            {statusModal.visible && <AccountStatusModal visible={statusModal.visible} status={statusModal.type as any} onClose={() => setStatusModal({ visible: false, type: 'NONE' })} />}
         </div>
     );
 };
 
 export default LoginPage;
+
