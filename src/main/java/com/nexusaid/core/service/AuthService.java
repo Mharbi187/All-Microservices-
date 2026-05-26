@@ -89,9 +89,9 @@ public class AuthService {
                         boolean captchaValid = captchaService.verify(request.getCaptchaToken(), "REGISTER");
                         if (!captchaValid) {
                                 auditService.logEvent(
-                                        com.nexusaid.core.entity.SecurityAuditLog.SecurityEventType.CAPTCHA_FAILED,
-                                        null, request.getEmail(), ipAddress, userAgent,
-                                        "CAPTCHA verification failed during registration", false, 40);
+                                                com.nexusaid.core.entity.SecurityAuditLog.SecurityEventType.CAPTCHA_FAILED,
+                                                null, request.getEmail(), ipAddress, userAgent,
+                                                "CAPTCHA verification failed during registration", false, 40);
                                 throw new RuntimeException("CAPTCHA verification failed. Please try again.");
                         }
                 }
@@ -122,9 +122,9 @@ public class AuthService {
 
                         // Log registration
                         auditService.logEvent(
-                                com.nexusaid.core.entity.SecurityAuditLog.SecurityEventType.REGISTER,
-                                volunteer.getId(), volunteer.getEmail(), ipAddress, userAgent,
-                                "Volunteer registration", true, 0);
+                                        com.nexusaid.core.entity.SecurityAuditLog.SecurityEventType.REGISTER,
+                                        volunteer.getId(), volunteer.getEmail(), ipAddress, userAgent,
+                                        "Volunteer registration", true, 0);
 
                         return AuthResponse.builder()
                                         .id(volunteer.getId())
@@ -152,9 +152,9 @@ public class AuthService {
                         RefreshToken refreshToken = jwtService.createRefreshToken(donor.getId());
 
                         auditService.logEvent(
-                                com.nexusaid.core.entity.SecurityAuditLog.SecurityEventType.REGISTER,
-                                donor.getId(), donor.getEmail(), ipAddress, userAgent,
-                                "Donor registration", true, 0);
+                                        com.nexusaid.core.entity.SecurityAuditLog.SecurityEventType.REGISTER,
+                                        donor.getId(), donor.getEmail(), ipAddress, userAgent,
+                                        "Donor registration", true, 0);
 
                         return AuthResponse.builder()
                                         .token(jwtToken)
@@ -181,9 +181,9 @@ public class AuthService {
                         RefreshToken refreshToken = jwtService.createRefreshToken(user.getId());
 
                         auditService.logEvent(
-                                com.nexusaid.core.entity.SecurityAuditLog.SecurityEventType.REGISTER,
-                                user.getId(), user.getEmail(), ipAddress, userAgent,
-                                "User registration", true, 0);
+                                        com.nexusaid.core.entity.SecurityAuditLog.SecurityEventType.REGISTER,
+                                        user.getId(), user.getEmail(), ipAddress, userAgent,
+                                        "User registration", true, 0);
 
                         return AuthResponse.builder()
                                         .token(jwtToken)
@@ -233,9 +233,9 @@ public class AuthService {
                         if (!captchaValid) {
                                 loginAttemptService.recordFailure(ipAddress, email);
                                 auditService.logEvent(
-                                        com.nexusaid.core.entity.SecurityAuditLog.SecurityEventType.CAPTCHA_FAILED,
-                                        null, email, ipAddress, userAgent,
-                                        "CAPTCHA verification failed during login", false, 50);
+                                                com.nexusaid.core.entity.SecurityAuditLog.SecurityEventType.CAPTCHA_FAILED,
+                                                null, email, ipAddress, userAgent,
+                                                "CAPTCHA verification failed during login", false, 50);
                                 int failedAttempts = loginAttemptService.getFailedAttempts(ipAddress);
 
                                 return AuthResponse.builder()
@@ -250,6 +250,11 @@ public class AuthService {
                 try {
                         authenticationManager.authenticate(
                                         new UsernamePasswordAuthenticationToken(email, request.getPassword()));
+                } catch (org.springframework.security.authentication.DisabledException ex) {
+                        // Account requires approval (isEnabled = false implies PENDING)
+                        return AuthResponse.builder()
+                                        .message("Your account is PENDING approval from the Committee. You cannot log in yet.")
+                                        .build();
                 } catch (AuthenticationException ex) {
                         // Record failure
                         loginAttemptService.recordFailure(ipAddress, email);
@@ -266,7 +271,8 @@ public class AuthService {
                         long remaining = loginAttemptService.getRemainingBlockSeconds(ipAddress);
 
                         String message = nowBlocked
-                                        ? "Account temporarily locked. Please try again in " + (remaining / 60) + " minutes."
+                                        ? "Account temporarily locked. Please try again in " + (remaining / 60)
+                                                        + " minutes."
                                         : "Invalid email or password.";
 
                         return AuthResponse.builder()
@@ -340,7 +346,8 @@ public class AuthService {
                 if (principal instanceof UserDetailsImpl userDetails) {
                         return userDetails.getUser();
                 }
-                // Fallback for non-UserDetails principal (should not happen with our current config)
+                // Fallback for non-UserDetails principal (should not happen with our current
+                // config)
                 return userRepository.findByEmail(principal.toString())
                                 .orElseThrow(() -> new RuntimeException("Authenticated user not found."));
         }
