@@ -130,7 +130,7 @@ const ReportDetailPage: React.FC = () => {
   const isOwner = report.filledBy === user?.id;
   const isAssigned = report.assignedUsers?.includes(user?.id || '') || false;
   const isPresidentOrSG = user?.roles?.some(r => r === 'PRESIDENT' || r === 'SECRETAIRE_GENERAL') || false;
-  const isResponsable = user?.roles?.some(r => r === 'RESPONSABLE') || false;
+  const isResponsable = (user?.roles as string[])?.some(r => r === 'RESPONSABLE') || false;
 
   const canGenerate = (isPresidentOrSG || isResponsable) && (status === 'FINALIZED' || status === 'ARCHIVED');
   const canDownload = true; // Always allow preview/print of official document

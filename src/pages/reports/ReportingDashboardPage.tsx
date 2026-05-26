@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Card, Col, Row, Statistic, Typography, Spin, Empty, Tag, Space, Timeline, Progress, Alert, Badge, Button } from 'antd';
-import { 
-  FileTextOutlined, EditOutlined, CheckCircleOutlined, 
+import {
+  FileTextOutlined, EditOutlined, CheckCircleOutlined,
   CloseCircleOutlined, SyncOutlined, LineChartOutlined,
   ThunderboltOutlined, RiseOutlined, FallOutlined, InfoCircleOutlined, GlobalOutlined
 } from '@ant-design/icons';
@@ -21,7 +21,7 @@ export default function ReportingDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<any>(null);
   const [reports, setReports] = useState<any[]>([]);
-  
+
   const userRoles: string[] = user?.roles || [];
   const rawRoles: any[] = (user as any)?.rawRoles || [];
   const scope = getUserScope(userRoles, rawRoles);
@@ -50,14 +50,14 @@ export default function ReportingDashboardPage() {
   // ── Calculated KPIs ──
   const stats = useMemo(() => {
     if (!reports.length) return { valRate: 0, avgTime: 0, trend: 0 };
-    
+
     const validated = reports.filter(r => r.workflowStatus === 'VALIDATED' || r.workflowStatus === 'FINALIZED').length;
     const valRate = Math.round((validated / reports.length) * 100);
-    
+
     // Mock avg time (in days) since we might not have all timestamps in the DTO
-    const avgTime = 2.4; 
+    const avgTime = 2.4;
     const trend = +15; // +15% vs last month
-    
+
     return { valRate, avgTime, trend };
   }, [reports]);
 
@@ -65,14 +65,14 @@ export default function ReportingDashboardPage() {
     return (
       <div style={{ padding: 24, animation: 'fadeUp 0.5s ease' }}>
         <Card className="glass-card">
-          <Empty 
+          <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
             description={
               <Space direction="vertical">
                 <Text strong>Accès restreint</Text>
                 <Text type="secondary">Le tableau de bord analytique est réservé au niveau National et Régional.</Text>
               </Space>
-            } 
+            }
           />
         </Card>
       </div>
@@ -89,7 +89,7 @@ export default function ReportingDashboardPage() {
   if (!summary) return <Empty description="Données indisponibles" />;
 
   // ── Chart Data ──
-  const lineData = reports.length > 5 ? 
+  const lineData = reports.length > 5 ?
     reports.slice(0, 10).map((r, i) => ({ date: dayjs(r.createdAt).format('DD/MM'), reports: i + 5 })) :
     [
       { date: '28/04', reports: 5 }, { date: '29/04', reports: 8 },
@@ -111,7 +111,7 @@ export default function ReportingDashboardPage() {
     { type: 'En attente', value: summary.pendingValidation || 1 },
     { type: 'Brouillon', value: summary.draft || 1 },
   ];
-  
+
   const regionData = [
     { region: 'Tunis', value: 40 },
     { region: 'Sfax', value: 25 },
@@ -123,7 +123,7 @@ export default function ReportingDashboardPage() {
   return (
     <div style={{ padding: '24px 32px', maxWidth: 1600, margin: '0 auto' }}>
       {/* Header with Motion */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         style={{ marginBottom: 32, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}
@@ -140,7 +140,7 @@ export default function ReportingDashboardPage() {
         <div style={{ textAlign: 'right' }}>
           <Text type="secondary" style={{ fontSize: 12 }}>Dernière mise à jour: {dayjs().format('HH:mm')}</Text>
           <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-             <Badge status="processing" text="Live Sync" />
+            <Badge status="processing" text="Live Sync" />
           </div>
         </div>
       </motion.div>
@@ -158,14 +158,14 @@ export default function ReportingDashboardPage() {
               { title: 'Régions Actives', value: '18/24', icon: <GlobalOutlined />, color: '#3b82f6', trend: 'Stable' },
             ].map((kpi, idx) => (
               <Col xs={12} sm={6} key={idx}>
-                <MotionCard 
+                <MotionCard
                   whileHover={{ y: -5, boxShadow: '0 12px 24px rgba(0,0,0,0.1)' }}
-                  className="glass-card" 
-                  bordered={false} 
+                  className="glass-card"
+                  bordered={false}
                   bodyStyle={{ padding: 20 }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
-                    <div style={{ 
+                    <div style={{
                       width: 44, height: 44, borderRadius: 12, background: `${kpi.color}15`,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       fontSize: 20, color: kpi.color
@@ -185,15 +185,15 @@ export default function ReportingDashboardPage() {
           </Row>
 
           {/* Performance Evolution Chart */}
-          <MotionCard 
+          <MotionCard
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="glass-card" 
+            className="glass-card"
             title={<Space><LineChartOutlined /> Evolution de l'activité</Space>}
             style={{ marginBottom: 24 }}
           >
             <div style={{ height: 320 }}>
-              <Line 
+              <Line
                 data={lineData}
                 xField="date"
                 yField="reports"
@@ -209,11 +209,11 @@ export default function ReportingDashboardPage() {
             <Col span={12}>
               <Card title="Volume par Domaine" bordered={false} className="glass-card">
                 <div style={{ height: 260 }}>
-                  <Column 
-                    data={domainData} 
-                    xField="type" 
-                    yField="value" 
-                    color="var(--crt-dark-red)" 
+                  <Column
+                    data={domainData}
+                    xField="type"
+                    yField="value"
+                    color="var(--crt-dark-red)"
                     columnStyle={{ radius: [4, 4, 0, 0] }}
                     label={{ position: 'top', style: { fill: '#888', opacity: 0.6 } }}
                   />
@@ -234,7 +234,7 @@ export default function ReportingDashboardPage() {
         <Col xs={24} xl={7}>
           <Card title="Répartition des Statuts" bordered={false} className="glass-card" style={{ marginBottom: 24 }}>
             <div style={{ height: 220 }}>
-              <Pie 
+              <Pie
                 data={statusData}
                 angleField="value"
                 colorField="type"
@@ -246,17 +246,17 @@ export default function ReportingDashboardPage() {
               />
             </div>
             <div style={{ marginTop: 20 }}>
-               <div className="flex justify-between mb-2">
-                 <Text size="small">Taux de validation</Text>
-                 <Text strong>{stats.valRate}%</Text>
-               </div>
-               <Progress percent={stats.valRate} strokeColor="var(--crt-red)" showInfo={false} />
+              <div className="flex justify-between mb-2">
+                <Text style={{ fontSize: 12 }}>Taux de validation</Text>
+                <Text strong>{stats.valRate}%</Text>
+              </div>
+              <Progress percent={stats.valRate} strokeColor="var(--crt-red)" showInfo={false} />
             </div>
           </Card>
 
-          <Card 
-            title={<Space><SyncOutlined /> Flux d'activités</Space>} 
-            bordered={false} 
+          <Card
+            title={<Space><SyncOutlined /> Flux d'activités</Space>}
+            bordered={false}
             className="glass-card"
             bodyStyle={{ padding: '12px 24px' }}
           >

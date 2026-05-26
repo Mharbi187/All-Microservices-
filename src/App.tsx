@@ -11,6 +11,7 @@ import frFR from 'antd/locale/fr_FR';
 import { router } from '@/config/routes';
 import { lightTheme, darkTheme } from '@/config/theme';
 import { useUIStore } from '@/stores';
+import OnboardingModal from '@/components/OnboardingModal';
 
 // ---- React Query Client ----
 const queryClient = new QueryClient({
@@ -41,6 +42,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ConfigProvider theme={currentTheme} locale={frFR}>
         <AntApp>
+          <OnboardingModal />
           <RouterProvider router={router} />
         </AntApp>
       </ConfigProvider>

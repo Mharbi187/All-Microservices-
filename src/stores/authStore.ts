@@ -129,11 +129,11 @@ export const useAuthStore = create<AuthState>()(
                             type: userType,
                             roles,
                             rawRoles: profile.roles || [],
-                            committeeId,
+                            committeeId: committeeId || profile.committeeId || '',
                             committeeName,
                             status: profile.accountStatus as import('@/types').AccountStatus | undefined,
                             isActive: profile.accountStatus === 'APPROVED',
-                            // Missing fields
+                            // Extended fields
                             matricule: profile.matricule,
                             cin: profile.cin,
                             skills: profile.skills,
@@ -141,6 +141,7 @@ export const useAuthStore = create<AuthState>()(
                             dateAdhesion: profile.dateAdhesion,
                             phone: profile.phone,
                             avatar: profile.avatar || state.user?.avatar,
+                            firstLoginCompleted: profile.firstLoginCompleted ?? state.user?.firstLoginCompleted,
                         } as User,
                     }));
                 } catch (err) {

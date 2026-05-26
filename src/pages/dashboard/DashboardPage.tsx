@@ -28,6 +28,7 @@ import { getUserPermissions } from '@/config/roleConfig';
 import committeeService from '@/services/committeeService';
 import volunteerService from '@/services/volunteerService';
 import inventoryService from '@/services/inventoryService';
+import { secourismeService } from '@/services/domainServices';
 import type { CommitteeOverview, InventoryItemDTO, StockAlertDTO } from '@/types';
 
 const { Title, Text } = Typography;
@@ -277,6 +278,15 @@ const DashboardPage: React.FC = () => {
     const [inventory, setInventory] = useState<InventoryItemDTO[]>([]);
     const [alerts, setAlerts] = useState<StockAlertDTO[]>([]);
     const [volunteerData, setVolunteerData] = useState<CommitteeOverview[]>([]);
+    const [secourismeEqCount, setSecourismeEqCount] = useState<number | string>('—');
+    const [secourismeDvCount, setSecourismeDvCount] = useState<number | string>('—');
+    const [jeunesseFormsCount, setJeunesseFormsCount] = useState<number | string>('—');
+    const [jeunesseProjectsCount, setJeunesseProjectsCount] = useState<number | string>('—');
+    const [santeActionsCount, setSanteActionsCount] = useState<number | string>('—');
+    const [socialFamiliesCount, setSocialFamiliesCount] = useState<number | string>('—');
+    const [socialActionsCount, setSocialActionsCount] = useState<number | string>('—');
+    const [vffCasesCount, setVffCasesCount] = useState<number | string>('—');
+    const [immigrationCasesCount, setImmigrationCasesCount] = useState<number | string>('—');
 
     useEffect(() => {
         const fetchData = async () => {
@@ -294,6 +304,46 @@ const DashboardPage: React.FC = () => {
                     const al = await inventoryService.getAlerts().catch(() => []);
                     setAlerts(al);
                 }
+                if (permissions.sidebarKeys.includes('/secourisme') && user?.committeeId) {
+                    const eq = await secourismeService.getEquipment(user.committeeId).catch(() => []);
+                    const dv = await secourismeService.getDevices(user.committeeId).catch(() => []);
+                    setSecourismeEqCount(eq.length);
+                    setSecourismeDvCount(dv.length);
+                }
+
+                // --- Jeunesse ---
+                if (permissions.sidebarKeys.includes('/jeunesse')) {
+                    const forms = await import('@/services/domainServices').then(m => m.jeunesseService.getForms()).catch(() => []);
+                    const projects = await import('@/services/domainServices').then(m => m.jeunesseService.getProjects()).catch(() => []);
+                    setJeunesseFormsCount(forms.length);
+                    setJeunesseProjectsCount(projects.length);
+                }
+
+                // --- Santé ---
+                if (permissions.sidebarKeys.includes('/sante') && user?.committeeId) {
+                    const actions = await import('@/services/domainServices').then(m => m.santeService.getActions(user.committeeId!)).catch(() => []);
+                    setSanteActionsCount(actions.length);
+                }
+
+                // --- Social ---
+                if (permissions.sidebarKeys.includes('/social')) {
+                    const families = await import('@/services/domainServices').then(m => m.socialService.getFamilies()).catch(() => []);
+                    const actions = await import('@/services/domainServices').then(m => m.socialService.getAllActions()).catch(() => []);
+                    setSocialFamiliesCount(families.length);
+                    setSocialActionsCount(actions.length);
+                }
+
+                // --- VFF ---
+                if (permissions.sidebarKeys.includes('/vff')) {
+                    const cases = await import('@/services/domainServices').then(m => m.vffService.getCases()).catch(() => []);
+                    setVffCasesCount(cases.length);
+                }
+
+                // --- Immigration ---
+                if (permissions.sidebarKeys.includes('/immigration')) {
+                    const cases = await import('@/services/domainServices').then(m => m.immigrationService.getCases()).catch(() => []);
+                    setImmigrationCasesCount(cases.length);
+                }
             } catch { /* silent */ } finally {
                 setLoading(false);
             }
@@ -302,6 +352,7 @@ const DashboardPage: React.FC = () => {
     }, [user?.committeeId]);
 
     const totalVolunteers = volunteerData.reduce((s, c) => s + (c.totalVolunteers || 0), 0);
+    const pendingVolunteers = committees.reduce((s, c) => s + (c.pendingVolunteers || 0), 0);
     const totalCommittees = committees.length;
     const totalStock = inventory.length;
     const activeAlerts = alerts.filter(a => !a.resolvedAt).length;
@@ -341,9 +392,15 @@ const DashboardPage: React.FC = () => {
 
             {dt === 'volunteer' && <VolunteerDashboard isDark={isDark} navigate={navigate} user={user}
                 permissions={permissions}
-                totalVolunteers={totalVolunteers} totalCommittees={totalCommittees}
+                totalVolunteers={totalVolunteers} pendingVolunteers={pendingVolunteers} totalCommittees={totalCommittees}
                 totalStock={totalStock} activeAlerts={activeAlerts}
-                committees={committees} alerts={alerts} />}
+                committees={committees} alerts={alerts}
+                jeunesseFormsCount={jeunesseFormsCount} jeunesseProjectsCount={jeunesseProjectsCount}
+                santeActionsCount={santeActionsCount}
+                socialFamiliesCount={socialFamiliesCount} socialActionsCount={socialActionsCount}
+                vffCasesCount={vffCasesCount}
+                immigrationCasesCount={immigrationCasesCount}
+                secourismeEqCount={secourismeEqCount} secourismeDvCount={secourismeDvCount} />}
 
             {/* System Status */}
             <div style={{
@@ -858,251 +915,270 @@ const DonorDashboard: React.FC<{
 const VolunteerDashboard: React.FC<{
     isDark: boolean; navigate: (p: string) => void;
     permissions: any; user: any;
-    totalVolunteers: number; totalCommittees: number; totalStock: number; activeAlerts: number;
+    totalVolunteers: number; pendingVolunteers: number; totalCommittees: number; totalStock: number; activeAlerts: number;
     committees: CommitteeOverview[]; alerts: StockAlertDTO[];
-}> = ({ isDark, navigate, permissions, user, totalVolunteers, totalCommittees, totalStock, activeAlerts, committees, alerts }) => {
-    // Determine if this user is ONLY a domain responsable (not a president/vp)
-    const userRoles: string[] = (user?.roles || []).map((r: any) =>
-        (typeof r === 'string' ? r : r?.role || '').toUpperCase()
-    );
-    const isLeadership = userRoles.some(r =>
-        r.includes('PRESIDENT') || r.includes('VICE') || r.includes('SECRETAIRE') || r.includes('TRESORIER') || r.includes('ADMIN')
-    );
-    const isDomainOnly = !isLeadership && userRoles.some(r =>
-        r.startsWith('RESP_') && !r.includes('SECOURISME')
-    );
+    jeunesseFormsCount: number | string; jeunesseProjectsCount: number | string;
+    santeActionsCount: number | string;
+    socialFamiliesCount: number | string; socialActionsCount: number | string;
+    vffCasesCount: number | string;
+    immigrationCasesCount: number | string;
+    secourismeEqCount: number | string; secourismeDvCount: number | string;
+}> = ({ isDark, navigate, permissions, user, totalVolunteers, pendingVolunteers, totalCommittees, totalStock, activeAlerts, committees, alerts,
+    jeunesseFormsCount, jeunesseProjectsCount, santeActionsCount,
+    socialFamiliesCount, socialActionsCount, vffCasesCount, immigrationCasesCount,
+    secourismeEqCount, secourismeDvCount
+}) => {
+        // Determine if this user is ONLY a domain responsable (not a president/vp)
+        const userRoles: string[] = (user?.roles || []).map((r: any) =>
+            (typeof r === 'string' ? r : r?.role || '').toUpperCase()
+        );
+        const isLeadership = userRoles.some(r =>
+            r.includes('PRESIDENT') || r.includes('VICE') || r.includes('SECRETAIRE') || r.includes('TRESORIER') || r.includes('ADMIN')
+        );
+        const isDomainOnly = !isLeadership && userRoles.some(r =>
+            r.startsWith('RESP_')
+        );
 
-    return (
-        <>
-        {/* ── Generic Management KPIs — hidden for domain-only responsables ── */}
-        {!isDomainOnly && (
-            <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-                <Col xs={24} sm={12} lg={6}>
-                    <KpiCard isDark={isDark} icon={<TeamOutlined />} iconColor="#C81E1E"
-                        gradientFrom="#C81E1E" gradientTo="#ef4444"
-                        title="Total Volontaires" value={totalVolunteers}
-                        trend={{ label: '↑ Actif', color: '#16a34a' }}
-                        sparkData={[5, 10, 8, 15, 12, 20, totalVolunteers || 25]} />
-                </Col>
-                <Col xs={24} sm={12} lg={6}>
-                    <KpiCard isDark={isDark} icon={<AlertOutlined />} iconColor="#f59e0b"
-                        gradientFrom="#f59e0b" gradientTo="#fbbf24"
-                        title="Alertes Actives" value={activeAlerts}
-                        trend={activeAlerts > 0 ? { label: `${activeAlerts} actives`, color: '#f59e0b' } : { label: 'RAS', color: '#16a34a' }} />
-                </Col>
-                <Col xs={24} sm={12} lg={6}>
-                    <KpiCard isDark={isDark} icon={<InboxOutlined />} iconColor="#6366f1"
-                        gradientFrom="#6366f1" gradientTo="#818cf8"
-                        title="Articles en Stock" value={totalStock}
-                        sparkData={[3, 8, 5, 12, 10, 15, totalStock || 18]} />
-                </Col>
-                <Col xs={24} sm={12} lg={6}>
-                    <KpiCard isDark={isDark} icon={<ApartmentOutlined />} iconColor="#16a34a"
-                        gradientFrom="#16a34a" gradientTo="#4ade80"
-                        title="Comités" value={totalCommittees}
-                        sparkData={[1, 3, 2, 5, 4, 8, totalCommittees || 10]} />
-                </Col>
-            </Row>
-        )}
+        return (
+            <>
+                {/* ── Generic Management KPIs — hidden for domain-only responsables ── */}
+                {!isDomainOnly && (
+                    <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+                        <Col xs={24} sm={12} lg={4}>
+                            <KpiCard isDark={isDark} icon={<TeamOutlined />} iconColor="#16a34a"
+                                gradientFrom="#16a34a" gradientTo="#4ade80"
+                                title="Volontaires Actifs" value={totalVolunteers}
+                                trend={{ label: 'Approuvés', color: '#16a34a' }}
+                                sparkData={[5, 10, 8, 15, 12, 20, totalVolunteers || 25]} />
+                        </Col>
+                        <Col xs={24} sm={12} lg={4}>
+                            <KpiCard isDark={isDark} icon={<ClockCircleOutlined />} iconColor="#f59e0b"
+                                gradientFrom="#f59e0b" gradientTo="#fbbf24"
+                                title="En Attente" value={pendingVolunteers}
+                                trend={{ label: 'Validation Requise', color: '#f59e0b' }} />
+                        </Col>
+                        <Col xs={24} sm={12} lg={4}>
+                            <KpiCard isDark={isDark} icon={<AlertOutlined />} iconColor="#ef4444"
+                                gradientFrom="#ef4444" gradientTo="#f87171"
+                                title="Alertes Actives" value={activeAlerts}
+                                trend={activeAlerts > 0 ? { label: `${activeAlerts} actives`, color: '#ef4444' } : { label: 'RAS', color: '#16a34a' }} />
+                        </Col>
+                        <Col xs={24} sm={12} lg={6}>
+                            <KpiCard isDark={isDark} icon={<InboxOutlined />} iconColor="#6366f1"
+                                gradientFrom="#6366f1" gradientTo="#818cf8"
+                                title="Articles en Stock" value={totalStock}
+                                sparkData={[3, 8, 5, 12, 10, 15, totalStock || 18]} />
+                        </Col>
+                        <Col xs={24} sm={12} lg={6}>
+                            <KpiCard isDark={isDark} icon={<ApartmentOutlined />} iconColor="#8b5cf6"
+                                gradientFrom="#8b5cf6" gradientTo="#a78bfa"
+                                title="Comités" value={totalCommittees}
+                                sparkData={[1, 3, 2, 5, 4, 8, totalCommittees || 10]} />
+                        </Col>
+                    </Row>
+                )}
 
-        {/* ── Crisis Command Center — national leaders only ── */}
-        {permissions.sidebarKeys.includes('/catastrophes') && user?.committeeType === 'NATIONAL' && (
-            <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-                <Col xs={24}>
-                    <Card style={{ borderRadius: 20, border: isDark ? '1px solid rgba(255,255,255,0.06)' : undefined, background: isDark ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(185, 28, 28, 0.05))' : 'linear-gradient(135deg, rgba(254, 226, 226, 0.5), #fff)' }}
-                        title={<Space><GlobalOutlined style={{ color: '#ef4444' }} /> Centre Opérationnel de Crise (NATIONAL)</Space>}
-                        extra={<Button type="primary" danger onClick={() => navigate('/catastrophes')} icon={<ThunderboltOutlined />}>Ouvrir Radar AlphaEarth</Button>}>
-                        <Row gutter={[16, 16]}>
-                            <Col xs={24} md={8}>
-                                <div style={{ padding: 16, borderRadius: 16, height: '100%', background: isDark ? 'rgba(0,0,0,0.2)' : '#fff', border: `1px solid ${isDark ? 'rgba(239, 68, 68, 0.2)' : '#fca5a5'}` }}>
-                                    <Text strong style={{ display: 'block', marginBottom: 8, color: '#ef4444' }}>📡 Flux Météo AlphaEarth</Text>
-                                    <Text style={{ fontSize: 13, color: isDark ? '#ccc' : '#666', display: 'block', marginBottom: 12 }}>Analyse prédictive de 27 variables avec l'API OpenWeather & USGS.</Text>
-                                    <div style={{ display: 'flex', gap: 8 }}>
-                                        <Tag color="red" bordered={false}>Alerte Orage : Nord</Tag>
-                                        <Tag color="volcano" bordered={false}>Feu : Faible</Tag>
-                                    </div>
-                                </div>
-                            </Col>
-                            <Col xs={24} md={8}>
-                                <div style={{ padding: 16, borderRadius: 16, height: '100%', background: isDark ? 'rgba(0,0,0,0.2)' : '#fff', border: `1px solid ${isDark ? 'rgba(99, 102, 241, 0.2)' : '#a5b4fc'}` }}>
-                                    <Text strong style={{ display: 'block', marginBottom: 8, color: '#6366f1' }}>⚡ Pipeline RabbitMQ (disaster.alert)</Text>
-                                    <Text style={{ fontSize: 13, color: isDark ? '#ccc' : '#666', display: 'block', marginBottom: 12 }}>Création d'interventions de sauvetage. CDC en écoute persistante.</Text>
-                                    <Progress percent={100} size="small" status="active" strokeColor="#6366f1" />
-                                </div>
-                            </Col>
-                            <Col xs={24} md={8}>
-                                <div style={{ padding: 16, borderRadius: 16, height: '100%', background: isDark ? 'rgba(0,0,0,0.2)' : '#fff', border: `1px solid ${isDark ? 'rgba(22, 163, 106, 0.2)' : '#86efac'}` }}>
-                                    <Text strong style={{ display: 'block', marginBottom: 8, color: '#16a34a' }}>🚁 NDRT / RDRT Readiness</Text>
-                                    <Text style={{ fontSize: 13, color: isDark ? '#ccc' : '#666', display: 'block', marginBottom: 12 }}>Profilage actif. Volontaires mobilisés via matching des compétences.</Text>
-                                    <Space size="small">
-                                        <Badge status="processing" color="green" /> <Text style={{ fontSize: 13, color: '#16a34a' }}>142 Prêts au déploiement</Text>
-                                    </Space>
-                                </div>
-                            </Col>
-                        </Row>
-                    </Card>
-                </Col>
-            </Row>
-        )}
-
-        {/* ── General charts (Volontaires par comité / Alertes stock / Top comités)
-              Hidden for domain-only responsables — they manage their domain, not the committee ── */}
-        {!isDomainOnly && (
-            <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-                <Col xs={24} lg={14}>
-                    <Card style={{ borderRadius: 20, border: isDark ? '1px solid rgba(255,255,255,0.06)' : undefined }}
-                        title={<Space><BarChartOutlined /> Volontaires par comité</Space>}
-                        styles={{ body: { padding: '16px 24px 24px' } }}>
-                        {committees.slice(0, 7).length > 0 ? (
-                            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, height: 200 }}>
-                                {committees.slice(0, 7).map((c) => {
-                                    const max = Math.max(...committees.slice(0, 7).map(x => x.totalVolunteers || 0), 1);
-                                    const pct = ((c.totalVolunteers || 0) / max) * 100;
-                                    return (
-                                        <Tooltip key={c.id} title={`${c.name}: ${c.totalVolunteers} volontaires`}>
-                                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-                                                <Text style={{ fontSize: 11, fontWeight: 600 }}>{c.totalVolunteers}</Text>
-                                                <div style={{
-                                                    width: '100%', height: `${pct}%`, minHeight: 8,
-                                                    borderRadius: '10px 10px 4px 4px',
-                                                    background: 'linear-gradient(to top, #C81E1E, #ef4444)',
-                                                    transition: 'height 0.8s ease',
-                                                    boxShadow: isDark ? '0 0 12px rgba(200,30,30,0.3)' : 'none',
-                                                }} />
-                                                <Text style={{ fontSize: 9, color: isDark ? 'rgba(255,255,255,0.4)' : '#888' }}>{c.region}</Text>
+                {/* ── Crisis Command Center — national leaders only ── */}
+                {permissions.sidebarKeys.includes('/catastrophes') && user?.committeeType === 'NATIONAL' && (
+                    <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+                        <Col xs={24}>
+                            <Card style={{ borderRadius: 20, border: isDark ? '1px solid rgba(255,255,255,0.06)' : undefined, background: isDark ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(185, 28, 28, 0.05))' : 'linear-gradient(135deg, rgba(254, 226, 226, 0.5), #fff)' }}
+                                title={<Space><GlobalOutlined style={{ color: '#ef4444' }} /> Centre Opérationnel de Crise (NATIONAL)</Space>}
+                                extra={<Button type="primary" danger onClick={() => navigate('/catastrophes')} icon={<ThunderboltOutlined />}>Ouvrir Radar AlphaEarth</Button>}>
+                                <Row gutter={[16, 16]}>
+                                    <Col xs={24} md={8}>
+                                        <div style={{ padding: 16, borderRadius: 16, height: '100%', background: isDark ? 'rgba(0,0,0,0.2)' : '#fff', border: `1px solid ${isDark ? 'rgba(239, 68, 68, 0.2)' : '#fca5a5'}` }}>
+                                            <Text strong style={{ display: 'block', marginBottom: 8, color: '#ef4444' }}>📡 Flux Météo AlphaEarth</Text>
+                                            <Text style={{ fontSize: 13, color: isDark ? '#ccc' : '#666', display: 'block', marginBottom: 12 }}>Analyse prédictive de 27 variables avec l'API OpenWeather & USGS.</Text>
+                                            <div style={{ display: 'flex', gap: 8 }}>
+                                                <Tag color="red" bordered={false}>Alerte Orage : Nord</Tag>
+                                                <Tag color="volcano" bordered={false}>Feu : Faible</Tag>
                                             </div>
-                                        </Tooltip>
+                                        </div>
+                                    </Col>
+                                    <Col xs={24} md={8}>
+                                        <div style={{ padding: 16, borderRadius: 16, height: '100%', background: isDark ? 'rgba(0,0,0,0.2)' : '#fff', border: `1px solid ${isDark ? 'rgba(99, 102, 241, 0.2)' : '#a5b4fc'}` }}>
+                                            <Text strong style={{ display: 'block', marginBottom: 8, color: '#6366f1' }}>⚡ Pipeline RabbitMQ (disaster.alert)</Text>
+                                            <Text style={{ fontSize: 13, color: isDark ? '#ccc' : '#666', display: 'block', marginBottom: 12 }}>Création d'interventions de sauvetage. CDC en écoute persistante.</Text>
+                                            <Progress percent={100} size="small" status="active" strokeColor="#6366f1" />
+                                        </div>
+                                    </Col>
+                                    <Col xs={24} md={8}>
+                                        <div style={{ padding: 16, borderRadius: 16, height: '100%', background: isDark ? 'rgba(0,0,0,0.2)' : '#fff', border: `1px solid ${isDark ? 'rgba(22, 163, 106, 0.2)' : '#86efac'}` }}>
+                                            <Text strong style={{ display: 'block', marginBottom: 8, color: '#16a34a' }}>🚁 NDRT / RDRT Readiness</Text>
+                                            <Text style={{ fontSize: 13, color: isDark ? '#ccc' : '#666', display: 'block', marginBottom: 12 }}>Profilage actif. Volontaires mobilisés via matching des compétences.</Text>
+                                            <Space size="small">
+                                                <Badge status="processing" color="green" /> <Text style={{ fontSize: 13, color: '#16a34a' }}>142 Prêts au déploiement</Text>
+                                            </Space>
+                                        </div>
+                                    </Col>
+                                </Row>
+                            </Card>
+                        </Col>
+                    </Row>
+                )}
+
+                {/* ── General charts (Volontaires par comité / Alertes stock / Top comités)
+              Hidden for domain-only responsables — they manage their domain, not the committee ── */}
+                {!isDomainOnly && (
+                    <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+                        <Col xs={24} lg={14}>
+                            <Card style={{ borderRadius: 20, border: isDark ? '1px solid rgba(255,255,255,0.06)' : undefined }}
+                                title={<Space><BarChartOutlined /> Volontaires par comité</Space>}
+                                styles={{ body: { padding: '16px 24px 24px' } }}>
+                                {committees.slice(0, 7).length > 0 ? (
+                                    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, height: 200 }}>
+                                        {committees.slice(0, 7).map((c) => {
+                                            const max = Math.max(...committees.slice(0, 7).map(x => x.totalVolunteers || 0), 1);
+                                            const pct = ((c.totalVolunteers || 0) / max) * 100;
+                                            return (
+                                                <Tooltip key={c.id} title={`${c.name}: ${c.totalVolunteers} volontaires`}>
+                                                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                                                        <Text style={{ fontSize: 11, fontWeight: 600 }}>{c.totalVolunteers}</Text>
+                                                        <div style={{
+                                                            width: '100%', height: `${pct}%`, minHeight: 8,
+                                                            borderRadius: '10px 10px 4px 4px',
+                                                            background: 'linear-gradient(to top, #C81E1E, #ef4444)',
+                                                            transition: 'height 0.8s ease',
+                                                            boxShadow: isDark ? '0 0 12px rgba(200,30,30,0.3)' : 'none',
+                                                        }} />
+                                                        <Text style={{ fontSize: 9, color: isDark ? 'rgba(255,255,255,0.4)' : '#888' }}>{c.region}</Text>
+                                                    </div>
+                                                </Tooltip>
+                                            );
+                                        })}
+                                    </div>
+                                ) : <Empty description="Aucune donnée" />}
+                            </Card>
+                        </Col>
+                        <Col xs={24} lg={10}>
+                            <Card style={{ borderRadius: 20, border: isDark ? '1px solid rgba(255,255,255,0.06)' : undefined }}
+                                title={<Space><ExclamationCircleOutlined style={{ color: '#f59e0b' }} /> Alertes stock</Space>}
+                                styles={{ body: { padding: '12px 20px' } }}>
+                                {alerts.length > 0 ? (
+                                    <List size="small" dataSource={alerts.slice(0, 5)} renderItem={(item) => (
+                                        <List.Item style={{ padding: '10px 0' }}>
+                                            <List.Item.Meta
+                                                avatar={<Badge status={item.severity === 'CRITICAL' ? 'error' : 'warning'} />}
+                                                title={<Text style={{ fontSize: 13 }}>{`Alerte #${item.itemId.substring(0, 8)}`}</Text>}
+                                                description={<Text style={{ fontSize: 11, color: isDark ? 'rgba(255,255,255,0.4)' : '#999' }}>{item.alertType} — {item.severity}</Text>}
+                                            />
+                                        </List.Item>
+                                    )} />
+                                ) : <Empty description="Aucune alerte" image={Empty.PRESENTED_IMAGE_SIMPLE} />}
+                            </Card>
+
+                            <Card style={{ borderRadius: 20, marginTop: 16, border: isDark ? '1px solid rgba(255,255,255,0.06)' : undefined }}
+                                title={<Space><EnvironmentOutlined /> Top comités</Space>}
+                                styles={{ body: { padding: '12px 20px' } }}>
+                                {committees.slice(0, 5).map((c) => {
+                                    const max = Math.max(...committees.map(x => x.totalVolunteers || 0), 1);
+                                    return (
+                                        <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+                                            <Text style={{ width: 80, fontSize: 12, fontWeight: 500 }}>{c.region || c.name}</Text>
+                                            <Progress percent={Math.min(100, Math.round(((c.totalVolunteers || 0) / max) * 100))}
+                                                showInfo={false} strokeColor={c.totalVolunteers > 50 ? '#C81E1E' : c.totalVolunteers > 20 ? '#f59e0b' : '#6366f1'}
+                                                style={{ flex: 1 }} size="small" />
+                                            <Text style={{ fontSize: 12, color: isDark ? 'rgba(255,255,255,0.4)' : '#888', width: 36, textAlign: 'right' }}>{c.totalVolunteers}</Text>
+                                        </div>
                                     );
                                 })}
-                            </div>
-                        ) : <Empty description="Aucune donnée" />}
-                    </Card>
-                </Col>
-                <Col xs={24} lg={10}>
-                    <Card style={{ borderRadius: 20, border: isDark ? '1px solid rgba(255,255,255,0.06)' : undefined }}
-                        title={<Space><ExclamationCircleOutlined style={{ color: '#f59e0b' }} /> Alertes stock</Space>}
-                        styles={{ body: { padding: '12px 20px' } }}>
-                        {alerts.length > 0 ? (
-                            <List size="small" dataSource={alerts.slice(0, 5)} renderItem={(item) => (
-                                <List.Item style={{ padding: '10px 0' }}>
-                                    <List.Item.Meta
-                                        avatar={<Badge status={item.severity === 'CRITICAL' ? 'error' : 'warning'} />}
-                                        title={<Text style={{ fontSize: 13 }}>{`Alerte #${item.itemId.substring(0, 8)}`}</Text>}
-                                        description={<Text style={{ fontSize: 11, color: isDark ? 'rgba(255,255,255,0.4)' : '#999' }}>{item.alertType} — {item.severity}</Text>}
-                                    />
-                                </List.Item>
-                            )} />
-                        ) : <Empty description="Aucune alerte" image={Empty.PRESENTED_IMAGE_SIMPLE} />}
-                    </Card>
-
-                    <Card style={{ borderRadius: 20, marginTop: 16, border: isDark ? '1px solid rgba(255,255,255,0.06)' : undefined }}
-                        title={<Space><EnvironmentOutlined /> Top comités</Space>}
-                        styles={{ body: { padding: '12px 20px' } }}>
-                        {committees.slice(0, 5).map((c) => {
-                            const max = Math.max(...committees.map(x => x.totalVolunteers || 0), 1);
-                            return (
-                                <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
-                                    <Text style={{ width: 80, fontSize: 12, fontWeight: 500 }}>{c.region || c.name}</Text>
-                                    <Progress percent={Math.min(100, Math.round(((c.totalVolunteers || 0) / max) * 100))}
-                                        showInfo={false} strokeColor={c.totalVolunteers > 50 ? '#C81E1E' : c.totalVolunteers > 20 ? '#f59e0b' : '#6366f1'}
-                                        style={{ flex: 1 }} size="small" />
-                                    <Text style={{ fontSize: 12, color: isDark ? 'rgba(255,255,255,0.4)' : '#888', width: 36, textAlign: 'right' }}>{c.totalVolunteers}</Text>
-                                </div>
-                            );
-                        })}
-                        {committees.length === 0 && <Empty description="Aucun comité" image={Empty.PRESENTED_IMAGE_SIMPLE} />}
-                    </Card>
-                </Col>
-            </Row>
-        )}
-
-        {/* Domain Stats Preview Widget — for domain responsables only */}
-        {(() => {
-            const roles: string[] = (user?.roles || []).map((r: any) => (typeof r === 'string' ? r : r?.role || ''));
-            const hasDomain = (code: string) => roles.some((r: string) => r.includes(code));
-
-            const cfg = hasDomain('RESP_JEUNESSE') ? {
-                emoji: '🎓', label: 'Espace Jeunesse', color: '#4F46E5', route: '/jeunesse',
-                stats: [{ label: 'Formulaires', icon: '📋' }, { label: 'Projets Actifs', icon: '🚀' }, { label: 'Recommandations IA', icon: '🤖' }]
-            } : hasDomain('RESP_SANTE') ? {
-                emoji: '🏥', label: 'Espace Santé', color: '#0284C7', route: '/sante',
-                stats: [{ label: 'Interventions', icon: '🩺' }, { label: 'Consultations', icon: '📅' }, { label: 'Bénéficiaires', icon: '👥' }]
-            } : hasDomain('RESP_SOCIAL') ? {
-                emoji: '🏘', label: 'Espace Social', color: '#059669', route: '/social',
-                stats: [{ label: 'Familles', icon: '🏠' }, { label: 'Aides', icon: '📦' }, { label: 'Dossiers', icon: '📁' }]
-            } : hasDomain('RESP_VFF') ? {
-                emoji: '🔴', label: 'Espace VFF', color: '#C81E1E', route: '/vff',
-                stats: [{ label: 'Victimes', icon: '🆘' }, { label: 'Cas Traités', icon: '✅' }, { label: 'Référencements', icon: '🔗' }]
-            } : hasDomain('RESP_IMMIGRATION') ? {
-                emoji: '🌍', label: 'Immigration', color: '#7C3AED', route: '/immigration',
-                stats: [{ label: 'Dossiers Actifs', icon: '📑' }, { label: 'Assistances', icon: '🤝' }, { label: 'Ateliers', icon: '📚' }]
-            } : null;
-
-            if (!cfg) return null;
-            return (
-                <Card
-                    style={{ borderRadius: 20, marginBottom: 24, border: `1px solid ${cfg.color}25`, background: isDark ? `${cfg.color}08` : `${cfg.color}04` }}
-                    styles={{ body: { padding: '20px 24px' } }}
-                >
-                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 20 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                            <div style={{ width: 48, height: 48, borderRadius: 16, background: `${cfg.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>
-                                {cfg.emoji}
-                            </div>
-                            <div>
-                                <Text strong style={{ fontSize: 16 }}>Mon Domaine — {cfg.label}</Text>
-                                <div><Text type="secondary" style={{ fontSize: 13 }}>Statistiques et actions spécifiques à votre domaine</Text></div>
-                            </div>
-                        </div>
-                        <Button type="primary" icon={<BarChartOutlined />} onClick={() => navigate(cfg.route)}
-                            style={{ background: cfg.color, border: 'none', borderRadius: 12, fontWeight: 700, boxShadow: `0 4px 14px ${cfg.color}40` }}>
-                            Ouvrir {cfg.label}
-                        </Button>
-                    </div>
-                    <Row gutter={[12, 12]}>
-                        {cfg.stats.map((s) => (
-                            <Col key={s.label} xs={8}>
-                                <div style={{ textAlign: 'center', padding: '14px 8px', background: isDark ? 'rgba(255,255,255,0.04)' : '#fff', borderRadius: 14, border: `1px solid ${cfg.color}15` }}>
-                                    <div style={{ fontSize: 22, marginBottom: 4 }}>{s.icon}</div>
-                                    <div style={{ fontSize: 20, fontWeight: 800, color: cfg.color }}>—</div>
-                                    <Text type="secondary" style={{ fontSize: 11, fontWeight: 600 }}>{s.label}</Text>
-                                </div>
-                            </Col>
-                        ))}
+                                {committees.length === 0 && <Empty description="Aucun comité" image={Empty.PRESENTED_IMAGE_SIMPLE} />}
+                            </Card>
+                        </Col>
                     </Row>
-                </Card>
-            );
-        })()}
+                )}
 
-        {/* Quick Actions */}
-        {(() => {
+                {/* Domain Stats Preview Widget — for domain responsables only */}
+                {(() => {
+                    const roles: string[] = (user?.roles || []).map((r: any) => (typeof r === 'string' ? r : r?.role || ''));
+                    const hasDomain = (code: string) => roles.some((r: string) => r.includes(code));
 
-            const actions: { icon: React.ReactNode; label: string; desc: string; color: string; route: string }[] = [];
-            if (permissions.sidebarKeys.includes('/secourisme')) actions.push({ icon: <HeartOutlined />, label: 'Secourisme', desc: 'RCP IA', color: '#C81E1E', route: '/secourisme' });
-            if (permissions.sidebarKeys.includes('/volunteers')) actions.push({ icon: <TeamOutlined />, label: 'Volontaires', desc: 'Profils', color: '#6366f1', route: '/volunteers' });
-            if (permissions.sidebarKeys.includes('/reports')) actions.push({ icon: <FileTextOutlined />, label: 'Rapports', desc: 'SitRep', color: '#16a34a', route: '/reports' });
-            if (permissions.sidebarKeys.includes('/stocks')) actions.push({ icon: <InboxOutlined />, label: 'Inventaire', desc: `${totalStock} articles`, color: '#8b5cf6', route: '/stocks' });
-            if (permissions.sidebarKeys.includes('/donations')) actions.push({ icon: <GiftOutlined />, label: 'Donations', desc: 'Suivi', color: '#f59e0b', route: '/donations' });
-            if (permissions.sidebarKeys.includes('/diffusion')) actions.push({ icon: <SoundOutlined />, label: 'Diffusion', desc: 'Ressources', color: '#ec4899', route: '/diffusion' });
-            if (permissions.sidebarKeys.includes('/sante')) actions.push({ icon: <MedicineBoxOutlined />, label: 'Santé', desc: 'Actions', color: '#0ea5e9', route: '/sante' });
-            if (permissions.sidebarKeys.includes('/social')) actions.push({ icon: <HomeOutlined />, label: 'Social', desc: 'Familles', color: '#10b981', route: '/social' });
-            if (permissions.sidebarKeys.includes('/catastrophes')) actions.push({ icon: <GlobalOutlined />, label: 'Météo', desc: 'Alertes', color: '#ef4444', route: '/catastrophes' });
-            if (actions.length === 0) return null;
-            return (
-                <Card style={{ borderRadius: 20, border: isDark ? '1px solid rgba(255,255,255,0.06)' : undefined }}
-                    title={<Space><ThunderboltOutlined style={{ color: '#f59e0b' }} /> Actions rapides</Space>}>
-                    <Row gutter={[12, 12]}>
-                        {actions.slice(0, 8).map((a) => (
-                            <Col xs={12} sm={8} md={6} key={a.label}>
-                                <QuickAction isDark={isDark} {...a} onClick={() => navigate(a.route)} />
-                            </Col>
-                        ))}
-                    </Row>
-                </Card>
-            );
-        })()}
-    </>
-    );
-};
+                    const cfg = hasDomain('RESP_JEUNESSE') ? {
+                        emoji: '🎓', label: 'Espace Jeunesse', color: '#4F46E5', route: '/jeunesse',
+                        stats: [{ label: 'Formulaires', icon: '📋', value: jeunesseFormsCount }, { label: 'Projets Actifs', icon: '🚀', value: jeunesseProjectsCount }, { label: 'Recommandations IA', icon: '🤖' }]
+                    } : hasDomain('RESP_SANTE') ? {
+                        emoji: '🏥', label: 'Espace Santé', color: '#0284C7', route: '/sante',
+                        stats: [{ label: 'Interventions', icon: '🩺', value: santeActionsCount }, { label: 'Consultations', icon: '📅' }, { label: 'Bénéficiaires', icon: '👥' }]
+                    } : hasDomain('RESP_SOCIAL') ? {
+                        emoji: '🏘', label: 'Espace Social', color: '#059669', route: '/social',
+                        stats: [{ label: 'Familles', icon: '🏠', value: socialFamiliesCount }, { label: 'Aides', icon: '📦', value: socialActionsCount }, { label: 'Dossiers', icon: '📁' }]
+                    } : hasDomain('RESP_VFF') ? {
+                        emoji: '🔴', label: 'Espace VFF', color: '#C81E1E', route: '/vff',
+                        stats: [{ label: 'Victimes', icon: '🆘', value: vffCasesCount }, { label: 'Cas Traités', icon: '✅' }, { label: 'Référencements', icon: '🔗' }]
+                    } : hasDomain('RESP_IMMIGRATION') ? {
+                        emoji: '🌍', label: 'Immigration', color: '#7C3AED', route: '/immigration',
+                        stats: [{ label: 'Dossiers Actifs', icon: '📑', value: immigrationCasesCount }, { label: 'Assistances', icon: '🤝' }, { label: 'Ateliers', icon: '📚' }]
+                    } : hasDomain('RESP_SECOURISME') ? {
+                        emoji: '🚑', label: 'Espace Secourisme', color: '#ef4444', route: '/secourisme',
+                        stats: [{ label: 'Équipements', icon: '🩺', value: secourismeEqCount }, { label: 'Dispositifs', icon: '📍', value: secourismeDvCount }, { label: 'Secouristes', icon: '👥', value: totalVolunteers }]
+                    } : null;
+
+                    if (!cfg) return null;
+                    return (
+                        <Card
+                            style={{ borderRadius: 20, marginBottom: 24, border: `1px solid ${cfg.color}25`, background: isDark ? `${cfg.color}08` : `${cfg.color}04` }}
+                            styles={{ body: { padding: '20px 24px' } }}
+                        >
+                            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 20 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                                    <div style={{ width: 48, height: 48, borderRadius: 16, background: `${cfg.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>
+                                        {cfg.emoji}
+                                    </div>
+                                    <div>
+                                        <Text strong style={{ fontSize: 16 }}>Mon Domaine — {cfg.label}</Text>
+                                        <div><Text type="secondary" style={{ fontSize: 13 }}>Statistiques et actions spécifiques à votre domaine</Text></div>
+                                    </div>
+                                </div>
+                                <Button type="primary" icon={<BarChartOutlined />} onClick={() => navigate(cfg.route)}
+                                    style={{ background: cfg.color, border: 'none', borderRadius: 12, fontWeight: 700, boxShadow: `0 4px 14px ${cfg.color}40` }}>
+                                    Ouvrir {cfg.label}
+                                </Button>
+                            </div>
+                            <Row gutter={[12, 12]}>
+                                {cfg.stats.map((s: any) => (
+                                    <Col key={s.label} xs={8}>
+                                        <div style={{ textAlign: 'center', padding: '14px 8px', background: isDark ? 'rgba(255,255,255,0.04)' : '#fff', borderRadius: 14, border: `1px solid ${cfg.color}15` }}>
+                                            <div style={{ fontSize: 22, marginBottom: 4 }}>{s.icon}</div>
+                                            <div style={{ fontSize: 20, fontWeight: 800, color: cfg.color }}>{s.value !== undefined ? s.value : '—'}</div>
+                                            <Text type="secondary" style={{ fontSize: 11, fontWeight: 600 }}>{s.label}</Text>
+                                        </div>
+                                    </Col>
+                                ))}
+                            </Row>
+                        </Card>
+                    );
+                })()}
+
+                {/* Quick Actions */}
+                {(() => {
+
+                    const actions: { icon: React.ReactNode; label: string; desc: string; color: string; route: string }[] = [];
+                    if (permissions.sidebarKeys.includes('/secourisme')) actions.push({ icon: <HeartOutlined />, label: 'Secourisme', desc: 'RCP IA', color: '#C81E1E', route: '/secourisme' });
+                    if (permissions.sidebarKeys.includes('/volunteers')) actions.push({ icon: <TeamOutlined />, label: 'Volontaires', desc: 'Profils', color: '#6366f1', route: '/volunteers' });
+                    if (permissions.sidebarKeys.includes('/reports')) actions.push({ icon: <FileTextOutlined />, label: 'Rapports', desc: 'SitRep', color: '#16a34a', route: '/reports' });
+                    if (permissions.sidebarKeys.includes('/stocks')) actions.push({ icon: <InboxOutlined />, label: 'Inventaire', desc: `${totalStock} articles`, color: '#8b5cf6', route: '/stocks' });
+                    if (permissions.sidebarKeys.includes('/donations')) actions.push({ icon: <GiftOutlined />, label: 'Donations', desc: 'Suivi', color: '#f59e0b', route: '/donations' });
+                    if (permissions.sidebarKeys.includes('/diffusion')) actions.push({ icon: <SoundOutlined />, label: 'Diffusion', desc: 'Ressources', color: '#ec4899', route: '/diffusion' });
+                    if (permissions.sidebarKeys.includes('/sante')) actions.push({ icon: <MedicineBoxOutlined />, label: 'Santé', desc: 'Actions', color: '#0ea5e9', route: '/sante' });
+                    if (permissions.sidebarKeys.includes('/social')) actions.push({ icon: <HomeOutlined />, label: 'Social', desc: 'Familles', color: '#10b981', route: '/social' });
+                    if (permissions.sidebarKeys.includes('/catastrophes')) actions.push({ icon: <GlobalOutlined />, label: 'Météo', desc: 'Alertes', color: '#ef4444', route: '/catastrophes' });
+                    if (actions.length === 0) return null;
+                    return (
+                        <Card style={{ borderRadius: 20, border: isDark ? '1px solid rgba(255,255,255,0.06)' : undefined }}
+                            title={<Space><ThunderboltOutlined style={{ color: '#f59e0b' }} /> Actions rapides</Space>}>
+                            <Row gutter={[12, 12]}>
+                                {actions.slice(0, 8).map((a) => (
+                                    <Col xs={12} sm={8} md={6} key={a.label}>
+                                        <QuickAction isDark={isDark} {...a} onClick={() => navigate(a.route)} />
+                                    </Col>
+                                ))}
+                            </Row>
+                        </Card>
+                    );
+                })()}
+            </>
+        );
+    };
 
 export default DashboardPage;

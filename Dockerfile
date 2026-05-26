@@ -4,7 +4,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 COPY . .
-RUN npx vite build
+RUN npm run build
 
 # Production Stage
 FROM nginx:alpine

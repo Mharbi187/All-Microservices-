@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, Table, Tag, Space, Typography, Spin, Select, Input, Empty, message, Dropdown, Button, Avatar } from 'antd';
-import { 
-  FileTextOutlined, EditOutlined, CheckCircleOutlined, 
+import {
+  FileTextOutlined, EditOutlined, CheckCircleOutlined,
   FilePdfOutlined, LockOutlined, ThunderboltOutlined, SearchOutlined, EyeOutlined, MoreOutlined
 } from '@ant-design/icons';
 import { adminReportService } from '@/services/adminReportService';
@@ -15,7 +15,7 @@ const { Title, Text } = Typography;
 export default function ReportingListPage() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  
+
   const userRoles: string[] = user?.roles || [];
   const rawRoles: any[] = (user as any)?.rawRoles || [];
   const scope = getUserScope(userRoles, rawRoles);
@@ -31,7 +31,7 @@ export default function ReportingListPage() {
     setLoading(true);
     try {
       const data = isManager ? await adminReportService.list() : await adminReportService.getMyReports();
-      setReports(Array.isArray(data) ? data : (data?.content || data?.data || []));
+      setReports(Array.isArray(data) ? data : ((data as any)?.content || (data as any)?.data || []));
     } catch {
       message.error('Erreur lors du chargement des rapports');
     } finally {
