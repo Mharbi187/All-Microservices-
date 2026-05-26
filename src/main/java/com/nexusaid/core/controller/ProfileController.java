@@ -101,4 +101,11 @@ public class ProfileController {
         profileService.promoteToTrainer(volunteerId, expertiseDomains, userDetails.getUser().getId());
         return ResponseEntity.ok("Volunteer successfully promoted to Trainer.");
     }
+
+    @PutMapping("/me/mark-first-login-complete")
+    public ResponseEntity<String> markFirstLoginComplete(
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        profileService.markFirstLoginCompleted(userDetails.getUser().getId());
+        return ResponseEntity.ok("First login completed.");
+    }
 }

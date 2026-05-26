@@ -54,5 +54,9 @@ public class SocialAction {
     @PrePersist
     protected void onCreate() {
         performedAt = LocalDateTime.now();
+        if (this.actionType == null)
+            this.actionType = "UNKNOWN";
+        if (this.performedBy == null)
+            this.performedBy = UUID.randomUUID();
     }
 }

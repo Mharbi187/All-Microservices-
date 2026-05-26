@@ -1,5 +1,6 @@
 package com.nexusaid.core.entity.domains.sante;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.nexusaid.core.entity.Committee;
 import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.*;
@@ -23,6 +24,7 @@ public class HealthAction {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID id;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "committee_id", nullable = false)
     private Committee committee;
@@ -39,9 +41,8 @@ public class HealthAction {
     @Column(length = 1000)
     private String description;
 
-    @Type(JsonBinaryType.class)
-    @Column(columnDefinition = "jsonb")
-    private String location; // JSON storing GPS or address info
+    @Column(length = 2000)
+    private String location; // Storing as simple String since frontend passes simple texts
 
     @Column(name = "start_date")
     private LocalDate startDate;
@@ -61,4 +62,14 @@ public class HealthAction {
     @Type(JsonBinaryType.class)
     @Column(name = "photos_urls", columnDefinition = "jsonb")
     private List<String> photosUrls;
+
+    @PrePersist
+    protected void onCreate() {
+        if (this.actionType == null)
+            this.actionType = "UNKNOWN";
+        if (this.title == null)
+            this.title = "Action Santé";
+        if (this.status == null)
+            this.status = "PLANNED";
+    }
 }

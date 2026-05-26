@@ -1,5 +1,6 @@
 package com.nexusaid.core.entity.domains.secourisme;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.nexusaid.core.entity.Committee;
 import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.*;
@@ -38,10 +39,25 @@ public class RescueEquipment {
     @Column(name = "next_maintenance_date")
     private LocalDate nextMaintenanceDate;
 
-    @Column(nullable = false)
+    @Column
     private String condition; // e.g., Good, Needs Maintenance, Out of Service
 
+    private String status; // OPERATIONAL, MAINTENANCE, BROKEN
+
+    private Integer quantity;
+
+    @Column(name = "last_inspection_date")
+    private LocalDate lastInspectionDate;
+
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "committee_id", nullable = false)
     private Committee assignedToCommittee;
+
+    @PrePersist
+    public void prePersist() {
+        if (this.condition == null) {
+            this.condition = "Good";
+        }
+    }
 }

@@ -53,8 +53,8 @@ public class VolunteerExtendedProfile {
 
     // ─── Formation académique ─────────────────────────────────────────────────
     @Enumerated(EnumType.STRING)
-    @Column(name = "education_level",
-            columnDefinition = "education_level")
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "education_level", columnDefinition = "education_level")
     private EducationLevel educationLevel;
 
     @Column(name = "specialization_domain")

@@ -1,5 +1,6 @@
 package com.nexusaid.core.entity.domains.secourisme;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.nexusaid.core.entity.Committee;
 import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.*;
@@ -46,6 +47,7 @@ public class RescueDevice {
     @Column(nullable = false)
     private String status; // e.g., PLANNED, ACTIVE, COMPLETED, CANCELLED
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "committee_id", nullable = false)
     private Committee committee;

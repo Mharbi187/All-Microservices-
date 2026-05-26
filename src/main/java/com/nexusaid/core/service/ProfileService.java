@@ -250,6 +250,10 @@ public class ProfileService {
                     .collect(Collectors.toList());
 
             List<Volunteer> volunteers = volunteerRepository.findByCommitteeId(cid);
+            int approvedCount = (int) volunteers.stream()
+                    .filter(v -> v.getAccountStatus() == com.nexusaid.core.entity.enums.AccountStatus.APPROVED).count();
+            int pendingCount = (int) volunteers.stream()
+                    .filter(v -> v.getAccountStatus() == com.nexusaid.core.entity.enums.AccountStatus.PENDING).count();
 
             return HierarchyDtos.CommitteeOverview.builder()
                     .id(c.getId())
@@ -258,7 +262,8 @@ public class ProfileService {
                     .region(c.getRegion())
                     .parentCommitteeName(c.getParentCommittee() != null ? c.getParentCommittee().getName() : null)
                     .roles(roleAssignments)
-                    .totalVolunteers(volunteers.size())
+                    .totalVolunteers(approvedCount)
+                    .pendingVolunteers(pendingCount)
                     .build();
         }).filter(o -> o != null).collect(Collectors.toList());
     }
@@ -312,7 +317,12 @@ public class ProfileService {
             profile.put("skills", v.getSkills());
             profile.put("matricule", v.getMatricule());
             profile.put("cin", v.getCin());
+            profile.put("committeeId", v.getCommitteeId());
         }
+
+        // Always expose firstLoginCompleted so the frontend can gate the onboarding
+        // form
+        profile.put("firstLoginCompleted", user.isFirstLoginCompleted());
 
         return profile;
     }
@@ -346,6 +356,18 @@ public class ProfileService {
             }
         }
 
+        userRepository.save(user);
+    }
+
+    /**
+     * Mark the first login as completed after the volunteer fills the extended
+     * profile form.
+     */
+    @Transactional
+    public void markFirstLoginCompleted(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        user.setFirstLoginCompleted(true);
         userRepository.save(user);
     }
 }

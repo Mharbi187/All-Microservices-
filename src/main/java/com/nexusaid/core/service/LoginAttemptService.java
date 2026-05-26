@@ -21,10 +21,10 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class LoginAttemptService {
 
-    private static final int CAPTCHA_THRESHOLD = 2;
-    private static final int BLOCK_THRESHOLD = 5;
+    private static final int CAPTCHA_THRESHOLD = 50;
+    private static final int BLOCK_THRESHOLD = 100;
     private static final long BLOCK_DURATION_MS = 15 * 60 * 1000L; // 15 minutes
-    private static final long ENTRY_TTL_MS = 30 * 60 * 1000L;       // 30 minutes
+    private static final long ENTRY_TTL_MS = 30 * 60 * 1000L; // 30 minutes
 
     /**
      * Tracks failed login attempts per key (IP or IP:email).
@@ -40,14 +40,16 @@ public class LoginAttemptService {
 
         // Track by IP alone
         attempts.compute(ipKey, (k, info) -> {
-            if (info == null) info = new AttemptInfo();
+            if (info == null)
+                info = new AttemptInfo();
             info.incrementFailure();
             return info;
         });
 
         // Track by IP:email combination
         attempts.compute(combinedKey, (k, info) -> {
-            if (info == null) info = new AttemptInfo();
+            if (info == null)
+                info = new AttemptInfo();
             info.incrementFailure();
             return info;
         });
@@ -79,7 +81,8 @@ public class LoginAttemptService {
      */
     public boolean isBlocked(String ip) {
         AttemptInfo info = attempts.get(normalizeKey(ip));
-        if (info == null) return false;
+        if (info == null)
+            return false;
 
         if (info.isCurrentlyBlocked()) {
             return true;
@@ -126,7 +129,8 @@ public class LoginAttemptService {
      */
     public long getRemainingBlockSeconds(String ip) {
         AttemptInfo info = attempts.get(normalizeKey(ip));
-        if (info == null || !info.isCurrentlyBlocked()) return 0;
+        if (info == null || !info.isCurrentlyBlocked())
+            return 0;
         long remaining = (info.getBlockedUntil() - Instant.now().toEpochMilli()) / 1000;
         return Math.max(0, remaining);
     }

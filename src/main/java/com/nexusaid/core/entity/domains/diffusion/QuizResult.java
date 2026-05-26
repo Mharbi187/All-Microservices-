@@ -1,5 +1,6 @@
 package com.nexusaid.core.entity.domains.diffusion;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.nexusaid.core.entity.Volunteer;
 import jakarta.persistence.*;
 import lombok.*;
@@ -24,10 +25,12 @@ public class QuizResult {
     @GenericGenerator(name = "UUID", strategy = "org.hibernate.id.UUIDGenerator")
     private UUID id;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "quiz_id", nullable = false)
     private Quiz quiz;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "volunteer_id", nullable = false)
     private Volunteer volunteer;
@@ -37,7 +40,7 @@ public class QuizResult {
 
     private String badgeEarned;
     private String badgeColor;
-    
+
     private Integer timeTaken;
 
     @CreationTimestamp

@@ -52,5 +52,11 @@ public class FamilyLinkCase {
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
+        if (this.requesterName == null)
+            this.requesterName = "Inconnu";
+        if (this.lostFamilyMemberName == null)
+            this.lostFamilyMemberName = "Inconnu";
+        if (this.status == null)
+            this.status = "OPEN";
     }
 }

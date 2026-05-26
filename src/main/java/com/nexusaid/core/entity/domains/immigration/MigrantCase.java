@@ -47,5 +47,11 @@ public class MigrantCase {
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
+        if (this.fullName == null)
+            this.fullName = "Inconnu";
+        if (this.nationality == null)
+            this.nationality = "Inconnue";
+        if (this.assignedVolunteerId == null)
+            this.assignedVolunteerId = UUID.randomUUID();
     }
 }

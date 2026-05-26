@@ -113,4 +113,23 @@ class ProfileServiceTest {
 
         verify(volunteerRepository, never()).save(any());
     }
+
+    @Test
+    void markFirstLoginCompleted_shouldSetFlagAndSaveUser() {
+        // Arrange
+        UUID userId = UUID.randomUUID();
+        User user = new User();
+        user.setId(userId);
+        user.setType(UserType.VOLUNTEER);
+        user.setFirstLoginCompleted(false);
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+        // Act
+        profileService.markFirstLoginCompleted(userId);
+
+        // Assert
+        assertTrue(user.isFirstLoginCompleted());
+        verify(userRepository, times(1)).save(user);
+    }
 }

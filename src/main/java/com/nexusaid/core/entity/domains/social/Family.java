@@ -62,5 +62,11 @@ public class Family {
     @PrePersist
     protected void onCreate() {
         registeredAt = LocalDateTime.now();
+        if (this.familyName == null)
+            this.familyName = "Inconnue";
+        if (this.headOfFamily == null)
+            this.headOfFamily = "Inconnu";
+        if (this.status == null)
+            this.status = "ACTIVE";
     }
 }

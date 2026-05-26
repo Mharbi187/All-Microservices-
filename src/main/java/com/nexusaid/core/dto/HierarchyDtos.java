@@ -27,6 +27,7 @@ public class HierarchyDtos {
         private String parentCommitteeName;
         private List<RoleAssignment> roles;
         private int totalVolunteers;
+        private int pendingVolunteers;
         // Governance
         private LocalDate mandateStartDate;
         private LocalDate mandateEndDate;

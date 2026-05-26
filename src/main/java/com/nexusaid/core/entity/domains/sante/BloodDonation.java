@@ -41,4 +41,11 @@ public class BloodDonation {
 
     @Column(length = 500)
     private String notes;
+
+    @PrePersist
+    public void prePersist() {
+        if (this.donorVolunteerId == null) {
+            this.donorVolunteerId = UUID.randomUUID(); // Fallback to avoid constraint error
+        }
+    }
 }

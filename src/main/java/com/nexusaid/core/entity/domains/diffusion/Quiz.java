@@ -1,5 +1,6 @@
 package com.nexusaid.core.entity.domains.diffusion;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.nexusaid.core.entity.Committee;
 import com.nexusaid.core.entity.User;
 import com.nexusaid.core.entity.enums.CommitteeType;
@@ -51,10 +52,12 @@ public class Quiz {
     @Builder.Default
     private String status = "DRAFT";
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by_id", nullable = false)
     private User createdBy;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "committee_id")
     private Committee committee;
