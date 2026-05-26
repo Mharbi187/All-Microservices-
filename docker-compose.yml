@@ -5,7 +5,7 @@
 
 services:
   eureka-server:
-    image: ghcr.io/mharbi187/all-microservices/eureka-server:latest
+    build: ../eureka-server
     container_name: nexusaid-eureka
     ports:
       - "8761:8761"
@@ -13,7 +13,7 @@ services:
       - nexusaid-network
 
   config-server:
-    image: ghcr.io/mharbi187/all-microservices/config-server:latest
+    build: ../config-server
     container_name: nexusaid-config
     ports:
       - "8888:8888"
@@ -31,8 +31,16 @@ services:
       - "5672:5672"
       - "15672:15672"
     environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}
+    networks:
+      - nexusaid-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: nexusaid-redis
+    ports:
+      - "6379:6379"
     networks:
       - nexusaid-network
 
@@ -45,6 +53,8 @@ services:
       - POSTGRES_DB=nexusaiddb
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - ../postgres-init:/docker-entrypoint-initdb.d:ro
     networks:
       - nexusaid-network
 
@@ -64,7 +74,7 @@ services:
       - nexusaid-network
 
   core-service:
-    image: ghcr.io/mharbi187/all-microservices/core-service:latest
+    build: ../core-service
     container_name: nexusaid-core
     ports:
       - "8080:8080"
@@ -74,6 +84,10 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/nexusaiddb
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_USERNAME=${RABBITMQ_USER}
+      - SPRING_RABBITMQ_PASSWORD=${RABBITMQ_PASS}
+      - JWT_PUBLIC_KEY=${JWT_PUBLIC_KEY}
+      - JWT_PRIVATE_KEY=${JWT_PRIVATE_KEY}
     depends_on:
       - postgres
       - eureka-server
@@ -83,7 +97,7 @@ services:
       - nexusaid-network
 
   admin-service:
-    image: ghcr.io/mharbi187/all-microservices/admin-service:latest
+    build: ../admin-service
     container_name: nexusaid-admin
     ports:
       - "8081:8081"
@@ -93,6 +107,7 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/nexusaid_admin
       - CORE_SERVICE_URL=http://core-service:8080
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - JWT_PUBLIC_KEY=${JWT_PUBLIC_KEY}
     depends_on:
       - postgres
       - eureka-server
@@ -101,12 +116,12 @@ services:
       - nexusaid-network
 
   disaster-detection:
-    image: ghcr.io/mharbi187/all-microservices/disaster-detection:latest
+    build: ../disaster-detection
     container_name: nexusaid-disaster-detection
     ports:
       - "8000:8000"
     environment:
-      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672/
       - CORE_SERVICE_URL=http://core-service:8080
       - JWT_PUBLIC_KEY=${JWT_PUBLIC_KEY}
       - JWT_PUBLIC_KEY_FILE=${JWT_PUBLIC_KEY_PATH}
@@ -118,11 +133,11 @@ services:
       - disaster-cache:/app/data/cache
 
   disaster-daemon:
-    image: ghcr.io/mharbi187/all-microservices/disaster-detection:latest
+    build: ../disaster-detection
     container_name: nexusaid-disaster-daemon
     command: ["python", "-m", "src.daemon"]
     environment:
-      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672/
       - CORE_SERVICE_URL=http://core-service:8080
       - JWT_PUBLIC_KEY=${JWT_PUBLIC_KEY}
       - JWT_PUBLIC_KEY_FILE=${JWT_PUBLIC_KEY_PATH}
@@ -135,7 +150,7 @@ services:
       - disaster-cache:/app/data/cache
 
   api-gateway:
-    image: ghcr.io/mharbi187/all-microservices/api-gateway:latest
+    build: ../api-gateway
     container_name: nexusaid-gateway
     ports:
       - "8060:8060"
@@ -157,7 +172,7 @@ services:
       - nexusaid-network
 
   nexus-aid-frontend:
-    image: ghcr.io/mharbi187/all-microservices/nexus-aid-frontend:latest
+    build: ../nexus-aid-frontend
     container_name: nexusaid-frontend
     ports:
       - "80:80"
