@@ -38,7 +38,7 @@ public class RateLimiterConfig {
     @Bean
     @Primary
     public RedisRateLimiter defaultRateLimiter() {
-        return new RedisRateLimiter(20, 40);
+        return new RedisRateLimiter(100, 400);
     }
 
     /**
