@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Layout, Typography, Badge, Row, Col, Button, Alert, Space, Tag, message } from 'antd';
+import { Layout, Typography, Badge, Row, Col, Button, Alert, Space, Tag, message, Select, Drawer, Steps, Result } from 'antd';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FullscreenExitOutlined, FullscreenOutlined, ReloadOutlined, FireOutlined } from '@ant-design/icons';
+import { FullscreenExitOutlined, FullscreenOutlined, ReloadOutlined, ThunderboltOutlined, ClearOutlined, ExperimentOutlined, RightOutlined } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Sidebar from '@/components/crisis/Sidebar';
 import RadarMap from '@/components/crisis/RadarMap';
@@ -17,9 +17,10 @@ import RespondersPanel from '@/components/crisis/RespondersPanel';
 import { useRadar } from '@/hooks/useRadar';
 import { useCommandCenter } from '@/stores/commandCenterStore';
 import { crisisApi } from '@/services/crisisApi';
+import type { SimulationScenario, FullSimulationResult } from '@/services/crisisApi';
 
 const { Content } = Layout;
-const { Text } = Typography;
+const { Text, Title, Paragraph } = Typography;
 
 const DEFAULT_TARGET = { lat: 36.8065, lon: 10.1815, label: 'Tunis (default command target)' };
 
@@ -34,6 +35,7 @@ export default function Dashboard() {
     const [responderCount, setResponderCount] = useState(0);
     const isFullscreen = location.pathname.endsWith('/fullscreen');
 
+    // ─── Missing Hooks Restored ──────────────────────
     const wilayatNames = useMemo(() => {
         if (!data) return [];
         return Object.keys(data.wilayats).sort();
@@ -66,7 +68,6 @@ export default function Dashboard() {
                 };
             }
         }
-
         return DEFAULT_TARGET;
     }, [data, selectedInfo, selectedWilaya]);
 
@@ -94,13 +95,67 @@ export default function Dashboard() {
         return () => window.clearInterval(interval);
     }, [refreshResponderCount]);
 
-    const handleTriggerDemo = async () => {
+
+    // ─── Simulation State ────────────────────────────
+    const [scenarios, setScenarios] = useState<SimulationScenario[]>([]);
+    const [selectedScenario, setSelectedScenario] = useState('wildfire_jendouba');
+    const [simDrawerOpen, setSimDrawerOpen] = useState(false);
+    const [simRunning, setSimRunning] = useState(false);
+    const [simResult, setSimResult] = useState<FullSimulationResult | null>(null);
+    const [simCurrentPhase, setSimCurrentPhase] = useState(-1);
+
+    // Load available scenarios
+    useEffect(() => {
+        crisisApi.getScenarios().then((res) => {
+            setScenarios(res.scenarios || []);
+        }).catch(() => {
+            // Fallback
+            setScenarios([
+                { id: 'wildfire_jendouba', name: 'Wildfire: Jendouba / Tabarka', description: 'Critical wildfire in Northwest', disaster_count: 3, high_risk_count: 2 },
+                { id: 'flood_nabeul', name: 'Floods: Nabeul / Sousse', description: 'Flash flooding in coastal region', disaster_count: 3, high_risk_count: 2 },
+                { id: 'earthquake_kasserine', name: 'Earthquake: Kasserine', description: 'M5.2 Earthquake', disaster_count: 3, high_risk_count: 2 },
+                { id: 'multi_crisis', name: 'Multi-Region Crisis', description: 'Simultaneous wildfire + flood', disaster_count: 4, high_risk_count: 2 },
+            ]);
+        });
+    }, []);
+
+    const handleRunSimulation = async () => {
+        setSimRunning(true);
+        setSimResult(null);
+        setSimCurrentPhase(0);
+
         try {
-            message.loading({ content: 'Injecting Jendouba Wildfire...', key: 'demo' });
-            await crisisApi.triggerSimulation();
-            message.success({ content: 'Simulation active! Radar incoming.', key: 'demo', duration: 3 });
+            // UI Delay
+            const phaseLabels = ['Radar Injection', 'Crisis Room', 'Team Dispatch', 'Messages'];
+            for (let i = 0; i < phaseLabels.length; i++) {
+                setSimCurrentPhase(i);
+                await new Promise(r => setTimeout(r, 600));
+            }
+
+            const result = await crisisApi.triggerFullSimulation(selectedScenario);
+            setSimResult(result);
+            setSimCurrentPhase(4);
+
+            if (result.success) {
+                message.success({ content: `✅ Simulation "${result.scenario_name}" deployed! Radar is fetching data.`, duration: 5 });
+            } else {
+                message.warning({ content: 'Simulation partially complete.', duration: 4 });
+            }
         } catch (e) {
-            message.error({ content: 'Simulation backend unreachable.', key: 'demo' });
+            message.error({ content: 'Simulation backend unreachable. Check MS4.', duration: 4 });
+        } finally {
+            setSimRunning(false);
+        }
+    };
+
+    const handleResetSimulation = async () => {
+        try {
+            await crisisApi.resetSimulation();
+            setSimResult(null);
+            setSimCurrentPhase(-1);
+            message.success({ content: 'Radar cache cleared.', duration: 3 });
+        } catch {
+            message.error({ content: 'Reset failed.', duration: 3 });
         }
     };
 
@@ -115,6 +170,8 @@ export default function Dashboard() {
         : panel === 'incidents'
             ? 'Incident Command Log'
             : 'Responder Coordination';
+
+    const activeScenarioObj = scenarios.find(s => s.id === selectedScenario);
 
     return (
         <Layout style={{ height: '100vh' }}>
@@ -154,11 +211,11 @@ export default function Dashboard() {
 
                     <Space size={10} wrap>
                         <Button
-                            icon={<FireOutlined />}
-                            style={{ background: '#7c3aed', color: 'white', borderColor: '#7c3aed', fontWeight: 600 }}
-                            onClick={handleTriggerDemo}
+                            icon={<ThunderboltOutlined />}
+                            style={{ background: 'linear-gradient(90deg, #7c3aed, #4f46e5)', color: 'white', borderColor: 'transparent', fontWeight: 600 }}
+                            onClick={() => setSimDrawerOpen(true)}
                         >
-                            JURY DEMO
+                            SIMULATION CONTROL
                         </Button>
                         {selectedHighRisk && selectedWilaya && (
                             <Button danger type="primary" onClick={() => openRoomCreation(selectedWilaya)}>
@@ -189,7 +246,7 @@ export default function Dashboard() {
                     </Space>
                 </div>
 
-                {daemonStatus !== 'running' && (
+                {daemonStatus !== 'running' && panel === 'radar' && (
                     <div style={{ padding: '10px 16px 0' }}>
                         <Alert
                             type="warning"
@@ -282,6 +339,102 @@ export default function Dashboard() {
                         navigate(`/crisis-room/${roomId}${isFullscreen ? '/fullscreen' : ''}`);
                     }}
                 />
+
+                {/* SIMULATION CONTROL DRAWER */}
+                <Drawer
+                    title={<span style={{ color: '#fff', fontSize: 18 }}><ExperimentOutlined /> End-to-End Platform Simulation</span>}
+                    placement="right"
+                    width={480}
+                    onClose={() => setSimDrawerOpen(false)}
+                    open={simDrawerOpen}
+                    closable={true}
+                    styles={{ header: { background: '#0a0f1c', borderBottom: '1px solid #1e293b' }, body: { background: '#0f172a', color: '#e2e8f0', padding: 24 } }}
+                >
+                    <Paragraph style={{ color: '#94a3b8' }}>
+                        Transform the platform into showcase mode. This orchestrator will inject a multi-region disaster into the ML radar, auto-create a Crisis Room, deploy response teams, and populate live messages.
+                    </Paragraph>
+
+                    <div style={{ marginBottom: 24 }}>
+                        <Text strong style={{ color: 'white', display: 'block', marginBottom: 8 }}>Select Scenario</Text>
+                        <Select
+                            value={selectedScenario}
+                            onChange={setSelectedScenario}
+                            style={{ width: '100%' }}
+                            size="large"
+                            disabled={simRunning}
+                            options={scenarios.map(s => ({ label: s.name, value: s.id }))}
+                        />
+                        {activeScenarioObj && (
+                            <div style={{ background: 'rgba(255,255,255,0.05)', padding: 12, borderRadius: 8, marginTop: 12 }}>
+                                <Text style={{ color: '#bae6fd', display: 'block' }}>{activeScenarioObj.description}</Text>
+                                <Space style={{ marginTop: 8 }}>
+                                    <Tag color="red">{activeScenarioObj.high_risk_count} Critical Zones</Tag>
+                                    <Tag color="blue">{activeScenarioObj.disaster_count} Regions Overlaid</Tag>
+                                </Space>
+                            </div>
+                        )}
+                    </div>
+
+                    <Space direction="vertical" style={{ width: '100%', marginBottom: 32 }}>
+                        <Button
+                            type="primary"
+                            size="large"
+                            block
+                            icon={<ThunderboltOutlined />}
+                            loading={simRunning}
+                            disabled={simRunning && simCurrentPhase < 4}
+                            style={{ background: '#7c3aed', borderColor: '#7c3aed', height: 48, fontSize: 16 }}
+                            onClick={handleRunSimulation}
+                        >
+                            {simResult?.success ? 'RE-RUN SCENARIO' : 'EXECUTE SCENARIO'}
+                        </Button>
+                        <Button
+                            block
+                            danger
+                            icon={<ClearOutlined />}
+                            onClick={handleResetSimulation}
+                            disabled={simRunning}
+                        >
+                            Clear Radar Cache & Reset
+                        </Button>
+                    </Space>
+
+                    <Title level={5} style={{ color: 'white', marginBottom: 16 }}>Execution Pipeline</Title>
+                    <Steps
+                        direction="vertical"
+                        size="small"
+                        current={simCurrentPhase}
+                        status={simResult && !simResult.success ? 'error' : 'process'}
+                        items={[
+                            { title: <span style={{ color: 'white' }}>Radar Injection</span>, description: <span style={{ color: '#94a3b8' }}>Pushing mock data to ML cache</span> },
+                            { title: <span style={{ color: 'white' }}>Crisis Room Generation</span>, description: <span style={{ color: '#94a3b8' }}>Creating dedicated Operation Room</span> },
+                            { title: <span style={{ color: 'white' }}>Team Dispatch</span>, description: <span style={{ color: '#94a3b8' }}>Allocating local rescue teams</span> },
+                            { title: <span style={{ color: 'white' }}>Communications</span>, description: <span style={{ color: '#94a3b8' }}>Simulating real-time field reports</span> },
+                        ]}
+                    />
+
+                    {simResult && simResult.success && simResult.crisis_room_id && (
+                        <Result
+                            status="success"
+                            title={<span style={{ color: 'white' }}>Scenario Deployed!</span>}
+                            subTitle={<span style={{ color: '#94a3b8' }}>Radar is detecting the impact.</span>}
+                            extra={[
+                                <Button
+                                    type="primary"
+                                    key="console"
+                                    onClick={() => {
+                                        setSimDrawerOpen(false);
+                                        navigate(`/crisis-room/${simResult.crisis_room_id}`);
+                                    }}
+                                    style={{ background: '#10b981', borderColor: '#10b981' }}
+                                >
+                                    Jump to Crisis Room <RightOutlined />
+                                </Button>
+                            ]}
+                            style={{ padding: '24px 0 0', marginTop: 12, borderTop: '1px solid rgba(255,255,255,0.1)' }}
+                        />
+                    )}
+                </Drawer>
             </Content>
         </Layout>
     );

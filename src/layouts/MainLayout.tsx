@@ -3,7 +3,7 @@
 // Dashboard layout with role-based sidebar, header, and content
 // ============================================================
 
-import { Suspense, useMemo } from 'react';
+import { Suspense, useMemo, useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { Layout, Menu, Spin, Avatar, Dropdown, Button, Space, Typography, Badge, Breadcrumb, Tooltip, Tag } from 'antd';
 import {
@@ -39,6 +39,7 @@ import type { MenuProps } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useUIStore, useAuthStore } from '@/stores';
 import { useReportingStore } from '@/stores/reportingStore';
+import { notificationService } from '@/services/notificationService';
 import { getUserPermissions } from '@/config/roleConfig';
 
 const { Sider, Header, Content } = Layout;
@@ -52,6 +53,25 @@ const MainLayout: React.FC = () => {
     const { sidebarCollapsed, toggleSidebar, themeMode, toggleTheme } = useUIStore();
     const { user, logout } = useAuthStore();
     const { unreadCount } = useReportingStore();
+    const [globalNotifCount, setGlobalNotifCount] = useState(0);
+
+    // Poll for notifications
+    useEffect(() => {
+        if (!user) return;
+        const fetchNotifications = async () => {
+            try {
+                const res = await notificationService.getUnreadCount();
+                setGlobalNotifCount(res.count || 0);
+            } catch (e) {
+                console.error('Failed to fetch notification count', e);
+            }
+        };
+        fetchNotifications();
+        const interval = setInterval(fetchNotifications, 1000 * 30);
+        return () => clearInterval(interval);
+    }, [user]);
+
+    const actualNotifCount = unreadCount + globalNotifCount;
 
     // Get permissions based on user type + committee roles
     const permissions = useMemo(() => {
@@ -88,21 +108,21 @@ const MainLayout: React.FC = () => {
                 label: 'Mon Comité',
             });
         }
-        
+
         // News — visible to all authenticated users
         volunteerChildren.push({
             key: '/volunteer/news',
             icon: <ReadOutlined />,
             label: 'Actualités',
         });
-        
+
         // Calendar — visible to all authenticated users
         volunteerChildren.push({
             key: '/volunteer/calendar',
             icon: <CalendarOutlined />,
             label: 'Calendrier',
         });
-        
+
         if (isAllowed('/volunteer/complaints')) {
             volunteerChildren.push({
                 key: '/volunteer/complaints',
@@ -224,7 +244,7 @@ const MainLayout: React.FC = () => {
                         label: (
                             <Space>
                                 Notifications
-                                {unreadCount > 0 && <Badge count={unreadCount} size="small" />}
+                                {actualNotifCount > 0 && <Badge count={actualNotifCount} size="small" />}
                             </Space>
                         ),
                     },
@@ -454,8 +474,8 @@ const MainLayout: React.FC = () => {
 
                         {/* Notifications */}
                         <Tooltip title="Notifications">
-                            <Badge count={3} size="small">
-                                <Button type="text" icon={<BellOutlined />} />
+                            <Badge count={actualNotifCount} size="small">
+                                <Button type="text" icon={<BellOutlined />} onClick={() => navigate('/reporting/notifications')} />
                             </Badge>
                         </Tooltip>
 

@@ -26,6 +26,7 @@ import {
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import { useAuthStore, useUIStore } from '@/stores';
+import { notificationService } from '@/services/notificationService';
 
 const { Sider, Header, Content } = Layout;
 const { Text } = Typography;
@@ -88,12 +89,23 @@ const DonorLayout: React.FC = () => {
     const location = useLocation();
     const { sidebarCollapsed, toggleSidebar, themeMode, toggleTheme } = useUIStore();
     const { user, logout } = useAuthStore();
-    const [notifCount, setNotifCount] = useState(2);
+    const [notifCount, setNotifCount] = useState(0);
 
-    // Simulate notification count
+    // Fetch realtime notification count
     useEffect(() => {
-        setNotifCount(2);
-    }, []);
+        if (!user) return;
+        const fetchNotifications = async () => {
+            try {
+                const res = await notificationService.getUnreadCount();
+                setNotifCount(res.count || 0);
+            } catch (e) {
+                console.error('Failed to fetch donor notifications', e);
+            }
+        };
+        fetchNotifications();
+        const interval = setInterval(fetchNotifications, 1000 * 30);
+        return () => clearInterval(interval);
+    }, [user]);
 
     const menuItems = buildDonorMenu();
 

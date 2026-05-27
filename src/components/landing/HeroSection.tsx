@@ -75,7 +75,7 @@ function saveContent(c: HeroContent) {
 
 /* ── Check if user can edit hero ── */
 function useCanEditHero() {
-    const user = useAuthStore((s) => s.user);
+    const user = useAuthStore((s: any) => s.user);
     if (!user) return false;
 
     // Accès complet pour l'administrateur global
@@ -402,16 +402,6 @@ const HeroSection: React.FC = () => {
             >
                 {/* ── LEFT: Text ── */}
                 <div>
-                    {/* Badge */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(200,16,46,0.08)', border: '1px solid rgba(200,16,46,0.2)', borderRadius: 100, padding: '5px 14px 5px 8px', marginBottom: 26 }}
-                    >
-                        <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#C8102E', boxShadow: '0 0 6px rgba(200,16,46,0.6)', animation: 'blink 1.5s infinite', flexShrink: 0 }} />
-                        <span style={{ fontSize: 11, fontWeight: 600, color: '#C8102E', letterSpacing: '0.1em', textTransform: 'uppercase' as const }}>
-                            Système Intégré • CRT
-                        </span>
-                    </motion.div>
 
                     {/* Headline */}
                     <motion.h1
