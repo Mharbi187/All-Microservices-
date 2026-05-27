@@ -40,7 +40,7 @@ class CPRPipeline:
         self.detector    = PersonDetector()       # Layer 1
         self.tracker     = PersonTracker()        # Layer 2
         self.selector    = PairSelector()         # Layer 3
-        self.pose        = PoseEstimator()        # Layer 4 — owns MP lifecycle
+        self.pose        = PoseEstimator()        # Layer 4 — YOLO pose
         self.classifier  = VictimClassifier()     # Layer 5
         self.evaluator   = RuleEvaluator()        # Layer 6
         self.signal      = SignalProcessor()      # BPM / recoil state
@@ -133,6 +133,5 @@ class CPRPipeline:
     def cleanup(self) -> None:
         """
         Release all resources. Must be called on WebSocket disconnect.
-        Closes MediaPipe model instances to free GPU/CPU memory.
         """
         self.pose.cleanup()

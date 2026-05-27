@@ -6,7 +6,7 @@ Signal processing for compression analysis. Updated for the 6-layer pipeline:
 KEY CHANGES from original:
   - Accepts client-side capture timestamps (ms) instead of server time.time()
     → Eliminates network jitter from BPM calculation.
-  - Accepts MediaPipe wrist Y (normalized 0.0–1.0) + torso_height (normalized)
+  - Accepts YOLO pose26n wrist Y (normalized 0.0–1.0) + torso_height (normalized)
     → Replaces pixel-based depth with torso-normalized depth %.
   - Exposes update(pose, timestamp_ms) and get_state() for CPRPipeline.
   - depth_torso_pct replaces average_depth_pixels everywhere.
@@ -16,7 +16,6 @@ import numpy as np
 from collections import deque
 from typing import List, Optional
 from dataclasses import dataclass, field
-
 from .config import SignalProcessing, VisionConfig
 from .utils import KalmanFilter1D, MovingAverageFilter
 
@@ -72,7 +71,7 @@ class SignalProcessor:
     """
 
     def __init__(self) -> None:
-        # ── Kalman filter: smooths MediaPipe wrist Y noise ──
+        # ── Kalman filter: smooths YOLO pose wrist Y noise ──
         self.kalman_filter = KalmanFilter1D(
             process_noise=SignalProcessing.KALMAN_PROCESS_NOISE,
             measurement_noise=SignalProcessing.KALMAN_MEASUREMENT_NOISE,
@@ -120,13 +119,16 @@ class SignalProcessor:
         Main entry point. Called once per frame by CPRPipeline.
 
         Args:
-            rescuer_pose:         33-slot list of MediaPipe landmarks (slots may be None).
+            rescuer_pose:         17-slot list of YOLO pose26n keypoints (slots may be None).
+                                  Uses COCO 17-keypoint indices. Coords normalized to [0, 1].
                                   Landmarks have keys: x, y, z, visibility, index.
             capture_timestamp_ms: Client-side camera sensor timestamp in milliseconds.
                                   Using client time eliminates network jitter from BPM.
         """
-        import mediapipe as mp
-        _PL = mp.solutions.pose.PoseLandmark
+        # COCO 17-keypoint indices (pose26n / YOLOv8-pose)
+        _LEFT_WRIST, _RIGHT_WRIST         = 9, 10
+        _LEFT_SHOULDER, _RIGHT_SHOULDER   = 5, 6
+        _LEFT_HIP, _RIGHT_HIP             = 11, 12
 
         # Convert client ms → seconds for internal calculations
         timestamp_s = capture_timestamp_ms / 1000.0
@@ -136,12 +138,12 @@ class SignalProcessor:
             self._initialized = True
 
         # ── Extract wrist and torso landmarks (may be None if occluded) ──
-        lw = rescuer_pose[_PL.LEFT_WRIST.value]
-        rw = rescuer_pose[_PL.RIGHT_WRIST.value]
-        ls = rescuer_pose[_PL.LEFT_SHOULDER.value]
-        rs = rescuer_pose[_PL.RIGHT_SHOULDER.value]
-        lh = rescuer_pose[_PL.LEFT_HIP.value]
-        rh = rescuer_pose[_PL.RIGHT_HIP.value]
+        lw = rescuer_pose[_LEFT_WRIST]    if len(rescuer_pose) > _LEFT_WRIST    else None
+        rw = rescuer_pose[_RIGHT_WRIST]   if len(rescuer_pose) > _RIGHT_WRIST   else None
+        ls = rescuer_pose[_LEFT_SHOULDER] if len(rescuer_pose) > _LEFT_SHOULDER else None
+        rs = rescuer_pose[_RIGHT_SHOULDER]if len(rescuer_pose) > _RIGHT_SHOULDER else None
+        lh = rescuer_pose[_LEFT_HIP]      if len(rescuer_pose) > _LEFT_HIP      else None
+        rh = rescuer_pose[_RIGHT_HIP]     if len(rescuer_pose) > _RIGHT_HIP     else None
 
         # ── Cannot proceed without wrists ──
         if lw is None or rw is None:

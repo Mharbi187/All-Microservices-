@@ -14,9 +14,6 @@ import os
 from pathlib import Path
 from typing import List, Optional
 
-import mediapipe as mp
-_PL = mp.solutions.pose.PoseLandmark
-
 from cpr_vision_system.utils import mid, angle
 from cpr_vision_system.signal_processor import SignalState
 
@@ -56,8 +53,9 @@ class RuleEvaluator:
     """
     Layer 6 — CPR rule evaluator.
 
-    Computes all biomechanical metrics from the rescuer's MediaPipe pose,
-    compares them against rcp_rules.json thresholds, and emits ui_commands.
+    Computes all biomechanical metrics from the rescuer's YOLO pose26n keypoints
+    (COCO 17-keypoint format, normalized 0-1), compares them against
+    rcp_rules.json thresholds, and emits ui_commands.
     """
 
     def evaluate(
@@ -71,7 +69,7 @@ class RuleEvaluator:
         Evaluate all CPR rules and build the WebSocket response.
 
         Args:
-            rescuer_pose:   33-slot MediaPipe landmark list (slots may be None).
+            rescuer_pose:   17-slot YOLO pose26n keypoint list (COCO indices, slots may be None).
             victim_type:    "adult" | "child" | "infant" | "pregnant"
             signal:         SignalState from SignalProcessor.get_state()
             low_visibility: True if check_visibility() failed — freeze corrections.
@@ -79,18 +77,23 @@ class RuleEvaluator:
         Returns:
             Full WebSocket response dict (status, metrics, ui_commands, ...).
         """
+        # COCO 17-keypoint indices (pose26n / YOLOv8-pose)
+        _LS, _RS = 5, 6    # LEFT_SHOULDER, RIGHT_SHOULDER
+        _LE, _RE = 7, 8    # LEFT_ELBOW, RIGHT_ELBOW
+        _LW, _RW = 9, 10   # LEFT_WRIST, RIGHT_WRIST
+        _LH, _RH = 11, 12  # LEFT_HIP, RIGHT_HIP
         # Safe landmark accessor
         def lm(idx: int) -> Optional[dict]:
             return rescuer_pose[idx] if rescuer_pose and idx < len(rescuer_pose) else None
 
-        ls = lm(_PL.LEFT_SHOULDER.value)
-        rs = lm(_PL.RIGHT_SHOULDER.value)
-        le = lm(_PL.LEFT_ELBOW.value)
-        re = lm(_PL.RIGHT_ELBOW.value)
-        lw = lm(_PL.LEFT_WRIST.value)
-        rw = lm(_PL.RIGHT_WRIST.value)
-        lh = lm(_PL.LEFT_HIP.value)
-        rh = lm(_PL.RIGHT_HIP.value)
+        ls = lm(_LS)
+        rs = lm(_RS)
+        le = lm(_LE)
+        re = lm(_RE)
+        lw = lm(_LW)
+        rw = lm(_RW)
+        lh = lm(_LH)
+        rh = lm(_RH)
 
         # ── Compute geometric metrics ──────────────────────────────────────
 
