@@ -36,6 +36,9 @@ const SocialPage: React.FC = () => {
     const [actions, setActions] = useState<SocialActionDTO[]>([]);
     const [analytics, setAnalytics] = useState<SocialAnalyticsDTO | null>(null);
 
+    // Image state for Nouvelle Famille
+    const [familyImage, setFamilyImage] = useState<string>('');
+
     // Modal states
     const [isFamModalOpen, setIsFamModalOpen] = useState(false);
     const [isActModalOpen, setIsActModalOpen] = useState(false);
@@ -66,20 +69,39 @@ const SocialPage: React.FC = () => {
         loadData();
     }, []);
 
+    const handleFamilyImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setFamilyImage(reader.result as string);
+                famForm.setFieldsValue({ imageUrl: reader.result as string });
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
     const handleCreateFamily = async (values: any) => {
         setSubmitLoading(true);
         try {
             const payload: FamilyDTO = {
+                familyName: values.headOfHousehold ? values.headOfHousehold.split(' ')[0] : 'Inconnue',
                 headOfHousehold: values.headOfHousehold,
-                address: values.address,
+                headOfFamily: values.headOfHousehold,
+                address: values.address || 'Indéfini',
                 phoneNumber: values.phoneNumber,
                 householdSize: values.householdSize,
+                members: values.householdSize,
                 incomeCategory: values.incomeCategory || 'LOW_INCOME',
-                status: values.status || 'ACTIVE'
+                status: values.status || 'ACTIVE',
+                cin: values.cin || '',
+                recipientName: values.recipientName || '',
+                imageUrl: familyImage || undefined
             };
             await socialService.createFamily(payload);
             messageApi.success('Dossier familial créé avec succès !');
             setIsFamModalOpen(false);
+            setFamilyImage('');
             famForm.resetFields();
             loadData();
         } catch (error) {
@@ -121,12 +143,19 @@ const SocialPage: React.FC = () => {
                     <Avatar
                         shape="square"
                         size={44}
-                        icon={<HomeOutlined />}
+                        src={record.imageUrl}
+                        icon={!record.imageUrl && <HomeOutlined />}
                         style={{ background: isDark ? 'rgba(245,158,11,0.1)' : '#fff7ed', color: '#f59e0b', border: `1px solid ${isDark ? 'rgba(245,158,11,0.2)' : '#ffedd5'}`, borderRadius: 12 }}
                     />
                     <div>
-                        <Text strong style={{ fontSize: 16, display: 'block' }}>{record.headOfHousehold}</Text>
-                        <Text type="secondary" style={{ fontSize: 12 }}>{record.address}</Text>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <Text strong style={{ fontSize: 16 }}>{record.headOfHousehold || record.headOfFamily}</Text>
+                            {record.cin && <Tag color="orange" style={{ margin: 0, fontSize: 10, lineHeight: '14px', height: 16, padding: '0 4px' }}>{record.cin}</Tag>}
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            {record.recipientName && <Text style={{ fontSize: 11, color: '#f59e0b', fontWeight: 600 }}>Bénéficiaire direct: {record.recipientName}</Text>}
+                            <Text type="secondary" style={{ fontSize: 12 }}>{record.address || 'Indéfini'}</Text>
+                        </div>
                     </div>
                 </Space>
             )
@@ -242,27 +271,28 @@ const SocialPage: React.FC = () => {
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 40 }}>
                                     <div style={{
                                         width: 60, height: 60, borderRadius: 20,
-                                        background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                                        background: 'linear-gradient(135deg, #e01c2e, #c0152a)',
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        fontSize: 28, boxShadow: '0 12px 24px rgba(245,158,11,0.25)'
+                                        fontSize: 24, boxShadow: '0 12px 24px rgba(224,28,46,0.25)',
+                                        color: '#fff'
                                     }}>
-                                        🤝
+                                        <TeamOutlined />
                                     </div>
                                     <div>
                                         <Title level={3} style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>Sociaux</Title>
-                                        <Tag color="orange" icon={<GlobalOutlined />} style={{ borderRadius: 6, margin: '4px 0 0 0', fontWeight: 700, fontSize: 11 }}>
+                                        <Tag color="red" icon={<GlobalOutlined />} style={{ borderRadius: 6, margin: '4px 0 0 0', fontWeight: 700, fontSize: 11 }}>
                                             NATIONAL
                                         </Tag>
                                     </div>
                                 </div>
 
                                 <Space direction="vertical" style={{ width: '100%' }} size={24}>
-                                    <div style={{ padding: 24, borderRadius: 24, background: isDark ? 'rgba(245,158,11,0.05)' : '#fff', border: `1px solid ${isDark ? 'rgba(245,158,11,0.1)' : 'rgba(0,0,0,0.05)'}` }}>
+                                    <div style={{ padding: 24, borderRadius: 24, background: isDark ? 'rgba(224,28,46,0.05)' : '#fff', border: `1px solid ${isDark ? 'rgba(224,28,46,0.1)' : 'rgba(0,0,0,0.05)'}` }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-                                            <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(245,158,11,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f59e0b' }}>
+                                            <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(224,28,46,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e01c2e' }}>
                                                 <HomeOutlined style={{ fontSize: 20 }} />
                                             </div>
-                                            <BarChartOutlined style={{ color: '#f59e0b', fontSize: 22 }} />
+                                            <BarChartOutlined style={{ color: '#e01c2e', fontSize: 22 }} />
                                         </div>
                                         <Text type="secondary" style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Familles Actives</Text>
                                         <Title level={2} style={{ margin: '4px 0 0 0', fontWeight: 800 }}>{families.length}</Title>
@@ -284,7 +314,7 @@ const SocialPage: React.FC = () => {
                                         block
                                         icon={<PlusOutlined />}
                                         onClick={() => activeTab === 'families' ? setIsFamModalOpen(true) : setIsActModalOpen(true)}
-                                        style={{ height: 52, borderRadius: 16, background: '#f59e0b', borderColor: '#f59e0b', fontWeight: 700, marginTop: 12, boxShadow: '0 8px 20px rgba(245,158,11,0.2)' }}
+                                        style={{ height: 52, borderRadius: 16, background: 'linear-gradient(135deg, #e01c2e, #c0152a)', border: 'none', fontWeight: 700, marginTop: 12, boxShadow: '0 8px 20px rgba(224,28,46,0.2)' }}
                                     >
                                         {activeTab === 'families' ? 'Nouvelle Famille' : 'Enregistrer Aide'}
                                     </Button>
@@ -308,8 +338,8 @@ const SocialPage: React.FC = () => {
                                             style={{
                                                 height: 42, padding: '0 24px', borderRadius: 12,
                                                 fontWeight: 800,
-                                                background: activeTab === tab.key ? (isDark ? 'rgba(245,158,11,0.2)' : '#fff') : 'transparent',
-                                                color: activeTab === tab.key ? '#f59e0b' : (isDark ? 'rgba(255,255,255,0.4)' : '#64748b'),
+                                                background: activeTab === tab.key ? (isDark ? 'rgba(224,28,46,0.2)' : '#fff') : 'transparent',
+                                                color: activeTab === tab.key ? '#e01c2e' : (isDark ? 'rgba(255,255,255,0.4)' : '#64748b'),
                                                 boxShadow: activeTab === tab.key && !isDark ? '0 4px 12px rgba(0,0,0,0.05)' : 'none',
                                                 transition: 'all 0.3s ease'
                                             }}
@@ -350,18 +380,34 @@ const SocialPage: React.FC = () => {
 
             {/* MODAL: AJOUTER FAMILLE */}
             <Modal
-                title={<Space><HomeOutlined style={{ color: '#f59e0b' }} /><Text strong style={{ fontSize: 18 }}>Enregistrer une Famille</Text></Space>}
+                title={<Space><HomeOutlined style={{ color: '#e01c2e' }} /><Text strong style={{ fontSize: 18 }}>Enregistrer une Famille</Text></Space>}
                 open={isFamModalOpen}
-                onCancel={() => setIsFamModalOpen(false)}
+                onCancel={() => {
+                    setIsFamModalOpen(false);
+                    setFamilyImage('');
+                }}
                 footer={null}
                 width={600}
                 centered
                 styles={{ content: { borderRadius: 28, padding: 32 } }}
             >
                 <Form form={famForm} layout="vertical" onFinish={handleCreateFamily} requiredMark={false}>
-                    <Form.Item name="headOfHousehold" label="Nom & Prénom du Chef de Famille" rules={[{ required: true }]}>
+                    <Form.Item name="headOfHousehold" label="Nom & Prénom du Chef de Famille" rules={[{ required: true, message: 'Champ requis' }]}>
                         <Input size="large" style={{ borderRadius: 12 }} placeholder="Ex: Jean Dupont" />
                     </Form.Item>
+
+                    <Row gutter={20}>
+                        <Col span={12}>
+                            <Form.Item name="cin" label="CIN du Chef de Famille" rules={[{ required: true, message: 'Champ requis' }]}>
+                                <Input size="large" style={{ borderRadius: 12 }} placeholder="Ex: 08912345" />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item name="recipientName" label="Nom du Destinataire Direct (Optionnel)">
+                                <Input size="large" style={{ borderRadius: 12 }} placeholder="Ex: Marie Dupont" />
+                            </Form.Item>
+                        </Col>
+                    </Row>
 
                     <Row gutter={20}>
                         <Col span={12}>
@@ -396,13 +442,65 @@ const SocialPage: React.FC = () => {
                         </Col>
                     </Row>
 
-                    <Form.Item name="address" label="Adresse de résidence" rules={[{ required: true }]}>
+                    <Form.Item name="address" label="Adresse de résidence (Sera 'Indéfini' si vide)">
                         <TextArea rows={2} style={{ borderRadius: 12 }} placeholder="Localisation précise..." />
                     </Form.Item>
 
+                    <Form.Item name="imageUrl" label="Photo de la famille / domicile">
+                        <div style={{
+                            border: `2px dashed ${isDark ? 'rgba(255,255,255,0.1)' : '#cbd5e1'}`,
+                            borderRadius: 16,
+                            padding: '24px 16px',
+                            textAlign: 'center',
+                            background: isDark ? 'rgba(255,255,255,0.01)' : 'rgba(0,0,0,0.01)',
+                            cursor: 'pointer',
+                            position: 'relative',
+                            transition: 'border-color 0.3s ease'
+                        }}
+                        onClick={() => document.getElementById('fam-image-upload')?.click()}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#e01c2e'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = isDark ? 'rgba(255,255,255,0.1)' : '#cbd5e1'; }}
+                        >
+                            <input
+                                id="fam-image-upload"
+                                type="file"
+                                accept="image/*"
+                                style={{ display: 'none' }}
+                                onChange={handleFamilyImageChange}
+                            />
+                            {familyImage ? (
+                                <div style={{ position: 'relative' }}>
+                                    <img src={familyImage} alt="Family preview" style={{ maxWidth: '100%', maxHeight: 120, borderRadius: 12, objectFit: 'cover' }} />
+                                    <Button
+                                        type="primary"
+                                        danger
+                                        shape="circle"
+                                        size="small"
+                                        icon={<PlusOutlined style={{ transform: 'rotate(45deg)' }} />}
+                                        style={{ position: 'absolute', top: -10, right: -10 }}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setFamilyImage('');
+                                            famForm.setFieldsValue({ imageUrl: '' });
+                                        }}
+                                    />
+                                </div>
+                            ) : (
+                                <div>
+                                    <PlusOutlined style={{ fontSize: 24, color: '#e01c2e', marginBottom: 8 }} />
+                                    <div><Text strong>Glissez ou sélectionnez une photo</Text></div>
+                                    <div><Text type="secondary" style={{ fontSize: 12 }}>Format JPG, PNG (Max 5MB)</Text></div>
+                                </div>
+                            )}
+                        </div>
+                    </Form.Item>
+
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 40 }}>
-                        <Button onClick={() => setIsFamModalOpen(false)} style={{ height: 45, borderRadius: 12 }}>Abandonner</Button>
-                        <Button type="primary" htmlType="submit" loading={submitLoading} style={{ height: 45, borderRadius: 12, background: '#f59e0b', borderColor: '#f59e0b', fontWeight: 700 }}>
+                        <Button onClick={() => {
+                            setIsFamModalOpen(false);
+                            setFamilyImage('');
+                        }} style={{ height: 45, borderRadius: 12 }}>Abandonner</Button>
+                        <Button type="primary" htmlType="submit" loading={submitLoading} style={{ height: 45, borderRadius: 12, background: 'linear-gradient(135deg, #e01c2e, #c0152a)', border: 'none', fontWeight: 700 }}>
                             Valider le dossier
                         </Button>
                     </div>
@@ -425,12 +523,26 @@ const SocialPage: React.FC = () => {
                             size="large"
                             showSearch
                             style={{ borderRadius: 12 }}
-                            placeholder="Sélectionner par nom..."
-                            optionFilterProp="children"
+                            placeholder="Rechercher par Nom, CIN ou Adresse..."
+                            optionFilterProp="label"
                         >
-                            {families.map(f => (
-                                <Option key={f.id} value={f.id}>{f.headOfHousehold}</Option>
-                            ))}
+                            {families.map(f => {
+                                const labelText = `${f.headOfHousehold || f.headOfFamily || 'Nom inconnu'} ${f.cin ? `(CIN: ${f.cin})` : ''} ${f.address ? `- ${f.address}` : ''}`;
+                                return (
+                                    <Option key={f.id} value={f.id} label={labelText}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0' }}>
+                                            <div>
+                                                <div style={{ fontWeight: 600 }}>{f.headOfHousehold || f.headOfFamily || 'Nom inconnu'}</div>
+                                                {f.cin && <div style={{ fontSize: 11, color: '#e01c2e' }}>CIN: {f.cin}</div>}
+                                                {f.address && <div style={{ fontSize: 11, color: '#94a3b8' }}>{f.address}</div>}
+                                            </div>
+                                            <Tag color="orange" style={{ margin: 0 }}>
+                                                {f.members || f.householdSize || 0} membres
+                                            </Tag>
+                                        </div>
+                                    </Option>
+                                );
+                            })}
                         </Select>
                     </Form.Item>
 

@@ -8,6 +8,8 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '@/stores/authStore';
 import { useUIStore } from '@/stores';
+import newsService from '@/services/newsService';
+import type { NewsItemDTO } from '@/services/newsService';
 
 const Icon = ({ size = 20, children }: { size?: number; children: React.ReactNode }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
@@ -108,6 +110,30 @@ function loadItems(): NewsItem[] {
 }
 function saveItems(items: NewsItem[]) {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); } catch { /**/ }
+}
+
+/** Map API DTO → internal NewsItem */
+function mapApiToItem(dto: NewsItemDTO): NewsItem {
+    const statusMap: Record<string, PubStatus> = {
+        PUBLIE: 'published', EN_ATTENTE: 'pending', REJETE: 'rejected',
+    };
+    return {
+        id: dto.id,
+        type: ['EVENT', 'URGENCE', 'COMMITTEE'].includes(dto.category ?? '') ? 'actualite' : 'publication',
+        status: statusMap[dto.status] ?? 'pending',
+        date: dto.publishedAt
+            ? new Date(dto.publishedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+            : '',
+        category: dto.category || 'Actualité',
+        title: dto.title,
+        desc: dto.summary || '',
+        fullText: dto.content || '',
+        images: dto.imageUrl ? [dto.imageUrl] : [],
+        tags: (dto.tags ?? []).map(t => ({ label: t, color: 'gray' as const })),
+        authorName: dto.authorName || 'CRT',
+        committeeId: dto.committeeId,
+        committeeType: dto.targetScope,
+    };
 }
 
 /* ═════════════════════ ROLE HELPERS ════════════════════════ */
@@ -612,14 +638,44 @@ const NewsSection: React.FC = () => {
     const roles = useUserRoles();
     const { themeMode } = useUIStore();
     const dark = themeMode === 'dark';
+    const user = useAuthStore(s => s.user);
 
-    const [items, setItems] = useState<NewsItem[]>(loadItems);
+    const [items, setItems] = useState<NewsItem[]>([]);
+    const [apiLoading, setApiLoading] = useState(true);
     const [filter, setFilter] = useState<FilterKey>('all');
     const [selected, setSelected] = useState<NewsItem | null>(null);
     const [creating, setCreating] = useState(false);
     const [editing, setEditing] = useState<NewsItem | null>(null);
 
-    // Only show published items to public; show all to admins
+    // Load news from real API — public or authenticated
+    const loadNews = async () => {
+        setApiLoading(true);
+        try {
+            let data: NewsItemDTO[];
+            if (roles.isAuth) {
+                // Authenticated: see news filtered by scope
+                data = await newsService.getAll({ committeeId: (user as any)?.committeeId });
+            } else {
+                // Public: only PUBLIE news
+                data = await newsService.getPublicNews();
+            }
+            if (data.length > 0) {
+                setItems(data.map(mapApiToItem));
+            } else {
+                // Fallback to static items if DB is empty
+                setItems(loadItems());
+            }
+        } catch {
+            // Network error — fallback to localStorage/static
+            setItems(loadItems());
+        } finally {
+            setApiLoading(false);
+        }
+    };
+
+    useEffect(() => { loadNews(); }, [roles.isAuth]);
+
+    // Only show published items to public; show all to admins/officials
     const visibleItems = items.filter(it => {
         if (roles.canValidateNational || roles.canValidateCommittee || roles.canPublish) return true;
         return it.status === 'published';
@@ -627,23 +683,53 @@ const NewsSection: React.FC = () => {
     const filtered = filter === 'all' ? visibleItems : visibleItems.filter(it => it.type === filter);
     const pendingCount = items.filter(it => it.status === 'pending').length;
 
-    const handleSave = (item: NewsItem) => {
-        setItems(prev => {
-            const idx = prev.findIndex(i => i.id === item.id);
-            const next = idx >= 0 ? prev.map((i, ii) => ii === idx ? item : i) : [item, ...prev];
-            saveItems(next);
-            return next;
-        });
+    const handleSave = async (item: NewsItem) => {
+        try {
+            if (item.id.startsWith('item-')) {
+                // New item — submit to backend API
+                const created = await newsService.createNews({
+                    title: item.title,
+                    summary: item.desc,
+                    content: item.fullText || item.desc,
+                    category: item.category?.toUpperCase().replace(/ /g, '_') || 'COMMITTEE',
+                    imageUrl: item.images?.[0],
+                    committeeId: (user as any)?.committeeId,
+                    targetScope: 'LOCAL',
+                });
+                setItems(prev => [mapApiToItem(created), ...prev]);
+            }
+        } catch {
+            // Fallback to localStorage only
+            setItems(prev => {
+                const idx = prev.findIndex(i => i.id === item.id);
+                const next = idx >= 0 ? prev.map((i, ii) => ii === idx ? item : i) : [item, ...prev];
+                saveItems(next);
+                return next;
+            });
+        }
         setCreating(false);
         setEditing(null);
     };
 
-    const handleStatusChange = (id: string, status: PubStatus) => {
-        setItems(prev => {
-            const next = prev.map(it => it.id === id ? { ...it, status } : it);
-            saveItems(next);
-            return next;
-        });
+    const handleStatusChange = async (id: string, status: PubStatus) => {
+        // Map internal status → API status
+        const apiStatusMap: Record<PubStatus, string> = {
+            published: 'PUBLIE', rejected: 'REJETE', pending: 'EN_ATTENTE',
+            approved: 'PUBLIE', draft: 'EN_ATTENTE', archived: 'REJETE',
+        };
+        const apiStatus = apiStatusMap[status];
+        try {
+            await newsService.updateStatus(id, apiStatus as any);
+            // Refresh list from server
+            await loadNews();
+        } catch {
+            // Fallback local update
+            setItems(prev => {
+                const next = prev.map(it => it.id === id ? { ...it, status } : it);
+                saveItems(next);
+                return next;
+            });
+        }
         setSelected(prev => prev?.id === id ? { ...prev, status } : prev);
     };
 

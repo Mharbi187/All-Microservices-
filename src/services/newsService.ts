@@ -34,6 +34,7 @@ export interface NewsItemDTO {
   targetScope: TargetScope;
   /** Statut : EN_ATTENTE | PUBLIE | REJETE */
   status: NewsStatus;
+  isPublic?: boolean;
 }
 
 export interface NewsCreateDTO {
@@ -45,11 +46,22 @@ export interface NewsCreateDTO {
   committeeId?: string;
   /** Portée hiérarchique : LOCAL | REGIONAL | NATIONAL */
   targetScope: TargetScope;
+  isPublic?: boolean;
 }
 
 // ── Service ───────────────────────────────────────────────────
 
 const newsService = {
+  /** Récupère les actualités publiées (public, sans auth) — utilisé par la page d'accueil */
+  async getPublicNews(): Promise<NewsItemDTO[]> {
+    try {
+      const res = await api.get<NewsItemDTO[]>('/news/public');
+      return Array.isArray(res.data) ? res.data : [];
+    } catch {
+      return [];
+    }
+  },
+
   /** Récupère toutes les actualités visibles pour l'utilisateur courant */
   async getAll(params?: { committeeId?: string; category?: string }): Promise<NewsItemDTO[]> {
     const res = await api.get<NewsItemDTO[]>('/news', { params });
@@ -60,6 +72,21 @@ const newsService = {
   async createNews(data: NewsCreateDTO): Promise<NewsItemDTO> {
     const res = await api.post<NewsItemDTO>('/news', data);
     return res.data;
+  },
+
+  /**
+   * Valide ou rejette une actualité (pour Président / VP).
+   * status: 'PUBLIE' | 'REJETE' | 'EN_ATTENTE'
+   */
+  async updateStatus(newsId: string, status: NewsStatus | 'EN_ATTENTE'): Promise<NewsItemDTO> {
+    const res = await api.put<NewsItemDTO>(`/news/${newsId}/status`, { status });
+    return res.data;
+  },
+
+  /** Actualités en attente pour le comité (pour dashboard président) */
+  async getPendingForCommittee(committeeId?: string): Promise<NewsItemDTO[]> {
+    const all = await this.getAll({ committeeId });
+    return all.filter(n => n.status === 'EN_ATTENTE');
   },
 
   /** Toggle like sur une actualité */

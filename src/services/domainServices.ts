@@ -8,7 +8,7 @@ import type {
     RescueEquipmentDTO, RescueDeviceDTO,
     EducationalResourceDTO, AwarenessCampaignDTO,
     YouthIntegrationFormDTO, MicroProjectDTO,
-    HealthActionDTO, BloodDonationDTO,
+    HealthActionDTO, BloodDonationDTO, MedicalDistributionDTO,
     FamilyDTO, SocialActionDTO, VulnerabilityScoreDTO, SocialAnalyticsDTO,
     MigrantCaseDTO, FamilyLinkCaseDTO,
     VictimCaseDTO, ProtectionCampaignDTO,
@@ -30,6 +30,12 @@ export const secourismeService = {
     },
     createDevice: async (committeeId: string, payload: RescueDeviceDTO): Promise<RescueDeviceDTO> => {
         const { data } = await apiClient.post(`/secourisme/committees/${committeeId}/devices`, payload);
+        return data;
+    },
+    approveDevice: async (deviceId: string, actionChiefName: string, approvalStatus: string): Promise<RescueDeviceDTO> => {
+        const { data } = await apiClient.put(`/secourisme/devices/${deviceId}/approve`, null, {
+            params: { actionChiefName, approvalStatus }
+        });
         return data;
     },
 };
@@ -96,6 +102,10 @@ export const santeService = {
         const { data } = await apiClient.get('/sante/blood-donations');
         return data;
     },
+    getBloodDonationsByCommittee: async (committeeId: string): Promise<BloodDonationDTO[]> => {
+        const { data } = await apiClient.get(`/sante/blood-donations/committee/${committeeId}`);
+        return data;
+    },
     createBloodDonation: async (payload: BloodDonationDTO): Promise<BloodDonationDTO> => {
         const { data } = await apiClient.post('/sante/blood-donations', payload);
         return data;
@@ -110,6 +120,39 @@ export const santeService = {
     },
     assignActionChief: async (payload: Record<string, unknown>) => {
         const { data } = await apiClient.post('/sante/action-chiefs', payload);
+        return data;
+    },
+    // --- Distributions Médicales ---
+    createDistribution: async (payload: MedicalDistributionDTO): Promise<MedicalDistributionDTO> => {
+        const { data } = await apiClient.post('/sante/distributions', payload);
+        return data;
+    },
+    getDistributionsByCommittee: async (committeeId: string): Promise<MedicalDistributionDTO[]> => {
+        const { data } = await apiClient.get(`/sante/distributions/committee/${committeeId}`);
+        return data;
+    },
+    getPendingDistributions: async (): Promise<MedicalDistributionDTO[]> => {
+        const { data } = await apiClient.get('/sante/distributions/pending');
+        return data;
+    },
+    getAllDistributions: async (): Promise<MedicalDistributionDTO[]> => {
+        const { data } = await apiClient.get('/sante/distributions');
+        return data;
+    },
+    approveDistribution: async (distributionId: string, approvedByName: string): Promise<MedicalDistributionDTO> => {
+        const { data } = await apiClient.put(`/sante/distributions/${distributionId}/approve`, null, {
+            params: { approvedByName }
+        });
+        return data;
+    },
+    rejectDistribution: async (distributionId: string, reason: string): Promise<MedicalDistributionDTO> => {
+        const { data } = await apiClient.put(`/sante/distributions/${distributionId}/reject`, null, {
+            params: { reason }
+        });
+        return data;
+    },
+    markDistributed: async (distributionId: string): Promise<MedicalDistributionDTO> => {
+        const { data } = await apiClient.put(`/sante/distributions/${distributionId}/distribute`);
         return data;
     },
 };

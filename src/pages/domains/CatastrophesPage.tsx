@@ -140,19 +140,20 @@ const CatastrophesPage: React.FC = () => {
                                             width: 60,
                                             height: 60,
                                             borderRadius: 20,
-                                            background: 'linear-gradient(135deg, #0ea5e9, #2563eb)',
+                                            background: 'linear-gradient(135deg, #e01c2e, #c0152a)',
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
                                             fontSize: 28,
-                                            boxShadow: '0 12px 24px rgba(14,165,233,0.25)',
+                                            boxShadow: '0 12px 24px rgba(224,28,46,0.25)',
+                                            color: '#fff',
                                         }}
                                     >
-                                        S
+                                        <AlertOutlined />
                                     </div>
                                     <div>
                                         <Title level={3} style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>
-                                            Vigilance
+                                            Catastrophes
                                         </Title>
                                         <Tag
                                             color={loading ? 'processing' : errorMessage ? 'error' : 'success'}
@@ -160,12 +161,12 @@ const CatastrophesPage: React.FC = () => {
                                             style={{ borderRadius: 6, margin: '4px 0 0 0', fontWeight: 700, fontSize: 11 }}
                                         >
                                             {loading
-                                                ? 'SATELLITE INIT'
+                                                ? 'CAPTEURS INIT'
                                                 : refreshing
-                                                    ? 'SATELLITE SYNC'
+                                                    ? 'CAPTEURS SYNC'
                                                     : errorMessage
-                                                        ? 'SATELLITE DEGRADED'
-                                                        : 'SATELLITE LIVE'}
+                                                        ? 'MONITEUR DEGRADED'
+                                                        : 'MONITEUR LIVE'}
                                         </Tag>
                                         {lastUpdated && (
                                             <div style={{ marginTop: 6 }}>
@@ -182,16 +183,16 @@ const CatastrophesPage: React.FC = () => {
                                         style={{
                                             padding: 24,
                                             borderRadius: 24,
-                                            background: isDark ? 'rgba(14,165,233,0.05)' : '#fff',
-                                            border: `1px solid ${isDark ? 'rgba(14,165,233,0.1)' : 'rgba(0,0,0,0.05)'}`,
+                                            background: isDark ? 'rgba(224,28,46,0.04)' : '#fff',
+                                            border: `1px solid ${isDark ? 'rgba(224,28,46,0.1)' : 'rgba(0,0,0,0.05)'}`,
                                         }}
                                     >
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-                                            <CloudOutlined style={{ color: '#0ea5e9', fontSize: 20 }} />
-                                            <Text strong>Meteo et Crues</Text>
+                                            <GlobalOutlined style={{ color: '#e01c2e', fontSize: 20 }} />
+                                            <Text strong>Surveillance Globale</Text>
                                         </div>
                                         <Text type="secondary" style={{ fontSize: 13 }}>
-                                            Donnees en temps reel provenant des capteurs environnementaux MS4.
+                                            Donnees en temps reel provenant des capteurs environnementaux et d'alertes MS4.
                                         </Text>
                                     </div>
 
@@ -199,16 +200,16 @@ const CatastrophesPage: React.FC = () => {
                                         style={{
                                             padding: 24,
                                             borderRadius: 24,
-                                            background: isDark ? 'rgba(245,158,11,0.05)' : '#fff',
-                                            border: `1px solid ${isDark ? 'rgba(245,158,11,0.1)' : 'rgba(0,0,0,0.05)'}`,
+                                            background: isDark ? 'rgba(31,31,31,0.5)' : '#fff',
+                                            border: `1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
                                         }}
                                     >
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-                                            <AlertOutlined style={{ color: '#f59e0b', fontSize: 20 }} />
+                                            <AlertOutlined style={{ color: '#e01c2e', fontSize: 20 }} />
                                             <Text strong>Alertes Precoces</Text>
                                         </div>
                                         <Text type="secondary" style={{ fontSize: 13 }}>
-                                            Detection automatique des anomalies climatiques et sismiques.
+                                            Detection automatique des anomalies climatiques, inondations et risques.
                                         </Text>
                                     </div>
                                 </Space>
@@ -224,10 +225,10 @@ const CatastrophesPage: React.FC = () => {
                                     style={{
                                         height: 52,
                                         borderRadius: 16,
-                                        background: '#0ea5e9',
-                                        borderColor: '#0ea5e9',
+                                        background: 'linear-gradient(135deg, #e01c2e, #c0152a)',
+                                        border: 'none',
                                         fontWeight: 700,
-                                        boxShadow: '0 8px 20px rgba(14,165,233,0.2)',
+                                        boxShadow: '0 8px 20px rgba(224,28,46,0.2)',
                                     }}
                                 >
                                     Rafraichir le Flux

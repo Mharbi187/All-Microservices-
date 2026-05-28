@@ -4,7 +4,7 @@
 // ============================================================
 
 import apiClient from './api';
-import type { InventoryItemDTO, StockMovementDTO, StockAlertDTO, StockMovementResponse } from '@/types';
+import type { InventoryItemDTO, StockMovementDTO, StockAlertDTO, StockMovementResponse, StorageLocationDTO } from '@/types';
 
 const inventoryService = {
     getByCommittee: async (committeeId: string): Promise<InventoryItemDTO[]> => {
@@ -58,6 +58,50 @@ const inventoryService = {
 
     resolveAlert: async (alertId: string): Promise<unknown> => {
         const { data } = await apiClient.post(`/inventory/alerts/${alertId}/resolve`);
+        return data;
+    },
+
+    getPendingMovements: async (committeeId: string): Promise<StockMovementResponse[]> => {
+        const { data } = await apiClient.get<StockMovementResponse[]>(`/inventory/committees/${committeeId}/pending-movements`);
+        return data;
+    },
+
+    getAllMovementsForCommittee: async (committeeId: string): Promise<StockMovementResponse[]> => {
+        const { data } = await apiClient.get<StockMovementResponse[]>(`/inventory/committees/${committeeId}/movements`);
+        return data;
+    },
+
+    approveMovement: async (movementId: string): Promise<StockMovementResponse> => {
+        const { data } = await apiClient.put<StockMovementResponse>(`/inventory/movements/${movementId}/approve`);
+        return data;
+    },
+
+    rejectMovement: async (movementId: string, reason: string): Promise<StockMovementResponse> => {
+        const { data } = await apiClient.put<StockMovementResponse>(`/inventory/movements/${movementId}/reject?reason=${encodeURIComponent(reason)}`);
+        return data;
+    },
+
+    createLocation: async (location: StorageLocationDTO): Promise<StorageLocationDTO> => {
+        const { data } = await apiClient.post<StorageLocationDTO>('/inventory/locations', location);
+        return data;
+    },
+
+    getLocationsByCommittee: async (committeeId: string): Promise<StorageLocationDTO[]> => {
+        const { data } = await apiClient.get<StorageLocationDTO[]>(`/inventory/locations/committees/${committeeId}`);
+        return data;
+    },
+
+    updateLocation: async (locationId: string, location: StorageLocationDTO): Promise<StorageLocationDTO> => {
+        const { data } = await apiClient.put<StorageLocationDTO>(`/inventory/locations/${locationId}`, location);
+        return data;
+    },
+
+    deleteLocation: async (locationId: string): Promise<void> => {
+        await apiClient.delete(`/inventory/locations/${locationId}`);
+    },
+
+    recordBulkEntry: async (payload: { recordedByName: string; receivedBy: string; supplier: string; proofPhoto?: string; entries: Array<{ itemId: string; quantity: number; reason?: string }> }): Promise<StockMovementResponse[]> => {
+        const { data } = await apiClient.post<StockMovementResponse[]>('/inventory/bulk-entry', payload);
         return data;
     },
 };

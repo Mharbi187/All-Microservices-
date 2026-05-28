@@ -24,7 +24,16 @@ export type RoleTitle =
     | 'RESP_CATASTROPHES'
     | 'RESP_ACTION_SOCIALE'
     | 'RESP_IMMIGRATION'
-    | 'RESP_VFF';
+    | 'RESP_VFF'
+    | 'PRESIDENT_LOCAL'
+    | 'PRESIDENT_REGIONAL'
+    | 'PRESIDENT_NATIONAL'
+    | 'VICE_PRESIDENT_LOCAL'
+    | 'VICE_PRESIDENT_REGIONAL'
+    | 'VICE_PRESIDENT_NATIONAL'
+    | 'SECRETAIRE_GENERAL_LOCAL'
+    | 'SECRETAIRE_GENERAL_REGIONAL'
+    | 'SECRETAIRE_GENERAL_NATIONAL';
 
 export type StockCategory = 'MEDICAL' | 'CLOTHING' | 'FOOD' | 'EQUIPMENT' | 'RESCUE_GEAR';
 
@@ -75,6 +84,8 @@ export interface User {
     role?: Role;
     avatar?: string;
     phone?: string;
+    address?: string;
+    educationLevel?: string;
     isActive?: boolean;
 }
 
@@ -84,11 +95,15 @@ export interface AuthResponse {
     email: string;
     fullName: string;
     message: string;
+    captchaRequired?: boolean;
+    failedAttempts?: number;
+    blockRemainingSeconds?: number;
 }
 
 export interface LoginCredentials {
     email: string;
     password: string;
+    captchaToken?: string;
 }
 
 export interface RegisterData {
@@ -97,6 +112,7 @@ export interface RegisterData {
     password: string;
     cin: string;
     phone: string;
+    birthDate?: string;          // format: YYYY-MM-DD
     userType: UserType;
     // Volunteer/Trainer fields
     matricule?: string;
@@ -133,6 +149,8 @@ export interface ProfileResponse {
     hoursVolunteered?: number;
     dateAdhesion?: string;
     phone?: string;
+    address?: string;
+    educationLevel?: string;
     avatar?: string;
     committeeId?: string;
 }
@@ -213,17 +231,37 @@ export interface VolunteerDTO {
 
 // ---- Stock/Inventory Types ----
 
+export interface StorageLocationDTO {
+    id?: string;
+    name: string;
+    type: 'ENTREPOT' | 'PHARMACIE' | 'BUREAU' | 'AUTRE';
+    acquisitionType: 'LOUE' | 'ACHETE' | 'DON' | 'AUTRE';
+    address?: string;
+    gpsLatitude?: number;
+    gpsLongitude?: number;
+    photo?: string;
+    capacity?: number;
+    committeeId: string;
+    status?: 'ACTIVE' | 'INACTIVE';
+}
+
 export interface InventoryItemDTO {
     id: string;
     name: string;
     category: StockCategory;
     currentQuantity: number;
     minThreshold: number;
+    storageLocationId?: string;
 }
 
 export interface StockMovementDTO {
     quantity: number;
     reason: string;
+    proofPhoto?: string;
+    recordedByName?: string;
+    itemCondition?: string;
+    supplier?: string;
+    receivedBy?: string;
 }
 
 export interface StockMovementResponse {
@@ -233,6 +271,22 @@ export interface StockMovementResponse {
     reason: string;
     timestamp: string;
     recordedBy: string;
+    status?: 'PENDING' | 'APPROVED' | 'REJECTED';
+    proofPhoto?: string;
+    approvedBy?: string;
+    approvedByName?: string;
+    approvedAt?: string;
+    rejectionReason?: string;
+    recordedByName?: string;
+    itemCondition?: string;
+    supplier?: string;
+    receivedBy?: string;
+    inventoryItem?: {
+        id: string;
+        name: string;
+        category: string;
+        currentQuantity: number;
+    };
 }
 
 export interface StockAlertDTO {
@@ -279,6 +333,7 @@ export interface RescueEquipmentDTO {
     status?: string;
     quantity?: number;
     lastInspectionDate?: string;
+    imageUrl?: string;
 }
 
 export interface RescueDeviceDTO {
@@ -291,6 +346,11 @@ export interface RescueDeviceDTO {
     assignedRescuers?: string[];
     equipmentList?: string[];
     status: string;
+    volunteersNeeded?: boolean;
+    volunteersCount?: number;
+    actionChiefName?: string;
+    eventTime?: string;
+    approvalStatus?: string; // PENDING, APPROVED, REJECTED
 }
 
 // ---- Domain: Diffusion ----
@@ -318,6 +378,10 @@ export interface AwarenessCampaignDTO {
     startDate?: string;
     endDate?: string;
     status?: string;
+    imageUrl?: string;
+    location?: string;
+    volunteersNeeded?: number;
+    collaborationType?: string; // "INTERNAL" or "COLLABORATION"
 }
 
 // ---- Domain: Jeunesse ----
@@ -392,11 +456,35 @@ export interface HealthActionDTO {
     committeeId?: string;
     title?: string;
     type?: string;
+    actionType?: string;
     date?: string;
+    startDate?: string;
+    endDate?: string;
     location?: string;
+    address?: string;
+    gpsCoordinates?: { lat: number; lng: number };
     beneficiaries?: number;
+    beneficiariesCount?: number;
     status?: string;
     description?: string;
+    priority?: string;           // URGENCE, HAUTE, NORMALE, FAIBLE
+    category?: string;
+    // Volontaires
+    volunteersNeeded?: boolean;
+    volunteersCount?: number;
+    collaborationType?: string;  // INTERNAL, EXTERNAL
+    volunteersList?: Array<{ id?: string; name: string; committeeId?: string }>;
+    // Chef d'action
+    actionChiefName?: string;
+    actionChiefPhotoUrl?: string;
+    actionChiefId?: string;
+    // Hôpital
+    hospitalDestination?: string;
+    // Médias
+    photosUrls?: string[];
+    filesUrls?: string[];
+    // Traçabilité
+    createdBy?: string;
     [key: string]: unknown;
 }
 
@@ -404,12 +492,52 @@ export interface BloodDonationDTO {
     id?: string;
     donorVolunteerId?: string;
     donorId?: string;
+    committeeId?: string;
     bloodType: string;
     donationDate: string;
     collectionCenter: string;
     zone?: string;
     quantity?: number;
     status?: string;
+    notes?: string;
+    // Hôpital & Bénéficiaire
+    hospitalDestination?: string;
+    beneficiaryName?: string;
+    // Volontaires
+    volunteersNeeded?: boolean;
+    volunteersCount?: number;
+    // Chef d'action
+    actionChiefName?: string;
+    actionChiefId?: string;
+    // Médias
+    photosUrls?: string[];
+    volunteersList?: Array<{ id?: string; name: string; committeeId?: string }>;
+}
+
+// ---- Domain: Distribution Médicale ----
+
+export interface MedicalDistributionDTO {
+    id?: string;
+    committeeId?: string;
+    resourceType: string;       // MEDICAMENTS, KITS_MEDICAUX, POCHES_SANG, EQUIPEMENTS, DISPOSITIFS_MEDICAUX, DOCUMENTS_MEDICAUX, AUTRES
+    title: string;
+    description?: string;
+    destinationType?: string;   // HOPITAL, ASSOCIATION, MISSION, COMITE, BENEFICIAIRE
+    destinationName?: string;
+    destinationAddress?: string;
+    quantity?: number;
+    unit?: string;
+    status?: string;            // PENDING, APPROVED, REJECTED, DISTRIBUTED
+    requestedBy?: string;
+    requestedByName?: string;
+    requestedAt?: string;
+    approvedBy?: string;
+    approvedByName?: string;
+    approvedAt?: string;
+    rejectionReason?: string;
+    notes?: string;
+    photosUrls?: string[];
+    documentsUrls?: string[];
 }
 
 // ---- Domain: Social ----
@@ -425,6 +553,9 @@ export interface FamilyDTO {
     status?: string;
     members?: number;
     familyName?: string;
+    cin?: string;
+    recipientName?: string;
+    imageUrl?: string;
     gpsCoordinates?: { lat: number; lng: number };
     needsType?: string[];
     urgentNeeds?: string[];

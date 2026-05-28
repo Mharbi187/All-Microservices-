@@ -122,7 +122,7 @@ const VffPage: React.FC = () => {
                         shape="square"
                         size={44}
                         icon={<LockOutlined />}
-                        style={{ background: isDark ? 'rgba(219,39,119,0.1)' : '#fdf2f8', color: '#db2777', border: `1px solid ${isDark ? 'rgba(219,39,119,0.2)' : '#fbcfe8'}`, borderRadius: 12 }}
+                        style={{ background: isDark ? 'rgba(224,28,46,0.1)' : '#fef2f2', color: '#e01c2e', border: `1px solid ${isDark ? 'rgba(224,28,46,0.2)' : '#fee2e2'}`, borderRadius: 12 }}
                     />
                     <div>
                         <Text strong style={{ fontSize: 16, display: 'block' }}>{record.victimName}</Text>
@@ -177,9 +177,9 @@ const VffPage: React.FC = () => {
                 <Space size={14}>
                     <div style={{
                         width: 44, height: 44, borderRadius: 12,
-                        background: isDark ? 'rgba(139,92,246,0.1)' : '#f5f3ff',
+                        background: isDark ? 'rgba(224,28,46,0.1)' : '#fef2f2',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        color: '#8b5cf6', border: `1px solid ${isDark ? 'rgba(139,92,246,0.2)' : '#ddd6fe'}`
+                        color: '#e01c2e', border: `1px solid ${isDark ? 'rgba(224,28,46,0.2)' : '#fee2e2'}`
                     }}>
                         <SafetyOutlined style={{ fontSize: 20 }} />
                     </div>
@@ -195,7 +195,7 @@ const VffPage: React.FC = () => {
             key: 'period',
             render: (_: any, r: ProtectionCampaignDTO) => (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <CalendarOutlined style={{ color: '#8b5cf6' }} />
+                    <CalendarOutlined style={{ color: '#e01c2e' }} />
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                         <Text strong style={{ fontSize: 13 }}>{r.startDate ? new Date(r.startDate).toLocaleDateString('fr-FR') : '—'}</Text>
                         <Text type="secondary" style={{ fontSize: 11 }}>au {r.endDate ? new Date(r.endDate).toLocaleDateString('fr-FR') : '—'}</Text>
@@ -246,38 +246,39 @@ const VffPage: React.FC = () => {
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 40 }}>
                                     <div style={{
                                         width: 60, height: 60, borderRadius: 20,
-                                        background: 'linear-gradient(135deg, #db2777, #be185d)',
+                                        background: 'linear-gradient(135deg, #e01c2e, #c0152a)',
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        fontSize: 28, boxShadow: '0 12px 24px rgba(219,39,119,0.25)'
+                                        fontSize: 28, boxShadow: '0 12px 24px rgba(224,28,46,0.25)',
+                                        color: '#fff'
                                     }}>
-                                        🛡️
+                                        <SafetyOutlined />
                                     </div>
                                     <div>
                                         <Title level={3} style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>Protection</Title>
-                                        <Tag color="magenta" icon={<GlobalOutlined />} style={{ borderRadius: 6, margin: '4px 0 0 0', fontWeight: 700, fontSize: 11 }}>
+                                        <Tag color="red" icon={<GlobalOutlined />} style={{ borderRadius: 6, margin: '4px 0 0 0', fontWeight: 700, fontSize: 11 }}>
                                             NATIONAL
                                         </Tag>
                                     </div>
                                 </div>
 
                                 <Space direction="vertical" style={{ width: '100%' }} size={24}>
-                                    <div style={{ padding: 24, borderRadius: 24, background: isDark ? 'rgba(219,39,119,0.05)' : '#fff', border: `1px solid ${isDark ? 'rgba(219,39,119,0.1)' : 'rgba(0,0,0,0.05)'}` }}>
+                                    <div style={{ padding: 24, borderRadius: 24, background: isDark ? 'rgba(224,28,46,0.04)' : '#fff', border: `1px solid ${isDark ? 'rgba(224,28,46,0.1)' : 'rgba(0,0,0,0.05)'}` }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-                                            <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(219,39,119,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#db2777' }}>
+                                            <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(224,28,46,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e01c2e' }}>
                                                 <HeartOutlined style={{ fontSize: 20 }} />
                                             </div>
-                                            <BarChartOutlined style={{ color: '#db2777', fontSize: 22 }} />
+                                            <BarChartOutlined style={{ color: '#e01c2e', fontSize: 22 }} />
                                         </div>
                                         <Text type="secondary" style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Impact / Suivi</Text>
                                         <Title level={2} style={{ margin: '4px 0 0 0', fontWeight: 800 }}>{cases.length}</Title>
                                     </div>
 
-                                    <div style={{ padding: 24, borderRadius: 24, background: isDark ? 'rgba(139,92,246,0.05)' : '#fff', border: `1px solid ${isDark ? 'rgba(139,92,246,0.1)' : 'rgba(0,0,0,0.05)'}` }}>
+                                    <div style={{ padding: 24, borderRadius: 24, background: isDark ? 'rgba(31,31,31,0.5)' : '#fff', border: `1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-                                            <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(139,92,246,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8b5cf6' }}>
+                                            <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(224,28,46,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e01c2e' }}>
                                                 <SafetyOutlined style={{ fontSize: 20 }} />
                                             </div>
-                                            <Progress type="circle" percent={campaigns.filter(c => c.status === 'ACTIVE').length * 20} size={40} strokeColor="#8b5cf6" />
+                                            <Progress type="circle" percent={campaigns.filter(c => c.status === 'ACTIVE').length * 20} size={40} strokeColor="#e01c2e" />
                                         </div>
                                         <Text type="secondary" style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Prévention Actives</Text>
                                         <Title level={2} style={{ margin: '4px 0 0 0', fontWeight: 800 }}>{campaigns.filter(c => c.status === 'ACTIVE').length}</Title>
@@ -288,7 +289,7 @@ const VffPage: React.FC = () => {
                                         block
                                         icon={<PlusOutlined />}
                                         onClick={() => activeTab === 'cases' ? setIsCaseModalOpen(true) : setIsCampaignModalOpen(true)}
-                                        style={{ height: 52, borderRadius: 16, background: '#db2777', borderColor: '#db2777', fontWeight: 700, marginTop: 12, boxShadow: '0 8px 20px rgba(219,39,119,0.2)' }}
+                                        style={{ height: 52, borderRadius: 16, background: 'linear-gradient(135deg, #e01c2e, #c0152a)', border: 'none', fontWeight: 700, marginTop: 12, boxShadow: '0 8px 20px rgba(224,28,46,0.2)' }}
                                     >
                                         {activeTab === 'cases' ? 'Nouveau Dossier' : 'Nouvelle Campagne'}
                                     </Button>
@@ -312,8 +313,8 @@ const VffPage: React.FC = () => {
                                             style={{
                                                 height: 42, padding: '0 24px', borderRadius: 12,
                                                 fontWeight: 800,
-                                                background: activeTab === tab.key ? (isDark ? 'rgba(219,39,119,0.2)' : '#fff') : 'transparent',
-                                                color: activeTab === tab.key ? '#db2777' : (isDark ? 'rgba(255,255,255,0.4)' : '#64748b'),
+                                                background: activeTab === tab.key ? (isDark ? 'rgba(224,28,46,0.2)' : '#fff') : 'transparent',
+                                                color: activeTab === tab.key ? '#e01c2e' : (isDark ? 'rgba(255,255,255,0.4)' : '#64748b'),
                                                 boxShadow: activeTab === tab.key && !isDark ? '0 4px 12px rgba(0,0,0,0.05)' : 'none',
                                                 transition: 'all 0.3s ease'
                                             }}
@@ -354,7 +355,7 @@ const VffPage: React.FC = () => {
 
             {/* MODAL: SIGNALEMENT (Case) */}
             <Modal
-                title={<Space><LockOutlined style={{ color: '#db2777' }} /><Text strong style={{ fontSize: 18 }}>Signalement Confidentiel</Text></Space>}
+                title={<Space><LockOutlined style={{ color: '#e01c2e' }} /><Text strong style={{ fontSize: 18 }}>Signalement Confidentiel</Text></Space>}
                 open={isCaseModalOpen}
                 onCancel={() => setIsCaseModalOpen(false)}
                 footer={null}
@@ -416,7 +417,7 @@ const VffPage: React.FC = () => {
 
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 40 }}>
                         <Button onClick={() => setIsCaseModalOpen(false)} style={{ height: 45, borderRadius: 12 }}>Annuler</Button>
-                        <Button type="primary" htmlType="submit" loading={submitLoading} style={{ height: 45, borderRadius: 12, background: '#db2777', borderColor: '#db2777', fontWeight: 700 }}>
+                        <Button type="primary" htmlType="submit" loading={submitLoading} style={{ height: 45, borderRadius: 12, background: 'linear-gradient(135deg, #e01c2e, #c0152a)', border: 'none', fontWeight: 700 }}>
                             Générer le dossier
                         </Button>
                     </div>
@@ -425,7 +426,7 @@ const VffPage: React.FC = () => {
 
             {/* MODAL: CAMPAGNE */}
             <Modal
-                title={<Space><SafetyOutlined style={{ color: '#8b5cf6' }} /><Text strong style={{ fontSize: 18 }}>Action Préventive</Text></Space>}
+                title={<Space><SafetyOutlined style={{ color: '#e01c2e' }} /><Text strong style={{ fontSize: 18 }}>Action Préventive</Text></Space>}
                 open={isCampaignModalOpen}
                 onCancel={() => setIsCampaignModalOpen(false)}
                 footer={null}
@@ -464,7 +465,7 @@ const VffPage: React.FC = () => {
 
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 40 }}>
                         <Button onClick={() => setIsCampaignModalOpen(false)} style={{ height: 45, borderRadius: 12 }}>Annuler</Button>
-                        <Button type="primary" htmlType="submit" loading={submitLoading} style={{ height: 45, borderRadius: 12, background: '#8b5cf6', borderColor: '#8b5cf6', fontWeight: 700 }}>
+                        <Button type="primary" htmlType="submit" loading={submitLoading} style={{ height: 45, borderRadius: 12, background: 'linear-gradient(135deg, #e01c2e, #c0152a)', border: 'none', fontWeight: 700 }}>
                             Lancer la campagne
                         </Button>
                     </div>

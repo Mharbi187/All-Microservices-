@@ -115,6 +115,7 @@ const MyComplaintsPage = lazy(() => import('@/pages/volunteer/MyComplaintsPage')
 const ResourcesPage = lazy(() => import('@/pages/volunteer/ResourcesPage'));
 const YouthSpacePage = lazy(() => import('@/pages/volunteer/YouthSpacePage'));
 const QuizPage = lazy(() => import('@/pages/volunteer/QuizPage'));
+const DonationReceptionPage = lazy(() => import('@/pages/volunteer/DonationReceptionPage'));
 
 // ---- Donor-specific pages ----
 const DonorDashboardPage = lazy(() => import('@/pages/donor/DonorDashboardPage'));
@@ -132,6 +133,7 @@ const SocialPage = lazy(() => import('@/pages/domains/SocialPage'));
 const ImmigrationPage = lazy(() => import('@/pages/domains/ImmigrationPage'));
 const VffPage = lazy(() => import('@/pages/domains/VffPage'));
 const CatastrophesPage = lazy(() => import('@/pages/domains/CatastrophesPage'));
+const DistributionMedicalePage = lazy(() => import('@/pages/domains/DistributionMedicalePage'));
 
 // ---- Crisis Command Center ----
 const RadarDashboardPage = lazy(() => import('@/pages/crisis/Dashboard'));
@@ -188,7 +190,7 @@ export const router = createBrowserRouter([
             { path: 'stocks', element: withLoader(<StocksPage />) },
             { path: 'donations', element: withLoader(<DonationsPage />) },
             // Removed duplicate redirect
-            { path: 'settings', element: withLoader(<SettingsPage />) },
+            { path: 'settings', element: <Navigate to="/volunteer/profile" replace /> },
             { path: 'validation-queue', element: withLoader(<ValidationQueuePage />) },
             { path: 'audit-logs', element: withLoader(<AuditTrailPage />) },
 
@@ -201,6 +203,7 @@ export const router = createBrowserRouter([
             { path: 'volunteer/resources', element: withLoader(<ResourcesPage />) },
             { path: 'volunteer/youth', element: withLoader(<YouthSpacePage />) },
             { path: 'volunteer/quiz', element: withLoader(<QuizPage />) },
+            { path: 'volunteer/reception', element: withLoader(<DonationReceptionPage />) },
             // Domain-specific routes
             { path: 'secourisme', element: withLoader(<SecourismePage />) },
             { path: 'diffusion', element: withLoader(<DiffusionPage />) },
@@ -210,6 +213,7 @@ export const router = createBrowserRouter([
             { path: 'immigration', element: withLoader(<ImmigrationPage />) },
             { path: 'vff', element: withLoader(<VffPage />) },
             { path: 'catastrophes', element: withLoader(<CatastrophesPage />) },
+            { path: 'distribution-medicale', element: withLoader(<DistributionMedicalePage />) },
 
             // Core Crisis Modules
             { path: 'radar', element: withLoader(<RadarDashboardPage />) },

@@ -41,12 +41,15 @@ export const useAuthStore = create<AuthState>()(
                     //    Throw a typed error so LoginPage can show the appropriate UI.
                     if (!authResponse.token) {
                         const msg = authResponse.message || 'Login failed.';
-                        const err: { accountStatus?: string; message: string } = { message: msg };
+                        const err: { accountStatus?: string; message: string; captchaRequired?: boolean } = { message: msg };
 
                         if (msg.includes('PENDING')) {
                             err.accountStatus = 'PENDING';
                         } else if (msg.includes('SUSPENDED') || msg.includes('locked')) {
                             err.accountStatus = 'SUSPENDED';
+                        }
+                        if (authResponse.captchaRequired) {
+                            err.captchaRequired = true;
                         }
 
                         set({ isLoading: false });
@@ -117,8 +120,16 @@ export const useAuthStore = create<AuthState>()(
                     if (profile.roles && Array.isArray(profile.roles)) {
                         for (const roleObj of profile.roles) {
                             const roleTitle = roleObj.role as RoleTitle;
-                            if (roleTitle && !roles.includes(roleTitle)) {
-                                roles.push(roleTitle);
+                            if (roleTitle) {
+                                if (!roles.includes(roleTitle)) {
+                                    roles.push(roleTitle);
+                                }
+                                if (roleObj.committeeType) {
+                                    const compoundRole = `${roleTitle}_${roleObj.committeeType}`.toUpperCase() as RoleTitle;
+                                    if (!roles.includes(compoundRole)) {
+                                        roles.push(compoundRole);
+                                    }
+                                }
                             }
                             // Use first committee as primary
                             if (!committeeId && roleObj.committeeId) {
@@ -156,6 +167,8 @@ export const useAuthStore = create<AuthState>()(
                             hoursVolunteered: profile.hoursVolunteered,
                             dateAdhesion: profile.dateAdhesion,
                             phone: profile.phone,
+                            address: profile.address,
+                            educationLevel: profile.educationLevel,
                             avatar: profile.avatar || state.user?.avatar,
                             firstLoginCompleted: profile.firstLoginCompleted ?? state.user?.firstLoginCompleted,
                         } as User,

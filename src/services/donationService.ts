@@ -82,6 +82,30 @@ export const donationService = {
         const response = await api.get<DonorStats>(`${DONATIONS_API}/stats`);
         return response.data;
     },
+
+    getDonationById: async (id: string): Promise<DonationReceipt> => {
+        const response = await api.get<DonationReceipt>(`${DONATIONS_API}/${id}`);
+        return response.data;
+    },
+
+    getDonationByNumber: async (donationNumber: string): Promise<DonationReceipt> => {
+        const response = await api.get<DonationReceipt>(`${DONATIONS_API}/number/${donationNumber}`);
+        return response.data;
+    },
+
+    getCommitteeDonations: async (committeeId: string): Promise<DonationReceipt[]> => {
+        const response = await api.get<DonationReceipt[]>(`${DONATIONS_API}/committee/${committeeId}`);
+        return response.data;
+    },
+
+    validateDonation: async (donationId: string, validationNote?: string): Promise<DonationReceipt> => {
+        const response = await api.post<DonationReceipt>(`${DONATIONS_API}/${donationId}/validate`, validationNote || '', {
+            headers: {
+                'Content-Type': 'text/plain'
+            }
+        });
+        return response.data;
+    },
 };
 
 export default donationService;

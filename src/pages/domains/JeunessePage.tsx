@@ -64,7 +64,7 @@ const JeunessePage: React.FC = () => {
     const [responsesLoading, setResponsesLoading] = useState(false);
     const [autoRecLoading, setAutoRecLoading] = useState<Record<string, boolean>>({});
     const [domainOptions, setDomainOptions] = useState<any[]>([]);
-    const [newOption, setNewOption] = useState({ type: 'CATEGORY', label: '', value: '', color: '#4F46E5' });
+    const [newOption, setNewOption] = useState({ type: 'CATEGORY', label: '', value: '', color: '#e01c2e' });
 
     const glassStyle = {
         background: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.7)',
@@ -143,7 +143,7 @@ const JeunessePage: React.FC = () => {
             notification.success({
                 message: 'Analyse IA Terminée',
                 description: 'La recommandation a été générée automatiquement.',
-                icon: <RobotOutlined style={{ color: '#4F46E5' }} />
+                icon: <RobotOutlined style={{ color: '#e01c2e' }} />
             });
             loadData();
         } catch (error: any) {
@@ -158,7 +158,7 @@ const JeunessePage: React.FC = () => {
             title: 'Volontaire', dataIndex: 'volunteerName', key: 'volunteerName',
             render: (n: string) => (
                 <Space>
-                    <Avatar size="small" style={{ background: 'linear-gradient(135deg, #4F46E5, #818cf8)' }}>{n?.[0]}</Avatar>
+                    <Avatar size="small" style={{ background: 'linear-gradient(135deg, #e01c2e, #c0152a)' }}>{n?.[0]}</Avatar>
                     <Text strong>{n || '—'}</Text>
                 </Space>
             )
@@ -198,10 +198,13 @@ const JeunessePage: React.FC = () => {
                             <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 40 }}>
                                 <div style={{
                                     width: 60, height: 60, borderRadius: 20,
-                                    background: 'linear-gradient(135deg, #4f46e5, #8b5cf6)',
+                                    background: 'linear-gradient(135deg, #e01c2e, #c0152a)',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    fontSize: 28, boxShadow: '0 12px 24px rgba(79,70,229,0.25)'
-                                }}>🎓</div>
+                                    fontSize: 24, boxShadow: '0 12px 24px rgba(224,28,46,0.25)',
+                                    color: '#fff'
+                                }}>
+                                    <TeamOutlined />
+                                </div>
                                 <div>
                                     <Title level={3} style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>Jeunesse</Title>
                                     <Tag color="blue" icon={<GlobalOutlined />} style={{ borderRadius: 6, margin: '4px 0 0 0', fontWeight: 700, fontSize: 11 }}>{userLevel}</Tag>
@@ -227,7 +230,7 @@ const JeunessePage: React.FC = () => {
                                 block
                                 icon={<PlusOutlined />}
                                 onClick={() => setIsBuilderOpen(true)}
-                                style={{ height: 52, borderRadius: 16, background: '#4f46e5', fontWeight: 700, boxShadow: '0 8px 20px rgba(79,70,229,0.2)' }}
+                                style={{ height: 52, borderRadius: 16, background: 'linear-gradient(135deg, #e01c2e, #c0152a)', border: 'none', fontWeight: 700, boxShadow: '0 8px 20px rgba(224,28,46,0.2)' }}
                             >
                                 Nouveau Formulaire
                             </Button>
@@ -270,7 +273,7 @@ const JeunessePage: React.FC = () => {
                                                         }}>
                                                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
                                                                 <Space>
-                                                                    <div style={{ width: 40, height: 40, borderRadius: 10, background: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}><FileTextOutlined /></div>
+                                                                    <div style={{ width: 40, height: 40, borderRadius: 10, background: '#e01c2e', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}><FileTextOutlined /></div>
                                                                     <Text strong>{tmpl.title}</Text>
                                                                 </Space>
                                                                 <Tag color="cyan" style={{ margin: 0 }}>{tmpl._responseCount} Réponses</Tag>

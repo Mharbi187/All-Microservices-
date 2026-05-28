@@ -3,16 +3,17 @@
 // Mandatory post-approval extended profile form.
 // Renders as a non-dismissible modal for approved volunteers
 // who have not yet completed their first-login form.
+// NOTE: birthDate is already in the DB — not asked again.
 // ============================================================
 
 import { useState } from 'react';
 import {
     Modal, Form, Input, Select, Steps, Button, Space,
-    Typography, message, Row, Col, Divider,
+    Typography, message, Row, Col, Divider, Tag,
 } from 'antd';
 import {
     UserOutlined, HeartOutlined, CheckCircleOutlined,
-    ArrowRightOutlined, ArrowLeftOutlined,
+    ArrowRightOutlined, ArrowLeftOutlined, InfoCircleOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '@/stores';
 import onboardingService from '@/services/onboardingService';
@@ -60,7 +61,7 @@ const OnboardingModal: React.FC = () => {
             // Validate only the current step's fields
             if (currentStep === 0) {
                 await form.validateFields([
-                    'address', 'birthDate',
+                    'address',
                     'emergencyContactName', 'emergencyContactPhone',
                 ]);
             } else if (currentStep === 1) {
@@ -81,7 +82,6 @@ const OnboardingModal: React.FC = () => {
 
             const payload: Record<string, unknown> = {
                 address: values.address,
-                birthDate: values.birthDate,
                 emergencyContactName: values.emergencyContactName,
                 emergencyContactPhone: values.emergencyContactPhone,
                 bloodType: values.bloodType ?? null,
@@ -149,8 +149,39 @@ const OnboardingModal: React.FC = () => {
                     {/* ── Step 0: Identity & Emergency Contact ── */}
                     {currentStep === 0 && (
                         <>
+                            {/* Pre-filled info from DB — read-only */}
+                            <div style={{
+                                background: 'rgba(200,30,30,0.06)',
+                                border: '1px solid rgba(200,30,30,0.15)',
+                                borderRadius: 8,
+                                padding: '12px 16px',
+                                marginBottom: 16,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 10,
+                            }}>
+                                <InfoCircleOutlined style={{ color: '#C81E1E', fontSize: 16, flexShrink: 0 }} />
+                                <div>
+                                    <Text style={{ fontSize: 13, fontWeight: 600, display: 'block' }}>
+                                        {user?.fullName}
+                                    </Text>
+                                    <Text type="secondary" style={{ fontSize: 12 }}>
+                                        {user?.email}
+                                        {user?.phone ? ` · ${user.phone}` : ''}
+                                        {user?.cin ? ` · CIN: ${user.cin}` : ''}
+                                        {user?.matricule ? ` · Mat: ${user.matricule}` : ''}
+                                    </Text>
+                                    <div style={{ marginTop: 4 }}>
+                                        <Tag color="success" style={{ fontSize: 11 }}>✓ Compte approuvé</Tag>
+                                        {user?.dateAdhesion && (
+                                            <Tag style={{ fontSize: 11 }}>Adhésion : {user.dateAdhesion}</Tag>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
                             <Divider orientation="left" style={{ fontSize: 13, color: '#888' }}>
-                                Coordonnées
+                                Coordonnées complémentaires
                             </Divider>
                             <Row gutter={16}>
                                 <Col span={24}>
@@ -160,15 +191,6 @@ const OnboardingModal: React.FC = () => {
                                         rules={[{ required: true, message: 'Veuillez indiquer votre adresse' }]}
                                     >
                                         <Input placeholder="Rue, Ville, Code postal" />
-                                    </Form.Item>
-                                </Col>
-                                <Col span={12}>
-                                    <Form.Item
-                                        name="birthDate"
-                                        label="Date de naissance"
-                                        rules={[{ required: true, message: 'Champ requis' }]}
-                                    >
-                                        <Input type="date" />
                                     </Form.Item>
                                 </Col>
                                 <Col span={12}>
@@ -290,8 +312,9 @@ const OnboardingModal: React.FC = () => {
                                     textAlign: 'left', maxWidth: 420, margin: '0 auto',
                                 }}
                             >
+                                <Text strong>Nom complet :</Text> <Text>{user?.fullName || '—'}</Text><br />
+                                <Text strong>Email :</Text> <Text>{user?.email || '—'}</Text><br />
                                 <Text strong>Adresse :</Text> <Text>{form.getFieldValue('address') || '—'}</Text><br />
-                                <Text strong>Date de naissance :</Text> <Text>{form.getFieldValue('birthDate') || '—'}</Text><br />
                                 <Text strong>Contact d'urgence :</Text> <Text>{form.getFieldValue('emergencyContactName') || '—'} ({form.getFieldValue('emergencyContactPhone') || '—'})</Text><br />
                                 <Text strong>Disponibilité :</Text> <Text>
                                     {form.getFieldValue('availability') === 'weekdays' ? 'Jours de semaine' :
