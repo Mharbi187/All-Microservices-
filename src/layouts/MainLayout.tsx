@@ -608,6 +608,163 @@ const MainLayout: React.FC = () => {
 
     return (
         <Layout className="min-h-screen">
+            <style dangerouslySetInnerHTML={{ __html: themeMode === 'dark' ? `
+                .nexus-sider {
+                    background: #141414 !important;
+                    border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+                }
+                .nexus-sider .ant-layout-sider-children {
+                    background: #141414 !important;
+                }
+                .nexus-menu {
+                    background: #141414 !important;
+                }
+                .nexus-menu .ant-menu-item,
+                .nexus-menu .ant-menu-submenu-title {
+                    color: #ffffff !important;
+                    font-weight: 700 !important;
+                    font-size: 13.5px !important;
+                    transition: all 0.2s ease-in-out !important;
+                    border-radius: 8px !important;
+                    margin: 4px 10px !important;
+                    width: calc(100% - 20px) !important;
+                    display: flex !important;
+                    align-items: center !important;
+                }
+                .nexus-menu .ant-menu-item .anticon,
+                .nexus-menu .ant-menu-submenu-title .anticon {
+                    font-size: 16px !important;
+                    color: #e2e8f0 !important;
+                    transition: color 0.2s ease-in-out !important;
+                }
+                .nexus-menu .ant-menu-item:hover,
+                .nexus-menu .ant-menu-submenu-title:hover {
+                    color: #DC2626 !important;
+                    background-color: rgba(220, 38, 38, 0.12) !important;
+                }
+                .nexus-menu .ant-menu-item:hover .anticon,
+                .nexus-menu .ant-menu-submenu-title:hover .anticon {
+                    color: #DC2626 !important;
+                }
+                .nexus-menu .ant-menu-item.ant-menu-item-selected {
+                    color: #ffffff !important;
+                    background: linear-gradient(135deg, #DC2626, #EF4444) !important;
+                    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.35) !important;
+                }
+                .nexus-menu .ant-menu-item.ant-menu-item-selected .anticon {
+                    color: #ffffff !important;
+                }
+                .nexus-menu .ant-menu-submenu-arrow {
+                    color: #e2e8f0 !important;
+                }
+                .nexus-menu .ant-menu-submenu:hover > .ant-menu-submenu-title .ant-menu-submenu-arrow {
+                    color: #DC2626 !important;
+                }
+                .nexus-menu .ant-menu-sub {
+                    background: #1f1f1f !important;
+                    border-radius: 8px !important;
+                    margin: 0 10px !important;
+                    padding: 4px 0 !important;
+                }
+                .nexus-menu .ant-menu-sub .ant-menu-item {
+                    width: calc(100% - 16px) !important;
+                    margin: 3px 8px !important;
+                }
+                /* Sider collapse width fixes */
+                .ant-layout-sider-collapsed .nexus-menu .ant-menu-item {
+                    width: 40px !important;
+                    margin: 4px auto !important;
+                    padding: 0 !important;
+                    justify-content: center !important;
+                }
+                .ant-layout-sider-collapsed .nexus-menu .ant-menu-submenu-title {
+                    width: 40px !important;
+                    margin: 4px auto !important;
+                    padding: 0 !important;
+                    justify-content: center !important;
+                }
+                .ant-layout-sider-collapsed .nexus-menu .ant-menu-submenu-arrow {
+                    display: none !important;
+                }
+            ` : `
+                .nexus-sider {
+                    background: #ffffff !important;
+                    border-right: 1px solid rgba(0, 0, 0, 0.08) !important;
+                }
+                .nexus-sider .ant-layout-sider-children {
+                    background: #ffffff !important;
+                }
+                .nexus-menu {
+                    background: #ffffff !important;
+                }
+                .nexus-menu .ant-menu-item,
+                .nexus-menu .ant-menu-submenu-title {
+                    color: #1e293b !important;
+                    font-weight: 700 !important;
+                    font-size: 13.5px !important;
+                    transition: all 0.2s ease-in-out !important;
+                    border-radius: 8px !important;
+                    margin: 4px 10px !important;
+                    width: calc(100% - 20px) !important;
+                    display: flex !important;
+                    align-items: center !important;
+                }
+                .nexus-menu .ant-menu-item .anticon,
+                .nexus-menu .ant-menu-submenu-title .anticon {
+                    font-size: 16px !important;
+                    color: #4b5563 !important;
+                    transition: color 0.2s ease-in-out !important;
+                }
+                .nexus-menu .ant-menu-item:hover,
+                .nexus-menu .ant-menu-submenu-title:hover {
+                    color: #DC2626 !important;
+                    background-color: rgba(220, 38, 38, 0.06) !important;
+                }
+                .nexus-menu .ant-menu-item:hover .anticon,
+                .nexus-menu .ant-menu-submenu-title:hover .anticon {
+                    color: #DC2626 !important;
+                }
+                .nexus-menu .ant-menu-item.ant-menu-item-selected {
+                    color: #ffffff !important;
+                    background: linear-gradient(135deg, #DC2626, #EF4444) !important;
+                    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.24) !important;
+                }
+                .nexus-menu .ant-menu-item.ant-menu-item-selected .anticon {
+                    color: #ffffff !important;
+                }
+                .nexus-menu .ant-menu-submenu-arrow {
+                    color: #4b5563 !important;
+                }
+                .nexus-menu .ant-menu-submenu:hover > .ant-menu-submenu-title .ant-menu-submenu-arrow {
+                    color: #DC2626 !important;
+                }
+                .nexus-menu .ant-menu-sub {
+                    background: #f8fafc !important;
+                    border-radius: 8px !important;
+                    margin: 0 10px !important;
+                    padding: 4px 0 !important;
+                }
+                .nexus-menu .ant-menu-sub .ant-menu-item {
+                    width: calc(100% - 16px) !important;
+                    margin: 3px 8px !important;
+                }
+                /* Sider collapse width fixes */
+                .ant-layout-sider-collapsed .nexus-menu .ant-menu-item {
+                    width: 40px !important;
+                    margin: 4px auto !important;
+                    padding: 0 !important;
+                    justify-content: center !important;
+                }
+                .ant-layout-sider-collapsed .nexus-menu .ant-menu-submenu-title {
+                    width: 40px !important;
+                    margin: 4px auto !important;
+                    padding: 0 !important;
+                    justify-content: center !important;
+                }
+                .ant-layout-sider-collapsed .nexus-menu .ant-menu-submenu-arrow {
+                    display: none !important;
+                }
+            ` }} />
             {/* ---- Sidebar ---- */}
             <Sider
                 trigger={null}
@@ -615,28 +772,42 @@ const MainLayout: React.FC = () => {
                 collapsed={sidebarCollapsed}
                 width={260}
                 collapsedWidth={80}
-                className="fixed left-0 top-0 bottom-0 z-50"
+                className="fixed left-0 top-0 bottom-0 z-50 nexus-sider"
                 style={{ overflow: 'auto', height: '100vh', position: 'fixed' }}
             >
                 {/* Logo */}
-                <div className="flex items-center justify-center h-16 border-b border-white/10">
-                    <img src="/logo.jpg" alt="CRT" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
+                <div 
+                    className="flex items-center justify-center h-16" 
+                    style={{ 
+                        borderBottom: themeMode === 'dark' ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.06)', 
+                        background: themeMode === 'dark' ? '#141414' : '#ffffff', 
+                        padding: '0 16px' 
+                    }}
+                >
+                    <img src="/logo.jpg" alt="CRT" style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover', border: themeMode === 'dark' ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(0,0,0,0.08)' }} />
                     {!sidebarCollapsed && (
-                        <Text strong className="ml-3 text-white text-lg tracking-wide">
+                        <span style={{ 
+                            marginLeft: 12, 
+                            color: themeMode === 'dark' ? '#ffffff' : '#0C1523', 
+                            fontSize: '18px', 
+                            fontWeight: 800, 
+                            letterSpacing: '0.5px', 
+                            fontFamily: "'Sora', sans-serif" 
+                        }}>
                             Nexus-AID
-                        </Text>
+                        </span>
                     )}
                 </div>
 
                 {/* Navigation Menu */}
                 <Menu
-                    theme="dark"
+                    theme={themeMode}
                     mode="inline"
                     selectedKeys={[location.pathname]}
                     defaultOpenKeys={['volunteer_space', 'management', 'domains']}
                     items={menuItems}
                     onClick={handleMenuClick}
-                    className="border-none mt-2"
+                    className="border-none mt-2 nexus-menu"
                 />
             </Sider>
 
