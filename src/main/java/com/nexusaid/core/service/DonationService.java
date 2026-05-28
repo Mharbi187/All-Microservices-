@@ -111,6 +111,23 @@ public class DonationService {
         return donations.stream().map(this::mapToReceiptDto).collect(Collectors.toList());
     }
 
+    public DonationReceiptDto getDonationById(UUID id) {
+        Donation donation = donationRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Donation not found"));
+        return mapToReceiptDto(donation);
+    }
+
+    public DonationReceiptDto getDonationByNumber(String donationNumber) {
+        Donation donation = donationRepository.findByDonationNumber(donationNumber)
+                .orElseThrow(() -> new EntityNotFoundException("Donation not found"));
+        return mapToReceiptDto(donation);
+    }
+
+    public List<DonationReceiptDto> getCommitteeDonations(UUID committeeId) {
+        List<Donation> donations = donationRepository.findByNeedCommitteeIdOrderByCreatedAtDesc(committeeId);
+        return donations.stream().map(this::mapToReceiptDto).collect(Collectors.toList());
+    }
+
     @Transactional
     public DonationReceiptDto validateDonation(UUID donationId, UUID validatorId, String note) {
         Donation donation = donationRepository.findById(donationId)

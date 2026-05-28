@@ -41,6 +41,10 @@ public class RescueEquipment {
 
     @Column(name = "last_inspection_date")
     private LocalDate lastInspectionDate;
+
+    @Column(name = "image_url", columnDefinition = "TEXT")
+    private String imageUrl;
+
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "committee_id", nullable = false)

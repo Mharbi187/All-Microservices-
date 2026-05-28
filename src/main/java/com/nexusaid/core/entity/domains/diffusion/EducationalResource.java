@@ -30,6 +30,9 @@ public class EducationalResource {
     @Column(name = "file_url")
     private String fileUrl;
 
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
     private String topic;
 
     private String language;

@@ -48,4 +48,19 @@ public class AwarenessCampaign {
 
     @Column(name = "created_by", nullable = false)
     private UUID createdBy; // refers to the RESP_DIFFUSION volunteer ID
+
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;
+
+    @Column(name = "image_url", columnDefinition = "TEXT")
+    private String imageUrl;
+
+    @Column(name = "location")
+    private String location;
+
+    @Column(name = "volunteers_needed")
+    private Integer volunteersNeeded;
+
+    @Column(name = "collaboration_type")
+    private String collaborationType; // e.g. "INTERNAL" or "COLLABORATION"
 }

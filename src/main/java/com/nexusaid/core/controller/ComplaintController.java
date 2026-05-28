@@ -25,6 +25,7 @@ public class ComplaintController {
     private final ObjectMapper objectMapper;
 
     @PostMapping
+    @PreAuthorize("!hasAnyRole('PRESIDENT_NATIONAL', 'VICE_PRESIDENT_NATIONAL')")
     public ResponseEntity<ComplaintDto> createComplaint(
             @RequestPart("data") String dataJson,
             @RequestPart(value = "files", required = false) List<MultipartFile> files) throws IOException {
@@ -44,19 +45,19 @@ public class ComplaintController {
     }
 
     @GetMapping("/committee/{committeeId}")
-    @PreAuthorize("hasAnyRole('PRESIDENT', 'VICE_PRESIDENT', 'SECRETAIRE_GENERAL', 'PRESIDENT_NATIONAL')")
+    @PreAuthorize("hasAnyRole('PRESIDENT', 'VICE_PRESIDENT', 'SECRETAIRE_GENERAL', 'PRESIDENT_NATIONAL', 'VICE_PRESIDENT_NATIONAL', 'PRESIDENT_REGIONAL', 'VICE_PRESIDENT_REGIONAL', 'PRESIDENT_LOCAL', 'VICE_PRESIDENT_LOCAL')")
     public ResponseEntity<List<ComplaintDto>> getComplaintsByTargetCommittee(@PathVariable UUID committeeId) {
         return ResponseEntity.ok(complaintService.getComplaintsByTargetCommittee(committeeId));
     }
 
     @GetMapping("/all")
-    @PreAuthorize("hasRole('PRESIDENT_NATIONAL')")
+    @PreAuthorize("hasAnyRole('PRESIDENT_NATIONAL', 'VICE_PRESIDENT_NATIONAL')")
     public ResponseEntity<List<ComplaintDto>> getAllComplaints() {
         return ResponseEntity.ok(complaintService.getAllComplaints());
     }
 
     @PutMapping("/{id}/status")
-    @PreAuthorize("hasAnyRole('PRESIDENT', 'VICE_PRESIDENT', 'SECRETAIRE_GENERAL', 'PRESIDENT_NATIONAL')")
+    @PreAuthorize("hasAnyRole('PRESIDENT', 'VICE_PRESIDENT', 'SECRETAIRE_GENERAL', 'PRESIDENT_NATIONAL', 'VICE_PRESIDENT_NATIONAL', 'PRESIDENT_REGIONAL', 'VICE_PRESIDENT_REGIONAL', 'PRESIDENT_LOCAL', 'VICE_PRESIDENT_LOCAL')")
     public ResponseEntity<ComplaintDto> updateComplaintStatus(
             @PathVariable UUID id,
             @RequestBody ComplaintStatusUpdateDto updateDto) {
@@ -64,7 +65,7 @@ public class ComplaintController {
     }
 
     @PostMapping("/{id}/responses")
-    @PreAuthorize("hasAnyRole('PRESIDENT', 'VICE_PRESIDENT', 'SECRETAIRE_GENERAL', 'PRESIDENT_NATIONAL')")
+    @PreAuthorize("hasAnyRole('PRESIDENT', 'VICE_PRESIDENT', 'SECRETAIRE_GENERAL', 'PRESIDENT_NATIONAL', 'VICE_PRESIDENT_NATIONAL', 'PRESIDENT_REGIONAL', 'VICE_PRESIDENT_REGIONAL', 'PRESIDENT_LOCAL', 'VICE_PRESIDENT_LOCAL')")
     public ResponseEntity<ComplaintDto> addResponse(
             @PathVariable UUID id,
             @RequestBody Map<String, String> payload) {

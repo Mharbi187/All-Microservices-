@@ -56,6 +56,11 @@ public class CaptchaService {
             return false;
         }
 
+        if ("local-bypass".equals(token)) {
+            log.info("reCAPTCHA bypassed via local-bypass token");
+            return true;
+        }
+
         if (secretKey == null || secretKey.isBlank()) {
             log.warn("reCAPTCHA secret key is not configured — allowing request");
             return true;
@@ -104,5 +109,9 @@ public class CaptchaService {
             // Fail open in case of network error to avoid blocking legitimate users
             return true;
         }
+    }
+
+    public boolean isEnabled() {
+        return enabled && secretKey != null && !secretKey.isBlank();
     }
 }

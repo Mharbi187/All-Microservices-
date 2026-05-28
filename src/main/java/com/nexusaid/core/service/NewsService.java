@@ -11,6 +11,8 @@ import com.nexusaid.core.repository.CommitteeRepository;
 import com.nexusaid.core.repository.NewsRepository;
 import com.nexusaid.core.repository.UserRepository;
 import com.nexusaid.core.repository.VolunteerRepository;
+import com.nexusaid.core.repository.CommitteeRoleRepository;
+import com.nexusaid.core.entity.enums.RoleTitle;
 import com.nexusaid.core.entity.enums.UserType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -28,7 +30,19 @@ public class NewsService {
     private final UserRepository userRepository;
     private final CommitteeRepository committeeRepository;
     private final VolunteerRepository volunteerRepository;
+    private final CommitteeRoleRepository committeeRoleRepository;
     private final AuthService authService;
+
+    /**
+     * Returns only PUBLIE news — accessible without authentication (home page).
+     */
+    @Transactional(readOnly = true)
+    public List<NewsDTO> getPublicNews() {
+        return newsRepository.findPublishedNews()
+                .stream()
+                .map(news -> mapToDTOPublic(news))
+                .collect(Collectors.toList());
+    }
 
     @Transactional(readOnly = true)
     public List<NewsDTO> getVisibleNews() {
@@ -70,8 +84,16 @@ public class NewsService {
             try { scope = CommitteeType.valueOf(createDTO.getTargetScope()); } catch (Exception ignored) {}
         }
 
-        // Les actualités NATIONAL sont auto-publiées (pas de validation nécessaire)
-        String status = scope == CommitteeType.NATIONAL ? "PUBLIE" : "EN_ATTENTE";
+        // Vérifier si l'utilisateur est PRESIDENT, VICE_PRESIDENT ou ADMIN pour auto-publier directement sans validation
+        boolean hasDirectPublishPrivilege = currentUser.getType() == UserType.ADMIN;
+        if (!hasDirectPublishPrivilege) {
+            hasDirectPublishPrivilege = committeeRoleRepository.findByVolunteerId(currentUser.getId())
+                    .stream()
+                    .anyMatch(r -> r.getTitle() == RoleTitle.PRESIDENT || r.getTitle() == RoleTitle.VICE_PRESIDENT);
+        }
+
+        // Les actualités NATIONAL ou créées par un Président/VP/Admin sont auto-publiées
+        String status = (scope == CommitteeType.NATIONAL || hasDirectPublishPrivilege) ? "PUBLIE" : "EN_ATTENTE";
 
         NewsItem newsItem = NewsItem.builder()
                 .title(createDTO.getTitle())
@@ -83,6 +105,7 @@ public class NewsService {
                 .committee(committee)
                 .targetScope(scope)
                 .status(status)
+                .isPublic(createDTO.isPublic())
                 .build();
 
         NewsItem saved = newsRepository.save(newsItem);
@@ -108,9 +131,53 @@ public class NewsService {
         return mapToDTO(saved, currentUser.getId());
     }
 
+    /**
+     * Update news status: PUBLIE | REJETE | EN_ATTENTE
+     * Called by presidents/VP to validate or reject submitted news.
+     */
+    @Transactional
+    public NewsDTO updateNewsStatus(UUID newsId, String newStatus) {
+        User currentUser = authService.getCurrentUser();
+        NewsItem newsItem = newsRepository.findById(newsId)
+                .orElseThrow(() -> new IllegalArgumentException("News not found"));
+
+        // Validate status value
+        if (!List.of("PUBLIE", "REJETE", "EN_ATTENTE").contains(newStatus)) {
+            throw new IllegalArgumentException("Invalid status: " + newStatus);
+        }
+
+        newsItem.setStatus(newStatus);
+        if ("PUBLIE".equals(newStatus)) {
+            newsItem.setPublishedAt(java.time.OffsetDateTime.now());
+        }
+        NewsItem saved = newsRepository.save(newsItem);
+        return mapToDTO(saved, currentUser.getId());
+    }
+
     @Transactional
     public void deleteNews(UUID newsId) {
         newsRepository.deleteById(newsId);
+    }
+
+    /** Mapping sans utilisateur courant — pour endpoint public */
+    private NewsDTO mapToDTOPublic(NewsItem entity) {
+        NewsDTO dto = new NewsDTO();
+        dto.setId(entity.getId());
+        dto.setTitle(entity.getTitle());
+        dto.setSummary(entity.getSummary());
+        dto.setContent(entity.getContent());
+        dto.setCategory(entity.getCategory());
+        dto.setAuthorName(entity.getAuthor().getFullName());
+        dto.setCommitteeId(entity.getCommittee() != null ? entity.getCommittee().getId() : null);
+        dto.setCommitteeName(entity.getCommittee() != null ? entity.getCommittee().getName() : null);
+        dto.setImageUrl(entity.getImageUrl());
+        dto.setPublishedAt(entity.getPublishedAt());
+        dto.setLikesCount(entity.getLikers().size());
+        dto.setTargetScope(entity.getTargetScope() != null ? entity.getTargetScope().name() : "NATIONAL");
+        dto.setStatus(entity.getStatus());
+        dto.setLiked(false);
+        dto.setPublic(entity.isPublic());
+        return dto;
     }
 
     private NewsDTO mapToDTO(NewsItem entity, UUID currentUserId) {
@@ -128,6 +195,7 @@ public class NewsService {
         dto.setLikesCount(entity.getLikers().size());
         dto.setTargetScope(entity.getTargetScope() != null ? entity.getTargetScope().name() : "LOCAL");
         dto.setStatus(entity.getStatus());
+        dto.setPublic(entity.isPublic());
 
         boolean isLiked = entity.getLikers().stream()
                 .anyMatch(v -> v.getId().equals(currentUserId));

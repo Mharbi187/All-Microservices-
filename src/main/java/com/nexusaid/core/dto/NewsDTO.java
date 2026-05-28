@@ -22,4 +22,5 @@ public class NewsDTO {
     private String targetScope;
     /** Statut : EN_ATTENTE | PUBLIE | REJETE */
     private String status;
+    private boolean isPublic;
 }

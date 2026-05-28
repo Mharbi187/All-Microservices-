@@ -310,10 +310,12 @@ public class ProfileService {
         profile.put("accountStatus", user.getAccountStatus().name());
         profile.put("avatar", user.getAvatar());
         profile.put("roles", rolesList);
+        profile.put("phone", user.getPhone());
+        profile.put("address", user.getAddress());
+        profile.put("educationLevel", user.getEducationLevel());
 
         // Volunteer-specific extra fields
         if (user instanceof Volunteer v) {
-            profile.put("phone", v.getPhone());
             profile.put("skills", v.getSkills());
             profile.put("matricule", v.getMatricule());
             profile.put("cin", v.getCin());
@@ -342,6 +344,12 @@ public class ProfileService {
         }
         if (updates.containsKey("phone") && updates.get("phone") != null) {
             user.setPhone((String) updates.get("phone"));
+        }
+        if (updates.containsKey("address")) {
+            user.setAddress((String) updates.get("address"));
+        }
+        if (updates.containsKey("educationLevel")) {
+            user.setEducationLevel((String) updates.get("educationLevel"));
         }
 
         // Skills update only for approved volunteers

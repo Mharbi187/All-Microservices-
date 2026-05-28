@@ -11,4 +11,5 @@ import java.util.UUID;
 public interface BloodDonationRepository extends JpaRepository<BloodDonation, UUID> {
     List<BloodDonation> findByDonorVolunteerId(UUID donorId);
     List<BloodDonation> findByBloodType(String bloodType);
+    List<BloodDonation> findByCommitteeIdOrderByDonationDateDesc(UUID committeeId);
 }

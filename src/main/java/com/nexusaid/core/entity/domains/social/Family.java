@@ -34,6 +34,14 @@ public class Family {
     @Column(length = 500)
     private String address;
 
+    private String cin;
+
+    @Column(name = "recipient_name")
+    private String recipientName;
+
+    @Column(name = "image_url", columnDefinition = "TEXT")
+    private String imageUrl;
+
     @Type(JsonBinaryType.class)
     @Column(name = "gps_coordinates", columnDefinition = "jsonb")
     private Map<String, Double> gpsCoordinates;
@@ -68,5 +76,7 @@ public class Family {
             this.headOfFamily = "Inconnu";
         if (this.status == null)
             this.status = "ACTIVE";
+        if (this.address == null || this.address.trim().isEmpty())
+            this.address = "Indéfini";
     }
 }

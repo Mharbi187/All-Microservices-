@@ -47,6 +47,8 @@ public class SecurityConfig {
                         ).permitAll()
                         // Lecture publique des comités (nécessaire pour la page d'inscription)
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/management/committees").permitAll()
+                        // Lecture publique des actualités publiées (page d'accueil)
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/news/public").permitAll()
                         .requestMatchers("/api/v1/security/**").authenticated()
                         .requestMatchers("/api/v1/onboarding/**").authenticated()
                         .anyRequest().authenticated())

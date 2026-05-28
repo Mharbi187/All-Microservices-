@@ -72,7 +72,16 @@ public class AuthService {
                         List<CommitteeRole> roles = committeeRoleRepository.findByVolunteerId(user.getId());
                         List<String> roleTitles = roles.stream()
                                         .filter(r -> r.getStatus() == CommitteeRoleStatus.APPROVED)
-                                        .map(r -> r.getTitle().name())
+                                        .flatMap(r -> {
+                                                if (r.getCommittee() != null && r.getCommittee().getType() != null) {
+                                                        return java.util.stream.Stream.of(
+                                                                r.getTitle().name(),
+                                                                r.getTitle().name() + "_" + r.getCommittee().getType().name()
+                                                        );
+                                                }
+                                                return java.util.stream.Stream.of(r.getTitle().name());
+                                        })
+                                        .distinct()
                                         .collect(Collectors.toList());
                         claims.put("roles", roleTitles);
                 } else {
@@ -85,7 +94,7 @@ public class AuthService {
         public AuthResponse register(RegisterRequest request, String ipAddress, String userAgent) {
 
                 // ── Validate CAPTCHA for registration (always required) ──
-                if (request.getCaptchaToken() != null && !request.getCaptchaToken().isBlank()) {
+                if (captchaService.isEnabled() && request.getCaptchaToken() != null && !request.getCaptchaToken().isBlank()) {
                         boolean captchaValid = captchaService.verify(request.getCaptchaToken(), "REGISTER");
                         if (!captchaValid) {
                                 auditService.logEvent(
@@ -216,7 +225,7 @@ public class AuthService {
                 }
 
                 // ── 2. Check if CAPTCHA is required (after 2 failed attempts) ──
-                boolean captchaRequired = loginAttemptService.isCaptchaRequired(ipAddress, email);
+                boolean captchaRequired = captchaService.isEnabled() && loginAttemptService.isCaptchaRequired(ipAddress, email);
                 if (captchaRequired) {
                         if (request.getCaptchaToken() == null || request.getCaptchaToken().isBlank()) {
                                 int failedAttempts = loginAttemptService.getFailedAttempts(ipAddress);

@@ -38,6 +38,9 @@ public class UserDetailsImpl implements UserDetails {
         // Add CommitteeRole titles as additional authorities (PRESIDENT, RESP_SECOURISME, etc.)
         for (CommitteeRole role : committeeRoles) {
             authorities.add(new SimpleGrantedAuthority("ROLE_" + role.getTitle().name()));
+            if (role.getCommittee() != null && role.getCommittee().getType() != null) {
+                authorities.add(new SimpleGrantedAuthority("ROLE_" + role.getTitle().name() + "_" + role.getCommittee().getType().name()));
+            }
         }
 
         return authorities;

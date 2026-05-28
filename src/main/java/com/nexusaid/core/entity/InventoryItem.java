@@ -37,4 +37,7 @@ public class InventoryItem {
     @JoinColumn(name = "committee_id", nullable = false)
     @JsonIgnore
     private Committee committee;
+
+    @Column(name = "storage_location_id")
+    private UUID storageLocationId;
 }

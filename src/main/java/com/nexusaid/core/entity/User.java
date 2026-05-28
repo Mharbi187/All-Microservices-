@@ -41,6 +41,12 @@ public class User {
 
     private String phone;
 
+    @Column(name = "address")
+    private String address;
+
+    @Column(name = "education_level")
+    private String educationLevel;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "user_type", nullable = false)
     private UserType type;

@@ -3,6 +3,7 @@ package com.nexusaid.core.controller.domains.secourisme;
 import com.nexusaid.core.entity.domains.secourisme.RescueDevice;
 import com.nexusaid.core.entity.domains.secourisme.RescueEquipment;
 import com.nexusaid.core.service.domains.secourisme.SecourismeService;
+import com.nexusaid.core.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -17,6 +18,7 @@ import java.util.UUID;
 public class SecourismeController {
 
     private final SecourismeService secourismeService;
+    private final JwtService jwtService;
 
     // ----- Equipment Management -----
 
@@ -46,8 +48,21 @@ public class SecourismeController {
     @PreAuthorize("hasAnyRole('PRESIDENT', 'RESP_SECOURISME')")
     public ResponseEntity<RescueDevice> addDevice(
             @PathVariable UUID committeeId,
-            @RequestBody RescueDevice device) {
-        return ResponseEntity.ok(secourismeService.addDevice(committeeId, device));
+            @RequestBody RescueDevice device,
+            @RequestHeader("Authorization") String token) {
+        UUID userId = jwtService.extractUserId(token.substring(7));
+        return ResponseEntity.ok(secourismeService.addDevice(committeeId, device, userId));
+    }
+
+    @PutMapping("/devices/{id}/approve")
+    @PreAuthorize("hasAnyRole('PRESIDENT', 'VICE_PRESIDENT', 'ADMIN')")
+    public ResponseEntity<RescueDevice> approveDevice(
+            @PathVariable UUID id,
+            @RequestParam(required = false) String actionChiefName,
+            @RequestParam String approvalStatus,
+            @RequestHeader("Authorization") String token) {
+        UUID userId = jwtService.extractUserId(token.substring(7));
+        return ResponseEntity.ok(secourismeService.approveDevice(id, actionChiefName, approvalStatus, userId));
     }
 
     // ----- Certifications and Trainings (Mock Endpoints) -----

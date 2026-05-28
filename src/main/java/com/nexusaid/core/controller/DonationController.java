@@ -22,7 +22,7 @@ public class DonationController {
     // --- NEEDS ---
 
     @GetMapping("/needs")
-    @PreAuthorize("hasAnyRole('DONOR', 'PRESIDENT', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('DONOR', 'PRESIDENT', 'ADMIN', 'VOLUNTEER')")
     public ResponseEntity<List<DonationNeedDto>> getNeeds() {
         return ResponseEntity.ok(donationService.getAllActiveNeeds());
     }
@@ -59,10 +59,28 @@ public class DonationController {
         return ResponseEntity.ok(donationService.getDonorStats(userDetails.getUser().getId()));
     }
 
-    // --- VALIDATION (Admin/President) ---
+    // --- VALIDATION (Admin/President/Volunteer) ---
+
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('PRESIDENT', 'ADMIN', 'VOLUNTEER')")
+    public ResponseEntity<DonationReceiptDto> getDonationById(@PathVariable UUID id) {
+        return ResponseEntity.ok(donationService.getDonationById(id));
+    }
+
+    @GetMapping("/number/{donationNumber}")
+    @PreAuthorize("hasAnyRole('PRESIDENT', 'ADMIN', 'VOLUNTEER')")
+    public ResponseEntity<DonationReceiptDto> getDonationByNumber(@PathVariable String donationNumber) {
+        return ResponseEntity.ok(donationService.getDonationByNumber(donationNumber));
+    }
+
+    @GetMapping("/committee/{committeeId}")
+    @PreAuthorize("hasAnyRole('PRESIDENT', 'ADMIN', 'VOLUNTEER')")
+    public ResponseEntity<List<DonationReceiptDto>> getCommitteeDonations(@PathVariable UUID committeeId) {
+        return ResponseEntity.ok(donationService.getCommitteeDonations(committeeId));
+    }
 
     @PostMapping("/{donationId}/validate")
-    @PreAuthorize("hasAnyRole('PRESIDENT', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('PRESIDENT', 'ADMIN', 'VOLUNTEER')")
     public ResponseEntity<DonationReceiptDto> validateDonation(
             @PathVariable UUID donationId,
             @RequestBody(required = false) String validationNote,

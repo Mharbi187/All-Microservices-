@@ -39,4 +39,33 @@ public class StockMovement {
 
     @Column(name = "recorded_by")
     private UUID recordedBy;
+
+    @Column(length = 20)
+    private String status = "APPROVED"; // PENDING, APPROVED, REJECTED
+
+    @Column(name = "proof_photo", columnDefinition = "TEXT")
+    private String proofPhoto;
+
+    @Column(name = "approved_by")
+    private UUID approvedBy;
+
+    @Column(name = "approved_by_name")
+    private String approvedByName;
+
+    @Column(name = "approved_at")
+    private LocalDateTime approvedAt;
+
+    @Column(name = "rejection_reason")
+    private String rejectionReason;
+
+    @Column(name = "recorded_by_name")
+    private String recordedByName;
+
+    @Column(name = "item_condition")
+    private String itemCondition; // NEUF, BON_ETAT, USÉ, ENDOMMAGÉ
+
+    private String supplier; // For IN movements (Donateur, Fournisseur)
+
+    @Column(name = "received_by")
+    private String receivedBy; // For IN movements
 }

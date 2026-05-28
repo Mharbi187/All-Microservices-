@@ -38,6 +38,28 @@ public class SocialAction {
 
     private int quantity;
 
+    @Column(length = 300)
+    private String title;
+
+    @Column(length = 100)
+    private String priority; // URGENCE, HAUTE, NORMALE, FAIBLE
+
+    @Column(length = 500)
+    private String location;
+
+    @Column(name = "action_chief_name", length = 200)
+    private String actionChiefName;
+
+    @Column(name = "volunteers_needed")
+    private boolean volunteersNeeded;
+
+    @Column(name = "volunteers_count")
+    private int volunteersCount;
+
+    @Type(JsonBinaryType.class)
+    @Column(name = "files_urls", columnDefinition = "jsonb")
+    private List<String> filesUrls;
+
     @Column(name = "performed_by", nullable = false)
     private UUID performedBy;
 

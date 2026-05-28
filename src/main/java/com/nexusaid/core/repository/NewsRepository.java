@@ -15,4 +15,12 @@ public interface NewsRepository extends JpaRepository<NewsItem, UUID> {
 
     @Query("SELECT n FROM NewsItem n ORDER BY n.publishedAt DESC")
     List<NewsItem> findAllOrdered();
+
+    /** Public endpoint: returns only published news ordered by date */
+    @Query("SELECT n FROM NewsItem n WHERE n.status = 'PUBLIE' AND n.isPublic = true ORDER BY n.publishedAt DESC")
+    List<NewsItem> findPublishedNews();
+
+    /** News pending validation for a specific committee (for president dashboard) */
+    @Query("SELECT n FROM NewsItem n WHERE n.committee.id = :committeeId AND n.status = 'EN_ATTENTE' ORDER BY n.createdAt DESC")
+    List<NewsItem> findPendingByCommittee(@Param("committeeId") UUID committeeId);
 }

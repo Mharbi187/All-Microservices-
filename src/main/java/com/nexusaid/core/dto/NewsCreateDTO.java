@@ -13,4 +13,5 @@ public class NewsCreateDTO {
     private UUID committeeId;
     /** Portée hiérarchique : LOCAL | REGIONAL | NATIONAL (CommitteeType) */
     private String targetScope = "LOCAL";
+    private boolean isPublic = true;
 }

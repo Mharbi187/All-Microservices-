@@ -47,6 +47,22 @@ public class RescueDevice {
     @Column(nullable = false)
     private String status; // e.g., PLANNED, ACTIVE, COMPLETED, CANCELLED
 
+    @Column(name = "volunteers_needed")
+    private Boolean volunteersNeeded;
+
+    @Column(name = "volunteers_count")
+    private Integer volunteersCount;
+
+    @Column(name = "action_chief_name")
+    private String actionChiefName;
+
+    @Column(name = "event_time")
+    private String eventTime;
+
+    @Column(name = "approval_status")
+    @Builder.Default
+    private String approvalStatus = "PENDING"; // PENDING, APPROVED, REJECTED
+
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "committee_id", nullable = false)

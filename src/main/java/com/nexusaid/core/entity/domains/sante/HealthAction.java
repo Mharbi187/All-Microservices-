@@ -38,20 +38,33 @@ public class HealthAction {
     @Column(name = "action_type", nullable = false)
     private String actionType; // e.g., Vaccination, Checkup, Distribution
 
-    @Column(length = 1000)
+    @Column(length = 2000)
     private String description;
 
     @Column(length = 2000)
     private String location; // Storing as simple String since frontend passes simple texts
 
+    // --- Localisation enrichie ---
+    @Column(length = 500)
+    private String address;
+
+    @Type(JsonBinaryType.class)
+    @Column(name = "gps_coordinates", columnDefinition = "jsonb")
+    private java.util.Map<String, Double> gpsCoordinates;
+
+    // --- Planification ---
     @Column(name = "start_date")
     private LocalDate startDate;
 
     @Column(name = "end_date")
     private LocalDate endDate;
 
-    @Column(name = "chief_id")
-    private UUID chiefId; // The ActionChief in charge
+    // --- Priorité & Catégorie ---
+    @Column(length = 50)
+    private String priority; // URGENCE, HAUTE, NORMALE, FAIBLE
+
+    @Column(length = 100)
+    private String category; // CARAVANE_MEDICALE, CONSULTATION, DISTRIBUTION, etc.
 
     @Column(nullable = false)
     private String status; // PLANNED, ONGOING, COMPLETED
@@ -59,9 +72,50 @@ public class HealthAction {
     @Column(name = "beneficiaries_count")
     private int beneficiariesCount;
 
+    // --- Volontaires ---
+    @Column(name = "volunteers_needed")
+    private boolean volunteersNeeded;
+
+    @Column(name = "volunteers_count")
+    private int volunteersCount;
+
+    @Column(name = "collaboration_type", length = 50)
+    private String collaborationType; // INTERNAL, EXTERNAL
+
+    // --- Chef d'action ---
+    @Column(name = "action_chief_name", length = 200)
+    private String actionChiefName;
+
+    @Column(name = "action_chief_photo_url", columnDefinition = "TEXT")
+    private String actionChiefPhotoUrl;
+
+    @Column(name = "action_chief_id")
+    private UUID actionChiefId;
+
+    // --- Hôpital / Bénéficiaire ---
+    @Column(name = "hospital_destination", length = 300)
+    private String hospitalDestination;
+
+    // --- Médias & Documents ---
     @Type(JsonBinaryType.class)
     @Column(name = "photos_urls", columnDefinition = "jsonb")
     private List<String> photosUrls;
+
+    @Type(JsonBinaryType.class)
+    @Column(name = "files_urls", columnDefinition = "jsonb")
+    private List<String> filesUrls; // PDF, Word, Excel, etc.
+
+    // --- Participants ---
+    @Type(JsonBinaryType.class)
+    @Column(name = "volunteers_list", columnDefinition = "jsonb")
+    private List<java.util.Map<String, String>> volunteersList; // [{id, name, committeeId}]
+
+    // --- Traçabilité ---
+    @Column(name = "created_by")
+    private UUID createdBy;
+
+    @Column(name = "chief_id")
+    private UUID chiefId; // The ActionChief in charge (legacy)
 
     @PrePersist
     protected void onCreate() {
@@ -71,5 +125,7 @@ public class HealthAction {
             this.title = "Action Santé";
         if (this.status == null)
             this.status = "PLANNED";
+        if (this.priority == null)
+            this.priority = "NORMALE";
     }
 }

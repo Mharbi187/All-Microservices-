@@ -4,6 +4,19 @@ spring:
   config:
     import: optional:configserver:http://config-server:8888
 
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: c6287943@gmail.com
+    password: lqdgldnjygchljia
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+
   datasource:
     # ⚠️ SECURITY: All datasource credentials must come from environment variables
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres-db:5432/nexusaid_db}

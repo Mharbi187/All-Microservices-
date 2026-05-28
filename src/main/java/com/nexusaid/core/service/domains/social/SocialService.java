@@ -47,7 +47,10 @@ public class SocialService {
             existing.setFamilyName(updated.getFamilyName());
             existing.setHeadOfFamily(updated.getHeadOfFamily());
             existing.setMembers(updated.getMembers());
-            existing.setAddress(updated.getAddress());
+            existing.setAddress(updated.getAddress() == null || updated.getAddress().trim().isEmpty() ? "Indéfini" : updated.getAddress());
+            existing.setCin(updated.getCin());
+            existing.setRecipientName(updated.getRecipientName());
+            existing.setImageUrl(updated.getImageUrl());
             existing.setGpsCoordinates(updated.getGpsCoordinates());
             existing.setNeedsType(updated.getNeedsType());
             existing.setUrgentNeeds(updated.getUrgentNeeds());
