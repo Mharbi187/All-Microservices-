@@ -3,6 +3,19 @@ server:
   port: 8080
 
 spring:
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: c6287943@gmail.com
+    password: lqdgldnjygchljia
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+
   datasource:
     url: jdbc:postgresql://postgres-db:5432/nexusaid_db
     username: postgres
