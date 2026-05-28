@@ -6,16 +6,14 @@
 // ============================================================
 
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUIStore } from '@/stores';
 import { useAuthStore } from '@/stores/authStore';
 import committeeContactService, { type CommitteeContact } from '@/services/committeeContactService';
 import 'leaflet/dist/leaflet.css';
 
-/* ─────────────────── TYPE LOCAL (alias) ─────────────────── */
-// CommitteeContact importé depuis le service — pas de re-déclaration
-
-/* ─────────────────── CONTRÔLE D'ACCÈS ─────────────────── */
+/* ─────────────────── ACCESS CONTROL ─────────────────── */
 
 function useCanManageContacts(): boolean {
     const user = useAuthStore(s => s.user);
@@ -44,6 +42,7 @@ const AdminContactEditor: React.FC<{
     onClose: () => void;
     onSaved: (contacts: CommitteeContact[]) => void;
 }> = ({ contacts, dark, onClose, onSaved }) => {
+    const { t } = useTranslation();
     const [list, setList] = useState<CommitteeContact[]>(contacts.map(c => ({ ...c })));
     const [editIdx, setEditIdx] = useState(0);
     const [saving, setSaving] = useState(false);
@@ -118,9 +117,17 @@ const AdminContactEditor: React.FC<{
             >
                 {/* Header */}
                 <div style={{ padding: '18px 20px 14px', borderBottom: `1px solid ${borderCol}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-                    <div>
-                        <div style={{ fontSize: 15, fontWeight: 700, color: fg }}>🏛️ Gestion des Comités</div>
-                        <div style={{ fontSize: 11, color: sub, marginTop: 2 }}>Président · VP · Secrétaire Général — Comité National</div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C8102E" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="4" y="2" width="16" height="20" rx="2" ry="2"/>
+                            <line x1="9" y1="22" x2="9" y2="16"/>
+                            <line x1="15" y1="22" x2="15" y2="16"/>
+                            <line x1="12" y1="2" x2="12" y2="12"/>
+                        </svg>
+                        <div>
+                            <div style={{ fontSize: 15, fontWeight: 700, color: fg }}>Gestion des Comités</div>
+                            <div style={{ fontSize: 11, color: sub, marginTop: 2 }}>Président · VP · Secrétaire Général — Comité National</div>
+                        </div>
                     </div>
                     <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: '50%', border: `1px solid ${borderCol}`, background: 'transparent', cursor: 'pointer', fontSize: 15, color: sub, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
                 </div>
@@ -163,8 +170,14 @@ const AdminContactEditor: React.FC<{
                     <div style={{ flex: 1, overflowY: 'auto', padding: '16px 18px' }}>
                         {list[editIdx] && (
                             <>
-                                <div style={{ fontSize: 13, fontWeight: 700, color: '#C8102E', marginBottom: 14 }}>
-                                    ✏️ {list[editIdx].name}
+                                <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 14 }}>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C8102E" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                    </svg>
+                                    <div style={{ fontSize: 13, fontWeight: 700, color: '#C8102E' }}>
+                                        {list[editIdx].name}
+                                    </div>
                                 </div>
                                 {field('Nom affiché', 'name')}
                                 {field('Groupe (Siège National / Comités Régionaux)', 'group')}
@@ -196,15 +209,28 @@ const AdminContactEditor: React.FC<{
                 {/* Footer */}
                 <div style={{ padding: '12px 16px', borderTop: `1px solid ${borderCol}`, display: 'flex', gap: 8, flexShrink: 0 }}>
                     <button onClick={handleReset}
-                        style={{ padding: '9px 12px', borderRadius: 10, border: `1px solid ${borderCol}`, background: 'transparent', fontSize: 11, color: sub, cursor: 'pointer', transition: 'all 0.2s' }}
+                        style={{ padding: '9px 12px', borderRadius: 10, border: `1px solid ${borderCol}`, background: 'transparent', fontSize: 11, color: sub, cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 4 }}
                         onMouseEnter={e => { e.currentTarget.style.color = '#C8102E'; e.currentTarget.style.borderColor = '#C8102E'; }}
                         onMouseLeave={e => { e.currentTarget.style.color = sub; e.currentTarget.style.borderColor = borderCol; }}
-                    >↺ Réinitialiser</button>
+                    >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                        Réinitialiser
+                    </button>
                     <button onClick={onClose} style={{ flex: 1, padding: '9px', borderRadius: 10, border: `1px solid ${borderCol}`, background: 'transparent', fontSize: 13, color: fg, cursor: 'pointer' }}>Annuler</button>
                     <button onClick={handleSave} disabled={saving}
-                        style={{ flex: 2, padding: '9px', borderRadius: 10, border: 'none', background: success ? '#059669' : '#C8102E', color: '#fff', fontSize: 13, fontWeight: 700, cursor: saving ? 'wait' : 'pointer', boxShadow: '0 3px 12px rgba(200,16,46,0.3)', transition: 'all 0.22s' }}
+                        style={{ flex: 2, padding: '9px', borderRadius: 10, border: 'none', background: success ? '#059669' : '#C8102E', color: '#fff', fontSize: 13, fontWeight: 700, cursor: saving ? 'wait' : 'pointer', boxShadow: '0 3px 12px rgba(200,16,46,0.3)', transition: 'all 0.22s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
                     >
-                        {success ? '✅ Enregistré !' : saving ? '⏳...' : '✓ Enregistrer tout'}
+                        {success ? (
+                            <>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                Enregistré !
+                            </>
+                        ) : saving ? '⏳...' : (
+                            <>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                Enregistrer tout
+                            </>
+                        )}
                     </button>
                 </div>
             </motion.div>
@@ -214,9 +240,14 @@ const AdminContactEditor: React.FC<{
 
 /* ─────────────────── LEAFLET MAP ─────────────────── */
 
-interface LeafletMapProps { committee: any }
+interface LeafletMapProps {
+    committee: any;
+    translateName: (c: any) => string;
+    translateAddress: (c: any) => string;
+}
 
-const LeafletMap: React.FC<LeafletMapProps> = ({ committee }) => {
+const LeafletMap: React.FC<LeafletMapProps> = ({ committee, translateName, translateAddress }) => {
+    const { t } = useTranslation();
     const mapRef = useRef<HTMLDivElement>(null);
     const mapInstance = useRef<import('leaflet').Map | null>(null);
     const markerRef = useRef<import('leaflet').Marker | null>(null);
@@ -271,7 +302,7 @@ const LeafletMap: React.FC<LeafletMapProps> = ({ committee }) => {
 
             markerRef.current = L.marker([committee.lat, committee.lng], { icon: redIcon })
                 .addTo(mapInstance.current)
-                .bindPopup(`<b>${committee.name}</b><br>${committee.address}`)
+                .bindPopup(`<b>${translateName(committee)}</b><br>${translateAddress(committee)}`)
                 .openPopup();
         };
 
@@ -293,7 +324,7 @@ const LeafletMap: React.FC<LeafletMapProps> = ({ committee }) => {
             mapInstance.current!.flyTo([committee.lat, committee.lng], 14, { duration: 1.2 });
             if (markerRef.current) {
                 markerRef.current.setLatLng([committee.lat, committee.lng]);
-                markerRef.current.setPopupContent(`<b>${committee.name}</b><br>${committee.address}`);
+                markerRef.current.setPopupContent(`<b>${translateName(committee)}</b><br>${translateAddress(committee)}`);
                 markerRef.current.openPopup();
             }
 
@@ -331,7 +362,7 @@ const LeafletMap: React.FC<LeafletMapProps> = ({ committee }) => {
                     <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21" />
                     <line x1="9" y1="3" x2="9" y2="18" /><line x1="15" y1="6" x2="15" y2="21" />
                 </svg>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#1A1A2E' }}>{committee.name.replace('Comité Régional — ', '').replace('Siège ', '')}, Tunisie</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#1A1A2E' }}>{translateName(committee).replace('Comité Régional — ', '').replace('Siège ', '')}, {t('home.contact.locationSuffix', 'Tunisie')}</span>
             </div>
         </div>
     );
@@ -415,7 +446,7 @@ const InfoCard: React.FC<{
                 <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: dark ? '#A1A1AA' : '#595959', marginBottom: 3 }}>
                     {label}
                 </div>
-                <div style={{ fontSize: 13.5, fontWeight: 600, color: dark ? '#F4F4F5' : '#1A1A1A', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <div style={{ fontSize: 13.5, fontWeight: 600, color: dark ? '#F4F4F5' : '#1A1A2E', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {value}
                 </div>
             </div>
@@ -455,6 +486,7 @@ const IcoClock = () => <svg width="18" height="18" fill="none" stroke="#C8102E" 
 /* ─────────────────── MAIN SECTION ─────────────────── */
 
 const ContactSection: React.FC = () => {
+    const { t } = useTranslation();
     const { themeMode } = useUIStore();
     const dark = themeMode === 'dark';
     const canEdit = useCanManageContacts();
@@ -492,6 +524,26 @@ const ContactSection: React.FC = () => {
         setSelectedId('siege');
     };
 
+    // Translation helpers for dynamic committee structures
+    const translateCommitteeName = (c: CommitteeContact) => {
+        if (!c) return '';
+        if (c.id === 'siege') return t('home.contact.committees.siege.name', c.name);
+        return c.name;
+    };
+
+    const translateCommitteeAddress = (c: CommitteeContact) => {
+        if (!c) return '';
+        if (c.id === 'siege') return t('home.contact.committees.siege.address', c.address);
+        return c.address;
+    };
+
+    const translateCommitteeGroup = (groupName: string) => {
+        if (groupName === 'Siège National') return t('home.contact.groups.national', 'Siège National');
+        if (groupName === 'Comités Régionaux') return t('home.contact.groups.regional', 'Comités Régionaux');
+        if (groupName === 'Comités Locaux') return t('home.contact.groups.local', 'Comités Locaux');
+        return groupName;
+    };
+
     const sectionBg = dark ? '#121214' : 'transparent';
     const fg = dark ? '#F4F4F5' : '#1A1A1A';
     const sub = dark ? '#A1A1AA' : '#595959';
@@ -521,13 +573,13 @@ const ContactSection: React.FC = () => {
             <motion.div initial={{ opacity: 0, y: 18 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} style={{ position: 'relative', zIndex: 1, marginBottom: 52, display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 }}>
                 <div>
                     <div style={{ fontSize: 11, fontWeight: 700, color: '#E30613', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 12 }}>
-                        Nous contacter
+                        {t('home.contact.tag', 'Nous contacter')}
                     </div>
                     <h2 className="font-display" style={{ fontSize: 'clamp(30px, 4vw, 52px)', fontWeight: 800, lineHeight: 1.1, color: fg, marginBottom: 10, letterSpacing: '-0.02em' }}>
-                        Restons en Contact
+                        {t('home.contact.title', 'Restons en Contact')}
                     </h2>
                     <p style={{ fontSize: 16, color: sub, fontWeight: 400 }}>
-                        Une question ? Un partenariat ? Contactez-nous !
+                        {t('home.contact.subtitle', 'Une question ? Un partenariat ? Contactez-nous !')}
                     </p>
                 </div>
 
@@ -551,7 +603,7 @@ const ContactSection: React.FC = () => {
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
                         </svg>
-                        {loading ? 'Chargement...' : `Gérer les comités (${committees.length})`}
+                        {loading ? t('home.contact.loading', 'Chargement...') : `${t('home.contact.manageCommittees', 'Gérer les comités')} (${committees.length})`}
                     </button>
                 )}
             </motion.div>
@@ -567,17 +619,17 @@ const ContactSection: React.FC = () => {
                 >
                     {/* 2×2 Info cards grid */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
-                        <InfoCard dark={dark} icon={<IcoPin />} label="Adresse" value={committee.address} />
-                        <InfoCard dark={dark} icon={<IcoTel />} label="Téléphone" value={committee.phone} />
-                        <InfoCard dark={dark} icon={<IcoMail />} label="Email" value={committee.email} />
-                        <InfoCard dark={dark} icon={<IcoClock />} label="Horaires" value="Lun — Ven : 08:00 — 17:00" />
+                        <InfoCard dark={dark} icon={<IcoPin />} label={t('home.contact.addressLabel', 'Adresse')} value={translateCommitteeAddress(committee)} />
+                        <InfoCard dark={dark} icon={<IcoTel />} label={t('home.contact.phoneLabel', 'Téléphone')} value={committee.phone} />
+                        <InfoCard dark={dark} icon={<IcoMail />} label={t('home.contact.emailLabel', 'Email')} value={committee.email} />
+                        <InfoCard dark={dark} icon={<IcoClock />} label={t('home.contact.hoursLabel', 'Horaires')} value={t('home.contact.hoursValue', 'Lun — Ven : 08:00 — 17:00')} />
                     </div>
 
                     {/* Real Leaflet map */}
-                    {committee && !loading && <LeafletMap committee={committee} />}
+                    {committee && !loading && <LeafletMap committee={committee} translateName={translateCommitteeName} translateAddress={translateCommitteeAddress} />}
                     {loading && (
                         <div style={{ borderRadius: 14, height: 360, background: dark ? '#1E1E22' : '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <div style={{ fontSize: 12, color: sub }}>Chargement de la carte...</div>
+                            <div style={{ fontSize: 12, color: sub }}>{t('home.contact.mapLoading', 'Chargement de la carte...')}</div>
                         </div>
                     )}
                 </motion.div>
@@ -602,15 +654,15 @@ const ContactSection: React.FC = () => {
                         {/* Row 1: Nom + Email */}
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
                             <div>
-                                <label style={labelStyle}>Nom Complet</label>
-                                <input type="text" placeholder="Votre nom" required
+                                <label style={labelStyle}>{t('home.contact.form.fullName', 'Nom Complet')}</label>
+                                <input type="text" placeholder={t('home.contact.form.fullNamePlaceholder', 'Votre nom')} required
                                     style={baseStyle} value={formData.name}
                                     onChange={e => setFormData(f => ({ ...f, name: e.target.value }))}
                                     onFocus={onFocus} onBlur={onBlur} />
                             </div>
                             <div>
-                                <label style={labelStyle}>Email</label>
-                                <input type="email" placeholder="email@example.tn" required
+                                <label style={labelStyle}>{t('home.contact.form.email', 'Email')}</label>
+                                <input type="email" placeholder={t('home.contact.form.emailPlaceholder', 'email@example.tn')} required
                                     style={baseStyle} value={formData.email}
                                     onChange={e => setFormData(f => ({ ...f, email: e.target.value }))}
                                     onFocus={onFocus} onBlur={onBlur} />
@@ -619,28 +671,30 @@ const ContactSection: React.FC = () => {
 
                         {/* Row 2: Comité à contacter → drives the map */}
                         <div style={{ marginBottom: 14 }}>
-                            <label style={labelStyle}>Comité à contacter</label>
-                            <select required
-                                style={{ ...baseStyle, cursor: 'pointer', appearance: 'none', backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23595959' stroke-width='2'%3e%3cpath d='M6 9l6 6 6-6'/%3e%3c/svg%3e")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', backgroundSize: '16px', paddingRight: 36 }}
-                                value={formData.committee}
-                                onChange={e => handleCommitteeChange(e.target.value)}
-                                onFocus={onFocus} onBlur={onBlur}
-                            >
-                                <option value="" disabled>Sélectionnez un comité</option>
-                                {groups.map(g => (
-                                    <optgroup key={g} label={g}>
-                                        {committees.filter(c => c.group === g).map(c => (
-                                            <option key={c.id} value={c.id}>{c.name}</option>
-                                        ))}
-                                    </optgroup>
-                                ))}
-                            </select>
+                            <label style={labelStyle}>{t('home.contact.form.committee', 'Comité à contacter')}</label>
+                            <div style={{ position: 'relative' }}>
+                                <select required
+                                    style={{ ...baseStyle, cursor: 'pointer', appearance: 'none', backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23595959' stroke-width='2'%3e%3cpath d='M6 9l6 6 6-6'/%3e%3c/svg%3e")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', backgroundSize: '16px', paddingRight: 36 }}
+                                    value={formData.committee}
+                                    onChange={e => handleCommitteeChange(e.target.value)}
+                                    onFocus={onFocus} onBlur={onBlur}
+                                >
+                                    <option value="" disabled>{t('home.contact.form.selectCommittee', 'Sélectionnez un comité')}</option>
+                                    {groups.map(g => (
+                                        <optgroup key={g} label={translateCommitteeGroup(g)}>
+                                            {committees.filter(c => c.group === g).map(c => (
+                                                <option key={c.id} value={c.id}>{translateCommitteeName(c)}</option>
+                                            ))}
+                                        </optgroup>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
 
                         {/* Row 3: Sujet */}
                         <div style={{ marginBottom: 14 }}>
-                            <label style={labelStyle}>Sujet</label>
-                            <input type="text" placeholder="Objet de votre message" required
+                            <label style={labelStyle}>{t('home.contact.form.subject', 'Sujet')}</label>
+                            <input type="text" placeholder={t('home.contact.form.subjectPlaceholder', 'Objet de votre message')} required
                                 style={baseStyle} value={formData.subject}
                                 onChange={e => setFormData(f => ({ ...f, subject: e.target.value }))}
                                 onFocus={onFocus} onBlur={onBlur} />
@@ -648,8 +702,8 @@ const ContactSection: React.FC = () => {
 
                         {/* Row 4: Message */}
                         <div style={{ marginBottom: 24 }}>
-                            <label style={labelStyle}>Message</label>
-                            <textarea placeholder="Décrivez votre demande..." rows={5} required
+                            <label style={labelStyle}>{t('home.contact.form.message', 'Message')}</label>
+                            <textarea placeholder={t('home.contact.form.messagePlaceholder', 'Décrivez votre demande...')} rows={5} required
                                 style={{ ...baseStyle, resize: 'vertical', minHeight: 120 }}
                                 value={formData.message}
                                 onChange={e => setFormData(f => ({ ...f, message: e.target.value }))}
@@ -670,11 +724,20 @@ const ContactSection: React.FC = () => {
                                 boxShadow: '0 6px 20px rgba(227,6,19,0.38)',
                                 transition: 'all 0.28s ease',
                                 fontFamily: 'inherit',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 6,
                             }}
                             onMouseEnter={e => { e.currentTarget.style.background = '#B90010'; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 28px rgba(227,6,19,0.5)'; }}
                             onMouseLeave={e => { e.currentTarget.style.background = '#E30613'; e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(227,6,19,0.38)'; }}
                         >
-                            {submitted ? '✅ Message envoyé !' : 'Envoyer le message'}
+                            {submitted ? (
+                                <>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                    {t('home.contact.form.sending', 'Message envoyé !')}
+                                </>
+                            ) : t('home.contact.form.send', 'Envoyer le message')}
                         </button>
 
                         {/* Success message */}
@@ -684,7 +747,7 @@ const ContactSection: React.FC = () => {
                                     initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                                     style={{ textAlign: 'center', marginTop: 14, fontSize: 13.5, color: '#059669', fontWeight: 500 }}
                                 >
-                                    Votre message a été envoyé. Nous vous répondrons sous 48h.
+                                    {t('home.contact.form.successMessage', 'Votre message a été envoyé. Nous vous répondrons sous 48h.')}
                                 </motion.p>
                             )}
                         </AnimatePresence>
@@ -736,4 +799,3 @@ const ContactSection: React.FC = () => {
 };
 
 export default ContactSection;
-

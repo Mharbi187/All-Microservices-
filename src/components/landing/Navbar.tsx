@@ -6,17 +6,31 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Dropdown } from 'antd';
+import { GlobalOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import { useUIStore } from '../../stores/uiStore';
 
-const navLinks = [
-    { label: 'Accueil', href: '/' },
-    { label: 'À Propos', href: '/about' },
-    { label: 'Modules', href: '/#modules' },
-    { label: 'Actualités', href: '/#news' },
-    { label: 'Contact', href: '/#contact' },
-];
-
 const Navbar: React.FC = () => {
+    const { t, i18n } = useTranslation();
+
+    const navLinks = [
+        { label: t('nav.home', 'Accueil'), href: '/' },
+        { label: t('nav.about', 'À Propos'), href: '/about' },
+        { label: t('nav.modules', 'Modules'), href: '/#modules' },
+        { label: t('nav.news', 'Actualités'), href: '/#news' },
+        { label: t('nav.contact', 'Contact'), href: '/#contact' },
+    ];
+
+    const changeLanguage = (lang: string) => {
+        i18n.changeLanguage(lang);
+    };
+
+    const languageMenuItems = [
+        { key: 'fr', label: 'Français (FR)' },
+        { key: 'ar', label: 'العربية (AR)' },
+        { key: 'en', label: 'English (EN)' },
+    ];
     const [scrolled, setScrolled] = useState(false);
     const [mobileOpen, setMobileOpen] = useState(false);
     const location = useLocation();
@@ -171,6 +185,35 @@ const Navbar: React.FC = () => {
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
                     )}
                 </button>
+
+                <Dropdown
+                    menu={{
+                        items: languageMenuItems,
+                        onClick: (e) => changeLanguage(e.key),
+                        selectedKeys: [i18n.language]
+                    }}
+                    placement="bottomRight"
+                    trigger={['click']}
+                >
+                    <button
+                        style={{
+                            width: 36, height: 36,
+                            borderRadius: '50%',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            background: dark ? 'rgba(255,255,255,0.05)' : 'transparent',
+                            border: dark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(200,16,46,0.15)',
+                            color: dark ? '#F4F4F5' : '#C8102E',
+                            cursor: 'pointer',
+                            transition: 'all 0.22s ease',
+                            marginRight: 8,
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = dark ? 'rgba(255,255,255,0.1)' : 'rgba(200,16,46,0.06)'; e.currentTarget.style.borderColor = dark ? 'rgba(255,255,255,0.2)' : '#C8102E'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = dark ? 'rgba(255,255,255,0.05)' : 'transparent'; e.currentTarget.style.borderColor = dark ? 'rgba(255,255,255,0.1)' : 'rgba(200,16,46,0.15)'; e.currentTarget.style.transform = 'none'; }}
+                        aria-label="Changer la langue"
+                    >
+                        <GlobalOutlined style={{ fontSize: 16 }} />
+                    </button>
+                </Dropdown>
                 <Link to="/login"
                     style={{
                         padding: '7px 16px',
@@ -187,7 +230,7 @@ const Navbar: React.FC = () => {
                     onMouseEnter={(e) => { e.currentTarget.style.background = dark ? 'rgba(255,255,255,0.1)' : 'rgba(200,16,46,0.06)'; e.currentTarget.style.borderColor = dark ? 'rgba(255,255,255,0.3)' : '#C8102E'; }}
                     onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = dark ? 'rgba(255,255,255,0.15)' : 'rgba(200,16,46,0.28)'; }}
                 >
-                    Connexion
+                    {t('nav.login', 'Connexion')}
                 </Link>
                 <Link to="/register"
                     style={{
@@ -205,7 +248,7 @@ const Navbar: React.FC = () => {
                     onMouseEnter={(e) => { e.currentTarget.style.background = '#9B0B22'; e.currentTarget.style.boxShadow = '0 5px 18px rgba(200,16,46,0.48)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
                     onMouseLeave={(e) => { e.currentTarget.style.background = '#C8102E'; e.currentTarget.style.boxShadow = '0 3px 12px rgba(200,16,46,0.36)'; e.currentTarget.style.transform = 'none'; }}
                 >
-                    S'inscrire
+                    {t('nav.register', "S'inscrire")}
                 </Link>
             </div>
 
@@ -306,6 +349,27 @@ const Navbar: React.FC = () => {
                             );
                         })}
                         <div style={{ height: 1, background: dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)', margin: '6px 2px' }} />
+                        
+                        <div style={{ display: 'flex', gap: 8, padding: '0 4px', marginBottom: '8px' }}>
+                            {languageMenuItems.map((item) => (
+                                <button
+                                    key={item.key}
+                                    onClick={() => changeLanguage(item.key)}
+                                    style={{
+                                        flex: 1,
+                                        padding: '8px', borderRadius: 8,
+                                        background: i18n.language === item.key ? '#C8102E' : (dark ? 'rgba(255,255,255,0.05)' : 'rgba(200,16,46,0.04)'),
+                                        color: i18n.language === item.key ? '#fff' : (dark ? '#F4F4F5' : '#C8102E'),
+                                        border: 'none',
+                                        fontSize: 13, fontWeight: i18n.language === item.key ? 600 : 500,
+                                        cursor: 'pointer',
+                                    }}
+                                >
+                                    {item.key.toUpperCase()}
+                                </button>
+                            ))}
+                        </div>
+
                         <div style={{ padding: '0 4px', marginBottom: '8px' }}>
                             <button
                                 onClick={toggleTheme}
@@ -322,18 +386,18 @@ const Navbar: React.FC = () => {
                                 }}
                             >
                                 {themeMode === 'light' ? (
-                                    <><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg> Mode Sombre</>
+                                    <><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg> {t('nav.theme.dark', 'Mode Sombre')}</>
                                 ) : (
-                                    <><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg> Mode Clair</>
+                                    <><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg> {t('nav.theme.light', 'Mode Clair')}</>
                                 )}
                             </button>
                         </div>
                         <div style={{ display: 'flex', gap: 8, padding: '2px' }}>
                             <Link to="/login" onClick={() => setMobileOpen(false)} style={{ flex: 1, textAlign: 'center', padding: '11px', borderRadius: 10, border: dark ? '1.5px solid rgba(255,255,255,0.15)' : '1.5px solid rgba(200,16,46,0.25)', color: dark ? '#F4F4F5' : '#C8102E', textDecoration: 'none', fontSize: 14, fontWeight: 500 }}>
-                                Connexion
+                                {t('nav.login', 'Connexion')}
                             </Link>
                             <Link to="/register" onClick={() => setMobileOpen(false)} style={{ flex: 1, textAlign: 'center', padding: '11px', borderRadius: 10, background: '#C8102E', color: '#fff', textDecoration: 'none', fontSize: 14, fontWeight: 600 }}>
-                                S'inscrire
+                                {t('nav.register', "S'inscrire")}
                             </Link>
                         </div>
                     </motion.div>

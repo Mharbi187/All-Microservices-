@@ -8,7 +8,7 @@ import { Typography, Space, Tag, Button, Badge, Empty } from 'antd';
 import {
     BellOutlined, CheckCircleOutlined, EnvironmentOutlined,
     GiftOutlined, HeartOutlined, InfoCircleOutlined,
-    DeleteOutlined, CheckOutlined,
+    DeleteOutlined, CheckOutlined, AlertOutlined, NotificationOutlined
 } from '@ant-design/icons';
 import { useUIStore } from '@/stores';
 import { useNavigate } from 'react-router-dom';
@@ -257,10 +257,10 @@ const DonorNotificationsPage: React.FC = () => {
                 {([
                     { value: 'ALL', label: 'Toutes' },
                     { value: 'UNREAD', label: `Non lues (${unreadCount})` },
-                    { value: 'DON_VALIDE', label: '✅ Dons validés' },
-                    { value: 'NOUVEAU_BESOIN', label: '🚨 Nouveaux besoins' },
-                    { value: 'IMPACT', label: '💗 Impact' },
-                    { value: 'MISE_A_JOUR', label: '📢 Mises à jour' },
+                    { value: 'DON_VALIDE', label: <span><CheckCircleOutlined /> Dons validés</span> },
+                    { value: 'NOUVEAU_BESOIN', label: <span><AlertOutlined /> Nouveaux besoins</span> },
+                    { value: 'IMPACT', label: <span><HeartOutlined /> Impact</span> },
+                    { value: 'MISE_A_JOUR', label: <span><NotificationOutlined /> Mises à jour</span> },
                 ] as const).map((f) => (
                     <Button
                         key={f.value}

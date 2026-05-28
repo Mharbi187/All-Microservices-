@@ -141,7 +141,6 @@ const DonorLayout: React.FC = () => {
 
     const isDark = themeMode === 'dark';
 
-    // Sidebar gradient for donor: green-tinted
     const siderStyle: React.CSSProperties = {
         overflow: 'auto',
         height: '100vh',
@@ -149,13 +148,167 @@ const DonorLayout: React.FC = () => {
         left: 0,
         top: 0,
         bottom: 0,
-        background: isDark
-            ? 'linear-gradient(180deg, #0f1a0f 0%, #1a2e1a 50%, #0f1a0f 100%)'
-            : 'linear-gradient(180deg, #1a3a1a 0%, #1e4a1e 50%, #1a3a1a 100%)',
     };
 
     return (
         <Layout className="min-h-screen">
+            <style dangerouslySetInnerHTML={{ __html: themeMode === 'dark' ? `
+                .nexus-sider {
+                    background: #141414 !important;
+                    border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+                }
+                .nexus-sider .ant-layout-sider-children {
+                    background: #141414 !important;
+                }
+                .nexus-menu {
+                    background: #141414 !important;
+                }
+                .nexus-menu .ant-menu-item,
+                .nexus-menu .ant-menu-submenu-title {
+                    color: #ffffff !important;
+                    font-weight: 700 !important;
+                    font-size: 13.5px !important;
+                    transition: all 0.2s ease-in-out !important;
+                    border-radius: 8px !important;
+                    margin: 4px 10px !important;
+                    width: calc(100% - 20px) !important;
+                    display: flex !important;
+                    align-items: center !important;
+                }
+                .nexus-menu .ant-menu-item .anticon,
+                .nexus-menu .ant-menu-submenu-title .anticon {
+                    font-size: 16px !important;
+                    color: #e2e8f0 !important;
+                    transition: color 0.2s ease-in-out !important;
+                }
+                .nexus-menu .ant-menu-item:hover,
+                .nexus-menu .ant-menu-submenu-title:hover {
+                    color: #DC2626 !important;
+                    background-color: rgba(220, 38, 38, 0.12) !important;
+                }
+                .nexus-menu .ant-menu-item:hover .anticon,
+                .nexus-menu .ant-menu-submenu-title:hover .anticon {
+                    color: #DC2626 !important;
+                }
+                .nexus-menu .ant-menu-item.ant-menu-item-selected {
+                    color: #ffffff !important;
+                    background: linear-gradient(135deg, #DC2626, #EF4444) !important;
+                    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.35) !important;
+                }
+                .nexus-menu .ant-menu-item.ant-menu-item-selected .anticon {
+                    color: #ffffff !important;
+                }
+                .nexus-menu .ant-menu-submenu-arrow {
+                    color: #e2e8f0 !important;
+                }
+                .nexus-menu .ant-menu-submenu:hover > .ant-menu-submenu-title .ant-menu-submenu-arrow {
+                    color: #DC2626 !important;
+                }
+                .nexus-menu .ant-menu-sub {
+                    background: #1f1f1f !important;
+                    border-radius: 8px !important;
+                    margin: 0 10px !important;
+                    padding: 4px 0 !important;
+                }
+                .nexus-menu .ant-menu-sub .ant-menu-item {
+                    width: calc(100% - 16px) !important;
+                    margin: 3px 8px !important;
+                }
+                /* Sider collapse width fixes */
+                .ant-layout-sider-collapsed .nexus-menu .ant-menu-item {
+                    width: 40px !important;
+                    margin: 4px auto !important;
+                    padding: 0 !important;
+                    justify-content: center !important;
+                }
+                .ant-layout-sider-collapsed .nexus-menu .ant-menu-submenu-title {
+                    width: 40px !important;
+                    margin: 4px auto !important;
+                    padding: 0 !important;
+                    justify-content: center !important;
+                }
+                .ant-layout-sider-collapsed .nexus-menu .ant-menu-submenu-arrow {
+                    display: none !important;
+                }
+            ` : `
+                .nexus-sider {
+                    background: #ffffff !important;
+                    border-right: 1px solid rgba(0, 0, 0, 0.08) !important;
+                }
+                .nexus-sider .ant-layout-sider-children {
+                    background: #ffffff !important;
+                }
+                .nexus-menu {
+                    background: #ffffff !important;
+                }
+                .nexus-menu .ant-menu-item,
+                .nexus-menu .ant-menu-submenu-title {
+                    color: #1e293b !important;
+                    font-weight: 700 !important;
+                    font-size: 13.5px !important;
+                    transition: all 0.2s ease-in-out !important;
+                    border-radius: 8px !important;
+                    margin: 4px 10px !important;
+                    width: calc(100% - 20px) !important;
+                    display: flex !important;
+                    align-items: center !important;
+                }
+                .nexus-menu .ant-menu-item .anticon,
+                .nexus-menu .ant-menu-submenu-title .anticon {
+                    font-size: 16px !important;
+                    color: #4b5563 !important;
+                    transition: color 0.2s ease-in-out !important;
+                }
+                .nexus-menu .ant-menu-item:hover,
+                .nexus-menu .ant-menu-submenu-title:hover {
+                    color: #DC2626 !important;
+                    background-color: rgba(220, 38, 38, 0.06) !important;
+                }
+                .nexus-menu .ant-menu-item:hover .anticon,
+                .nexus-menu .ant-menu-submenu-title:hover .anticon {
+                    color: #DC2626 !important;
+                }
+                .nexus-menu .ant-menu-item.ant-menu-item-selected {
+                    color: #ffffff !important;
+                    background: linear-gradient(135deg, #DC2626, #EF4444) !important;
+                    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.24) !important;
+                }
+                .nexus-menu .ant-menu-item.ant-menu-item-selected .anticon {
+                    color: #ffffff !important;
+                }
+                .nexus-menu .ant-menu-submenu-arrow {
+                    color: #4b5563 !important;
+                }
+                .nexus-menu .ant-menu-submenu:hover > .ant-menu-submenu-title .ant-menu-submenu-arrow {
+                    color: #DC2626 !important;
+                }
+                .nexus-menu .ant-menu-sub {
+                    background: #f8fafc !important;
+                    border-radius: 8px !important;
+                    margin: 0 10px !important;
+                    padding: 4px 0 !important;
+                }
+                .nexus-menu .ant-menu-sub .ant-menu-item {
+                    width: calc(100% - 16px) !important;
+                    margin: 3px 8px !important;
+                }
+                /* Sider collapse width fixes */
+                .ant-layout-sider-collapsed .nexus-menu .ant-menu-item {
+                    width: 40px !important;
+                    margin: 4px auto !important;
+                    padding: 0 !important;
+                    justify-content: center !important;
+                }
+                .ant-layout-sider-collapsed .nexus-menu .ant-menu-submenu-title {
+                    width: 40px !important;
+                    margin: 4px auto !important;
+                    padding: 0 !important;
+                    justify-content: center !important;
+                }
+                .ant-layout-sider-collapsed .nexus-menu .ant-menu-submenu-arrow {
+                    display: none !important;
+                }
+            ` }} />
             {/* ---- Donor Sidebar ---- */}
             <Sider
                 trigger={null}
@@ -163,7 +316,7 @@ const DonorLayout: React.FC = () => {
                 collapsed={sidebarCollapsed}
                 width={260}
                 collapsedWidth={80}
-                className="fixed left-0 top-0 bottom-0 z-50"
+                className="fixed left-0 top-0 bottom-0 z-50 nexus-sider"
                 style={siderStyle}
             >
                 {/* Logo + Brand */}
@@ -180,22 +333,22 @@ const DonorLayout: React.FC = () => {
                         width: 36,
                         height: 36,
                         borderRadius: '50%',
-                        background: 'linear-gradient(135deg, #16a34a, #4ade80)',
+                        background: 'linear-gradient(135deg, #DC2626, #EF4444)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         fontSize: 18,
                         flexShrink: 0,
-                        boxShadow: '0 0 16px rgba(22,163,74,0.4)',
+                        boxShadow: '0 0 16px rgba(220,38,38,0.4)',
                     }}>
                         <GiftOutlined style={{ color: '#fff' }} />
                     </div>
                     {!sidebarCollapsed && (
                         <div>
-                            <Text strong style={{ color: '#fff', fontSize: 15, display: 'block', lineHeight: 1.2 }}>
+                            <Text strong style={{ color: isDark ? '#fff' : '#1e293b', fontSize: 15, display: 'block', lineHeight: 1.2 }}>
                                 Nexus-AID
                             </Text>
-                            <Text style={{ color: '#4ade80', fontSize: 10, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                            <Text style={{ color: '#ef4444', fontSize: 10, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
                                 Espace Donateur
                             </Text>
                         </div>
@@ -207,14 +360,14 @@ const DonorLayout: React.FC = () => {
                     <div style={{
                         margin: '12px 12px 4px',
                         padding: '10px 14px',
-                        background: 'rgba(22,163,74,0.12)',
+                        background: isDark ? 'rgba(220,38,38,0.12)' : 'rgba(220,38,38,0.06)',
                         borderRadius: 10,
-                        border: '1px solid rgba(22,163,74,0.2)',
+                        border: '1px solid rgba(220,38,38,0.2)',
                     }}>
-                        <Text style={{ color: '#4ade80', fontSize: 11, display: 'block', fontWeight: 600 }}>
-                            Bonjour, {user?.fullName?.split(' ')[0] || 'Donateur'} 👋
+                        <Text style={{ color: '#ef4444', fontSize: 11, display: 'block', fontWeight: 600 }}>
+                            Bonjour, {user?.fullName?.split(' ')[0] || 'Donateur'}
                         </Text>
-                        <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10 }}>
+                        <Text style={{ color: isDark ? 'rgba(255,255,255,0.5)' : '#64748b', fontSize: 10 }}>
                             Votre générosité change des vies
                         </Text>
                     </div>
@@ -222,7 +375,7 @@ const DonorLayout: React.FC = () => {
 
                 {/* Navigation Menu */}
                 <Menu
-                    theme="dark"
+                    className="nexus-menu"
                     mode="inline"
                     selectedKeys={[location.pathname]}
                     items={menuItems}
@@ -249,16 +402,16 @@ const DonorLayout: React.FC = () => {
                             icon={<HeartOutlined />}
                             onClick={() => navigate('/donor/donate')}
                             style={{
-                                background: 'linear-gradient(135deg, #16a34a, #4ade80)',
+                                background: 'linear-gradient(135deg, #DC2626, #EF4444)',
                                 border: 'none',
                                 borderRadius: 12,
                                 fontWeight: 700,
                                 fontSize: 14,
                                 height: 46,
-                                boxShadow: '0 4px 16px rgba(22,163,74,0.4)',
+                                boxShadow: '0 4px 16px rgba(220,38,38,0.4)',
                             }}
                         >
-                            💝 Faire un don
+                            Faire un don
                         </Button>
                     </div>
                 )}
@@ -292,8 +445,8 @@ const DonorLayout: React.FC = () => {
                                 width: 8,
                                 height: 8,
                                 borderRadius: '50%',
-                                background: '#16a34a',
-                                boxShadow: '0 0 8px rgba(22,163,74,0.6)',
+                                background: '#DC2626',
+                                boxShadow: '0 0 8px rgba(220,38,38,0.6)',
                                 animation: 'pulse 2s infinite',
                             }} />
                             <Text style={{ color: isDark ? 'rgba(255,255,255,0.5)' : '#888', fontSize: 13 }}>
@@ -336,13 +489,13 @@ const DonorLayout: React.FC = () => {
                                     size={34}
                                     icon={<UserOutlined />}
                                     src={user?.avatar}
-                                    style={{ backgroundColor: '#16a34a', cursor: 'pointer' }}
+                                    style={{ backgroundColor: '#DC2626', cursor: 'pointer' }}
                                 />
                                 <div className="hidden sm:block" style={{ lineHeight: 1.3 }}>
                                     <Text style={{ fontSize: 13, display: 'block', fontWeight: 600 }}>
                                         {user?.fullName || 'Donateur'}
                                     </Text>
-                                    <Text style={{ fontSize: 11, color: '#16a34a', fontWeight: 500 }}>
+                                    <Text style={{ fontSize: 11, color: '#DC2626', fontWeight: 500 }}>
                                         Donateur
                                     </Text>
                                 </div>
@@ -370,15 +523,8 @@ const DonorLayout: React.FC = () => {
 
             <style>{`
                 @keyframes pulse {
-                    0%, 100% { opacity: 1; box-shadow: 0 0 8px rgba(22,163,74,0.6); }
-                    50% { opacity: 0.6; box-shadow: 0 0 16px rgba(22,163,74,0.9); }
-                }
-                .ant-menu-dark .ant-menu-item-selected {
-                    background: rgba(22,163,74,0.2) !important;
-                    border-right: 3px solid #16a34a;
-                }
-                .ant-menu-dark .ant-menu-item:hover {
-                    background: rgba(22,163,74,0.1) !important;
+                    0%, 100% { opacity: 1; box-shadow: 0 0 8px rgba(220,38,38,0.6); }
+                    50% { opacity: 0.6; box-shadow: 0 0 16px rgba(220,38,38,0.9); }
                 }
             `}</style>
         </Layout>

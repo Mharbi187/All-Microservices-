@@ -2,7 +2,8 @@
 // Footer — Landing page footer with premium dark mode design
 // ============================================================
 
-import React, { useState } from 'react';
+import React from 'react';
+import { useTranslation } from 'react-i18next';
 import Logo from '@/components/common/Logo';
 import { useUIStore } from '@/stores/uiStore';
 
@@ -12,12 +13,13 @@ const Icon = ({ size = 16, children }: { size?: number; children: React.ReactNod
     </svg>
 );
 
-const IconFacebook = () => <Icon><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></Icon>;
-const IconTwitter = () => <Icon><path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"/></Icon>;
-const IconLinkedin = () => <Icon><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></Icon>;
-const IconInstagram = () => <Icon><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></Icon>;
+const IconFacebook = () => <Icon><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" /></Icon>;
+const IconTwitter = () => <Icon><path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z" /></Icon>;
+const IconLinkedin = () => <Icon><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" /><rect x="2" y="9" width="4" height="12" /><circle cx="4" cy="4" r="2" /></Icon>;
+const IconInstagram = () => <Icon><rect x="2" y="2" width="20" height="20" rx="5" ry="5" /><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" /><line x1="17.5" y1="6.5" x2="17.51" y2="6.5" /></Icon>;
 
 const Footer: React.FC = () => {
+    const { t } = useTranslation();
     const { themeMode } = useUIStore();
     const dark = themeMode === 'dark';
 
@@ -49,12 +51,12 @@ const Footer: React.FC = () => {
 
     return (
         <footer style={{ background: bg, position: 'relative', zIndex: 10, borderTop: `1px solid ${border}`, transition: 'background 0.4s' }}>
-            
+
             {/* Blurs de fond décoratifs style UI Moderne */}
             <div style={{ position: 'absolute', bottom: 0, left: '10%', width: 300, height: 300, background: 'radial-gradient(circle, rgba(241,3,22,0.05) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
             <div className="footer-grid" style={{ padding: '80px 80px 40px', display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr 1.5fr', gap: 48, maxWidth: 1440, margin: '0 auto' }}>
-                
+
                 {/* Colonne 1: Branding & Version */}
                 <div>
                     <div style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -62,16 +64,16 @@ const Footer: React.FC = () => {
                         <span style={{ fontSize: 11, fontWeight: 700, background: 'rgba(241,3,22,0.15)', color: dark ? '#ef7984' : '#C8102E', padding: '2px 8px', borderRadius: 100, letterSpacing: '0.05em' }}>NEXUS-AID</span>
                     </div>
                     <p style={{ fontSize: 14, color: dark ? '#a1a09e' : '#4B5563', lineHeight: 1.7, maxWidth: 280 }}>
-                        Système ERP humanitaire de nouvelle génération intégrant l'IA pour le Croissant-Rouge Tunisien.
+                        {t('home.footer.desc', "Système ERP humanitaire de nouvelle génération intégrant l'IA pour le Croissant-Rouge Tunisien.")}
                     </p>
                     <p style={{ marginTop: 24, fontSize: 12, color: dark ? '#7a7774' : '#9CA3AF', fontFamily: 'var(--font-mono, monospace)' }}>
-                        v3.0 — Février 2026
+                        {t('home.footer.version', "v3.0 — Février 2026")}
                     </p>
                 </div>
 
                 {/* Colonne 2: Réseaux Sociaux */}
                 <div>
-                    <h4 style={headingStyle}>Réseaux Sociaux</h4>
+                    <h4 style={headingStyle}>{t('home.footer.socials', 'Réseaux Sociaux')}</h4>
                     {[
                         { name: 'Facebook', href: '#', icon: <IconFacebook /> },
                         { name: 'Twitter / X', href: '#', icon: <IconTwitter /> },
@@ -79,8 +81,8 @@ const Footer: React.FC = () => {
                         { name: 'Instagram', href: '#', icon: <IconInstagram /> }
                     ].map((item) => (
                         <a key={item.name} href={item.href} style={linkStyle}
-                           onMouseEnter={(e) => { e.currentTarget.style.color = '#ef7984'; e.currentTarget.style.transform = 'translateX(4px)'; }}
-                           onMouseLeave={(e) => { e.currentTarget.style.color = dark ? '#a1a09e' : '#4B5563'; e.currentTarget.style.transform = 'none'; }}>
+                            onMouseEnter={(e) => { e.currentTarget.style.color = '#ef7984'; e.currentTarget.style.transform = 'translateX(4px)'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.color = dark ? '#a1a09e' : '#4B5563'; e.currentTarget.style.transform = 'none'; }}>
                             {item.icon} {item.name}
                         </a>
                     ))}
@@ -88,16 +90,16 @@ const Footer: React.FC = () => {
 
                 {/* Colonne 3: Organisation / Liens Institutionnels */}
                 <div>
-                    <h4 style={headingStyle}>Organisation</h4>
+                    <h4 style={headingStyle}>{t('home.footer.org', 'Organisation')}</h4>
                     {[
-                        { name: 'Comité National', href: '#' },
-                        { name: 'Comités Régionaux', href: '#' },
-                        { name: 'Comités Locaux', href: '#' },
-                        { name: 'Documentation', href: '#' }
+                        { name: t('home.footer.orgLinks.national', 'Comité National'), href: '#' },
+                        { name: t('home.footer.orgLinks.regional', 'Comités Régionaux'), href: '#' },
+                        { name: t('home.footer.orgLinks.local', 'Comités Locaux'), href: '#' },
+                        { name: t('home.footer.orgLinks.doc', 'Documentation'), href: '#' }
                     ].map((item) => (
                         <a key={item.name} href={item.href} style={linkStyle}
-                           onMouseEnter={(e) => { e.currentTarget.style.color = '#f10316'; e.currentTarget.style.transform = 'translateX(4px)'; }}
-                           onMouseLeave={(e) => { e.currentTarget.style.color = dark ? '#a1a09e' : '#4B5563'; e.currentTarget.style.transform = 'none'; }}>
+                            onMouseEnter={(e) => { e.currentTarget.style.color = '#f10316'; e.currentTarget.style.transform = 'translateX(4px)'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.color = dark ? '#a1a09e' : '#4B5563'; e.currentTarget.style.transform = 'none'; }}>
                             • {item.name}
                         </a>
                     ))}
@@ -105,29 +107,23 @@ const Footer: React.FC = () => {
 
                 {/* Colonne 4: Newsletter Premium & Live Status (IA) */}
                 <div>
-                    <h4 style={headingStyle}>Alertes & News</h4>
+                    <h4 style={headingStyle}>{t('home.footer.alertsTitle', 'Alertes & News')}</h4>
                     <p style={{ fontSize: 13, color: dark ? '#a1a09e' : '#4B5563', marginBottom: 16, lineHeight: 1.5 }}>
-                        Notifications des urgences et mises à jour du système IA.
+                        {t('home.footer.alertsDesc', 'Notifications des urgences et mises à jour du système IA.')}
                     </p>
                     <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-                        <input 
-                            type="email" 
-                            placeholder="Votre email..." 
+                        <input
+                            type="email"
+                            placeholder={t('home.footer.emailPlaceholder', 'Votre email...')}
                             style={{ flex: 1, padding: '12px 16px', background: dark ? 'rgba(255,255,255,0.03)' : '#fff', border: dark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.1)', borderRadius: 12, color: dark ? '#fff' : '#111', fontSize: 13, outline: 'none', transition: '0.3s' }}
                             onFocus={(e) => e.currentTarget.style.borderColor = 'rgba(241,3,22,0.5)'}
                             onBlur={(e) => e.currentTarget.style.borderColor = dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.1)'}
                         />
                         <button style={{ padding: '0 20px', background: '#f10316', color: '#fff', border: 'none', borderRadius: 12, fontWeight: 600, fontSize: 13, cursor: 'pointer', transition: '0.3s' }}
-                                onMouseEnter={(e) => e.currentTarget.style.background = '#d90213'}
-                                onMouseLeave={(e) => e.currentTarget.style.background = '#f10316'}>
-                            S'abonner
+                            onMouseEnter={(e) => e.currentTarget.style.background = '#d90213'}
+                            onMouseLeave={(e) => e.currentTarget.style.background = '#f10316'}>
+                            {t('home.footer.subscribe', "S'abonner")}
                         </button>
-                    </div>
-                    
-                    {/* Status live badge (Haute Qualité) */}
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 12px', background: 'rgba(22,163,74,0.1)', border: '1px solid rgba(22,163,74,0.2)', borderRadius: 8 }}>
-                        <span style={{ width: 6, height: 6, background: '#16a34a', borderRadius: '50%', animation: 'blink 2s infinite' }} />
-                        <span style={{ fontSize: 11, color: '#4ade80', fontWeight: 600, fontFamily: 'var(--font-mono, monospace)' }}>Serveur Principal En Ligne</span>
                     </div>
                 </div>
             </div>
@@ -135,11 +131,11 @@ const Footer: React.FC = () => {
             {/* Barre de Copyright inférieure ( Footer Bottom) */}
             <div className="footer-bottom" style={{ padding: '24px 80px', borderTop: dark ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', maxWidth: 1440, margin: '0 auto' }}>
                 <p style={{ fontSize: 13, color: dark ? '#7a7774' : '#6B7280', margin: 0 }}>
-                    © 2026 <strong style={{ color: dark ? '#bebdb9' : '#111' }}>Croissant Rouge Tunisien</strong> — Nexus-AID ERP.
+                    {t('home.footer.copyright', '© 2026 Croissant Rouge Tunisien — Nexus-AID ERP.')}
                 </p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 24, fontSize: 12, color: dark ? '#7a7774' : '#6B7280', fontFamily: 'var(--font-mono, monospace)' }}>
-                    <p style={{ margin: 0 }}>Rédacteur: <span style={{ color: dark ? '#a1a09e' : '#111' }}>M. Harbi & A. Amara</span></p>
-                    <p style={{ margin: 0, paddingLeft: 12, borderLeft: dark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)' }}>Tunis 🇹🇳</p>
+                    <p style={{ margin: 0 }}>{t('home.footer.authors', 'Rédacteur: M. Harbi & A. Amara')}</p>
+                    <p style={{ margin: 0, paddingLeft: 12, borderLeft: dark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)' }}>{t('home.footer.location', 'Tunis')}</p>
                 </div>
             </div>
 

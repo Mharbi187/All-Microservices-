@@ -23,6 +23,10 @@ import volunteerService from '@/services/volunteerService';
 import inventoryService from '@/services/inventoryService';
 import { secourismeService } from '@/services/domainServices';
 import type { CommitteeOverview, InventoryItemDTO, StockAlertDTO } from '@/types';
+import calendarService from '@/services/calendarService';
+import type { CalendarEventDTO } from '@/services/calendarService';
+import quizService from '@/services/quizService';
+import type { QuizResultDTO } from '@/services/quizService';
 
 import {
     p, r, sh, fonts, makeTheme, ROLE_CONFIG, SEVERITY_META, DOMAIN_META,
@@ -422,24 +426,6 @@ const DashHeader: React.FC<{
 
                 {/* Right: badges + alert */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                    {/* Live system dot */}
-                    <div style={{
-                        display: 'flex', alignItems: 'center', gap: 7,
-                        background: isDark ? 'rgba(52,199,89,0.12)' : p.grn100,
-                        border: `1px solid rgba(22,163,74,0.25)`,
-                        borderRadius: r.pill, padding: '6px 14px',
-                    }}>
-                        <div style={{
-                            width: 8, height: 8, borderRadius: '50%',
-                            background: p.grn600,
-                        }} className="nd-badge-live" />
-                        <span style={{
-                            fontFamily: fonts.body, fontSize: 12, fontWeight: 600,
-                            color: p.grn600,
-                        }}>
-                            Système opérationnel
-                        </span>
-                    </div>
 
                     {/* Alerts badge */}
                     {activeAlerts > 0 && (
@@ -872,6 +858,106 @@ const DonorDash: React.FC<{ isDark: boolean; navigate: (p: string) => void }> = 
 // ─────────────────────────────────────────────────────────────
 // VOLUNTEER DASHBOARD
 // ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// VOLUNTEER KPI CARD
+// ─────────────────────────────────────────────────────────────
+interface VolunteerKpiProps {
+    icon: React.ReactNode;
+    title: string;
+    value: string | number;
+    subtext: string;
+    accent: string;
+    isDark: boolean;
+    delay?: number;
+    sparkData?: number[];
+    onClick?: () => void;
+}
+
+const VolunteerKpiCard: React.FC<VolunteerKpiProps> = ({
+    icon, title, value, subtext, accent, isDark, delay = 0, sparkData, onClick
+}) => {
+    const t = makeTheme(isDark);
+    return (
+        <div
+            className="nd-kpi nd-fade-up"
+            onClick={onClick}
+            style={{
+                animationDelay: `${delay}ms`,
+                background: isDark
+                    ? `linear-gradient(150deg, ${t.cardBg}, ${accent}14)`
+                    : `linear-gradient(150deg, #fff, ${accent}07)`,
+                borderRadius: r.lg,
+                padding: '20px 18px',
+                border: `1px solid ${isDark ? `${accent}22` : `${accent}18`}`,
+                boxShadow: isDark
+                    ? `0 4px 22px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)`
+                    : `0 3px 16px ${accent}14`,
+                cursor: onClick ? 'pointer' : 'default',
+                position: 'relative', overflow: 'hidden',
+                height: '100%', display: 'flex', flexDirection: 'column', gap: 12,
+            }}
+        >
+            {/* Decorative corner arc */}
+            <div style={{
+                position: 'absolute', top: -28, right: -28,
+                width: 88, height: 88, borderRadius: '50%',
+                background: `${accent}10`, pointerEvents: 'none',
+            }} />
+
+            {/* Header row: Icon + Title */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{
+                    width: 36, height: 36, borderRadius: '50%',
+                    background: isDark ? `${accent}20` : `${accent}10`,
+                    border: `1px solid ${accent}22`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 16, color: accent,
+                }}>
+                    {icon}
+                </div>
+                <div style={{
+                    fontFamily: fonts.body, fontSize: 11, fontWeight: 700,
+                    textTransform: 'uppercase', letterSpacing: '0.05em',
+                    color: t.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    flex: 1,
+                }}>
+                    {title}
+                </div>
+            </div>
+
+            {/* Value + Sparkline */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 4 }}>
+                <div>
+                    <div style={{
+                        fontFamily: fonts.heading, fontSize: 32, fontWeight: 700,
+                        lineHeight: 1, color: isDark ? '#F0F4FF' : p.ink,
+                        letterSpacing: '-0.5px',
+                    }}>
+                        {value}
+                    </div>
+                    <div style={{
+                        fontFamily: fonts.body, fontSize: 11, fontWeight: 600,
+                        textTransform: 'uppercase', letterSpacing: '0.07em',
+                        color: t.textSub, marginTop: 4,
+                    }}>
+                        {subtext}
+                    </div>
+                </div>
+                {sparkData && <Sparkline data={sparkData} color={accent} h={30} />}
+            </div>
+
+            {/* Bottom gradient bar */}
+            <div style={{
+                position: 'absolute', bottom: 0, left: 0, right: 0, height: 3,
+                background: `linear-gradient(90deg, ${accent}, transparent)`,
+            }} />
+        </div>
+    );
+};
+
+// ─────────────────────────────────────────────────────────────
+// VOLUNTEER DASHBOARD
+// ─────────────────────────────────────────────────────────────
 const VolunteerDash: React.FC<{
     isDark: boolean; navigate: (p: string) => void;
     permissions: any; user: any;
@@ -883,13 +969,16 @@ const VolunteerDash: React.FC<{
     socialFamiliesCount: number | string; socialActionsCount: number | string;
     vffCasesCount: number | string; immigrationCasesCount: number | string;
     secourismeEqCount: number | string; secourismeDvCount: number | string;
+    upcomingEvents: CalendarEventDTO[];
+    myQuizResults: QuizResultDTO[];
 }> = (props) => {
     const { isDark, navigate, permissions, user,
         totalVolunteers, pendingVolunteers, totalCommittees, totalStock, activeAlerts,
         committees, alerts,
         jeunesseFormsCount, jeunesseProjectsCount, santeActionsCount,
         socialFamiliesCount, socialActionsCount, vffCasesCount, immigrationCasesCount,
-        secourismeEqCount, secourismeDvCount } = props;
+        secourismeEqCount, secourismeDvCount,
+        upcomingEvents, myQuizResults } = props;
     const t = makeTheme(isDark);
 
     const userRoles: string[] = (user?.roles || []).map((r: any) =>
@@ -900,6 +989,29 @@ const VolunteerDash: React.FC<{
         r.includes('TRESORIER') || r.includes('ADMIN')
     );
     const isDomainOnly = !isLeadership && userRoles.some(r => r.startsWith('RESP_'));
+    const isSimpleVolunteer = !isLeadership && !isDomainOnly;
+
+    // Dynamic calculations for simple volunteer dashboard
+    const passedQuizzes = myQuizResults.filter(r => r.passed);
+    const volunteerHours = user?.hoursVolunteered !== undefined ? user.hoursVolunteered : 0;
+    const pendingMissionsCount = upcomingEvents.filter(e => !e.isRegistered).length;
+    const passedFormationsCount = passedQuizzes.length;
+
+    const displayMissions = upcomingEvents.slice(0, 4).map(e => ({
+        title: e.title,
+        schedule: `${calendarService.formatDate(e.startDate).split(' ')[0]} ${calendarService.formatTime(e.startDate)}`,
+        color: e.type === 'FORMATION' ? '#7C3AED' : e.type === 'URGENCE' ? p.red600 : e.type === 'COLLECTE' ? p.grn600 : p.amb600
+    }));
+
+    const displayFormations = upcomingEvents.filter(e => e.type === 'FORMATION').slice(0, 2).map(e => ({
+        title: e.title,
+        schedule: `${calendarService.formatDate(e.startDate).split(' ')[0]} ${calendarService.formatTime(e.startDate)}`
+    }));
+
+    const displayCertificates = passedQuizzes.map(r => ({
+        name: r.badgeEarned || r.quizTitle,
+        color: r.badgeColor || p.grn600
+    }));
 
     // Find domain
     const domainKey = Object.keys(DOMAIN_META).find(k => userRoles.some(r => r.includes(k)));
@@ -931,212 +1043,444 @@ const VolunteerDash: React.FC<{
         permissions.sidebarKeys.includes('/catastrophes') && { icon: <ThunderboltOutlined style={{ fontSize: 26, color: p.red600 }} />, label: 'Météo', desc: 'Alertes & Suivi', accent: p.red600, route: '/catastrophes' },
     ].filter(Boolean) as any[];
 
+    // Specialized quick actions for simple volunteers
+    const volunteerActions = [
+        { icon: <ApartmentOutlined style={{ fontSize: 26, color: '#5A78E6' }} />, label: 'Mon Comité', desc: 'Gérer mon comité', accent: '#5A78E6', route: '/volunteer/committee' },
+        { icon: <BookOutlined style={{ fontSize: 26, color: p.grn600 }} />, label: 'Ressources', desc: 'Ressources & Guides', accent: p.grn600, route: '/volunteer/resources' },
+        { icon: <AlertOutlined style={{ fontSize: 26, color: p.red600 }} />, label: 'Réclamations', desc: 'Déposer une plainte', accent: p.red600, route: '/volunteer/complaints' },
+        { icon: <TrophyOutlined style={{ fontSize: 26, color: p.amb600 }} />, label: 'Quiz', desc: 'Passer des tests', accent: p.amb600, route: '/volunteer/quiz' },
+        { icon: <GiftOutlined style={{ fontSize: 26, color: '#7C3AED' }} />, label: 'Réception Dons', desc: 'Réception de dons', accent: '#7C3AED', route: '/volunteer/reception' },
+        { icon: <UserOutlined style={{ fontSize: 26, color: p.slate }} />, label: 'Mon Profil', desc: 'Mes informations', accent: p.slate, route: '/volunteer/profile' },
+    ];
+
+    const actionsToRender = isSimpleVolunteer ? volunteerActions : qActions;
+
     return (
         <>
-            {/* KPI */}
-            {!isDomainOnly && (
-                <div className="nd-kpi-grid" style={{
-                    display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14, marginBottom: 20,
-                }}>
-                    {[
-                        { icon: <TeamOutlined />, value: totalVolunteers, label: 'Volontaires', accent: p.grn600, spark: [5, 10, 8, 15, 12, 20, totalVolunteers || 25], route: '/volunteers' },
-                        { icon: <ClockCircleOutlined />, value: pendingVolunteers, label: 'En Attente', accent: p.amb600, route: '/validation-queue' },
-                        { icon: <AlertOutlined />, value: activeAlerts, label: 'Alertes', accent: p.red600, route: '/stocks' },
-                        { icon: <InboxOutlined />, value: totalStock, label: 'En Stock', accent: '#5A78E6', spark: [3, 8, 5, 12, 10, 15, totalStock || 18], route: '/stocks' },
-                        { icon: <ApartmentOutlined />, value: totalCommittees, label: 'Comités', accent: '#7C3AED', spark: [1, 3, 2, 5, 4, 8, totalCommittees || 10], route: '/committees' },
-                    ].map((k, i) => (
-                        <KpiCard key={k.label} isDark={isDark} delay={i * 60}
-                            icon={k.icon} value={k.value} label={k.label} accent={k.accent}
-                            sparkData={(k as any).spark}
-                            onClick={(k as any).route ? () => navigate((k as any).route) : undefined}
+            {isSimpleVolunteer ? (
+                <>
+                    {/* Personal KPIs row */}
+                    <div className="nd-kpi-grid" style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(5, 1fr)',
+                        gap: 14,
+                        marginBottom: 20,
+                    }}>
+                        <VolunteerKpiCard
+                            isDark={isDark}
+                            icon={<ClockCircleOutlined />}
+                            title="Mes Heures de Volontariat"
+                            value={`${volunteerHours} HRS`}
+                            subtext="Mes Heures"
+                            accent={p.grn600}
                         />
-                    ))}
-                </div>
-            )}
-
-            {/* National crisis center */}
-            {permissions.sidebarKeys.includes('/catastrophes') && user?.committeeType === 'NATIONAL' && (
-                <div className="nd-fade-up nd-scale-in" style={{
-                    borderRadius: r.lg, padding: 22, marginBottom: 20,
-                    background: isDark
-                        ? `linear-gradient(135deg, ${p.redGlow}, rgba(0,0,0,0))`
-                        : `linear-gradient(135deg, rgba(220,38,38,0.04), #fff)`,
-                    border: `1px solid ${p.red600}25`,
-                    boxShadow: isDark ? '0 4px 24px rgba(220,38,38,0.12)' : `0 4px 20px rgba(220,38,38,0.07)`,
-                }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                            <GlobalOutlined style={{ fontSize: 22, color: p.red600 }} className="nd-pulse-red" />
-                            <div>
-                                <div style={{ fontFamily: fonts.body, fontWeight: 700, fontSize: 14, color: isDark ? '#F0F4FF' : p.ink }}>
-                                    Centre Opérationnel de Crise — NATIONAL
-                                </div>
-                                <div style={{ fontFamily: fonts.body, fontSize: 12, color: t.textFaint }}>
-                                    Surveillance temps réel · AlphaEarth API
-                                </div>
-                            </div>
-                        </div>
-                        <button
-                            onClick={() => navigate('/catastrophes')}
-                            style={{
-                                display: 'flex', alignItems: 'center', gap: 8,
-                                background: `linear-gradient(135deg, ${p.red700}, ${p.red500})`,
-                                color: '#fff', border: 'none', borderRadius: r.md,
-                                padding: '10px 20px', fontFamily: fonts.body,
-                                fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                                boxShadow: sh.red,
-                            }}
-                            className="nd-action"
-                        >
-                            <ThunderboltOutlined /> Ouvrir Radar AlphaEarth
-                        </button>
+                        <VolunteerKpiCard
+                            isDark={isDark}
+                            icon={<CalendarOutlined />}
+                            title="Missions en Attente"
+                            value={pendingMissionsCount}
+                            subtext="Mes Attente"
+                            accent={p.amb600}
+                            onClick={() => navigate('/volunteer/calendar')}
+                        />
+                        <VolunteerKpiCard
+                            isDark={isDark}
+                            icon={<AlertOutlined />}
+                            title="Mes Alertes Personnelles"
+                            value="0"
+                            subtext="Mes Alertes"
+                            accent={p.red600}
+                        />
+                        <VolunteerKpiCard
+                            isDark={isDark}
+                            icon={<InboxOutlined />}
+                            title="Stocks Assignés"
+                            value="0 ITEMS"
+                            subtext="Assignés"
+                            accent="#5A78E6"
+                            onClick={() => navigate('/volunteer/resources')}
+                        />
+                        <VolunteerKpiCard
+                            isDark={isDark}
+                            icon={<BookOutlined />}
+                            title="Mes Formations"
+                            value={passedFormationsCount}
+                            subtext="Mes Formations"
+                            accent="#7C3AED"
+                            onClick={() => navigate('/volunteer/quiz')}
+                        />
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-                        {[
-                            { icon: <SoundOutlined style={{ fontSize: 18, color: p.red600 }} />, title: 'Flux Météo', desc: 'Analyse prédictive · 27 variables · OpenWeather & USGS', color: p.red600, tag: <><AlertOutlined style={{ marginRight: 4 }} /> Alerte Orage</> },
-                            { icon: <ThunderboltOutlined style={{ fontSize: 18, color: p.blu600 }} />, title: 'Pipeline RMQ', desc: 'Création interventions de sauvetage · CDC persistant', color: p.blu600, tag: <><CheckCircleOutlined style={{ marginRight: 4 }} /> Actif</> },
-                            { icon: <TeamOutlined style={{ fontSize: 18, color: p.grn600 }} />, title: 'NDRT / RDRT', desc: '142 volontaires prêts au déploiement · Matching actif', color: p.grn600, tag: <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: p.grn600 }} /> 142 Prêts</span> },
-                        ].map((c, i) => (
-                            <div key={i} style={{
-                                padding: 14, borderRadius: r.md,
-                                background: isDark ? 'rgba(0,0,0,0.28)' : '#fff',
-                                border: `1px solid ${c.color}20`,
-                            }}>
-                                <div style={{ marginBottom: 6, display: 'flex', alignItems: 'center' }}>{c.icon}</div>
-                                <div style={{ fontFamily: fonts.body, fontWeight: 700, fontSize: 12, color: c.color, marginBottom: 4 }}>{c.title}</div>
-                                <div style={{ fontFamily: fonts.body, fontSize: 11, color: t.textFaint, lineHeight: 1.5, marginBottom: 8 }}>{c.desc}</div>
-                                <div style={{
-                                    display: 'inline-block', background: `${c.color}14`, color: c.color,
-                                    borderRadius: r.pill, padding: '2px 10px', fontSize: 11, fontWeight: 600, fontFamily: fonts.body,
-                                }}>{c.tag}</div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
 
-            {/* Charts */}
-            {!isDomainOnly && (
-                <div className="nd-two-col" style={{
-                    display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 16, marginBottom: 20,
-                }}>
-                    <SCard isDark={isDark} accentLine={p.red600}
-                        title={<><BarChartOutlined style={{ color: p.red600, fontSize: 16, marginRight: 8 }} />
-                            <span style={{ fontFamily: fonts.body, fontWeight: 700, fontSize: 14, color: isDark ? '#F0F4FF' : p.ink }}>Volontaires par Comité</span></>}
-                    >
-                        <BarChart data={committees} isDark={isDark} />
-                    </SCard>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                        <SCard isDark={isDark} accentLine={p.amb600}
-                            title={<><AlertOutlined style={{ color: p.amb600, fontSize: 14, marginRight: 8 }} />
-                                <span style={{ fontFamily: fonts.body, fontWeight: 700, fontSize: 14, color: isDark ? '#F0F4FF' : p.ink }}>Alertes Stock</span></>}
-                        >
-                            {alerts.length === 0 ? (
-                                <div style={{ textAlign: 'center', padding: '14px 0', fontFamily: fonts.body, color: t.textFaint }}>
-                                    <CheckCircleOutlined style={{ fontSize: 24, color: p.grn600, marginBottom: 6 }} />
-                                    <br />Aucune alerte
-                                </div>
-                            ) : alerts.slice(0, 3).map((a, i) => {
-                                const sev = SEVERITY_META[a.severity] || SEVERITY_META.MEDIUM;
-                                return (
-                                    <div key={i} className="nd-row-hover" style={{
-                                        display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0',
-                                        borderBottom: i < 2 ? `1px solid ${t.divider}` : 'none',
-                                    }}>
-                                        <div style={{ width: 7, height: 7, borderRadius: '50%', background: sev.color, flexShrink: 0 }} />
-                                        <div>
-                                            <div style={{ fontFamily: fonts.body, fontSize: 12, fontWeight: 600, color: isDark ? '#F0F4FF' : p.ink }}>
-                                                Alerte #{a.itemId.substring(0, 8)}
+                    {/* Dual-column section */}
+                    <div className="nd-two-col" style={{
+                        display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 16, marginBottom: 20,
+                    }}>
+                        {/* Left Column: Prochaines Missions & Suivi des Heures */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                            {/* Prochaines Missions Card */}
+                            <SCard isDark={isDark} accentLine={p.red600}
+                                title={
+                                    <><CalendarOutlined style={{ color: p.red600, fontSize: 16, marginRight: 8 }} />
+                                        <span style={{ fontFamily: fonts.body, fontWeight: 700, fontSize: 14, color: isDark ? '#F0F4FF' : p.ink }}>
+                                            PROCHAINES MISSIONS
+                                        </span></>
+                                }
+                            >
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                    {displayMissions.length > 0 ? (
+                                        displayMissions.map((m, i) => (
+                                            <div key={i} className="nd-row-hover" style={{
+                                                display: 'flex', alignItems: 'center', gap: 12,
+                                                padding: '10px 14px', borderRadius: r.sm,
+                                                background: isDark ? 'rgba(255,255,255,0.02)' : p.mist,
+                                                borderLeft: `4px solid ${m.color}`,
+                                            }}>
+                                                <div style={{ flex: 1 }}>
+                                                    <span style={{ fontFamily: fonts.body, fontWeight: 600, fontSize: 13, color: isDark ? '#F0F4FF' : p.ink }}>
+                                                        {m.title}
+                                                    </span>
+                                                    <span style={{ fontFamily: fonts.body, fontSize: 12, color: t.textSub, marginLeft: 6 }}>
+                                                        ({m.schedule})
+                                                    </span>
+                                                </div>
                                             </div>
-                                            <div style={{ fontFamily: fonts.body, fontSize: 11, color: t.textFaint }}>{a.alertType} · {sev.label}</div>
+                                        ))
+                                    ) : (
+                                        <Empty description="Aucune mission planifiée" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                                    )}
+                                </div>
+                            </SCard>
+
+                            {/* Suivi des Heures Card */}
+                            <SCard isDark={isDark} accentLine={p.amb600}
+                                title={
+                                    <><ClockCircleOutlined style={{ color: p.amb600, fontSize: 16, marginRight: 8 }} />
+                                        <span style={{ fontFamily: fonts.body, fontWeight: 700, fontSize: 14, color: isDark ? '#F0F4FF' : p.ink }}>
+                                            SUIVI DES HEURES
+                                        </span></>
+                                }
+                            >
+                                <div style={{ overflowX: 'auto' }}>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: fonts.body }}>
+                                        <thead>
+                                            <tr style={{ borderBottom: `1px solid ${t.divider}` }}>
+                                                <th style={{ textAlign: 'left', padding: '10px 8px', fontSize: 12, color: t.textSub, fontWeight: 600 }}>Type</th>
+                                                <th style={{ textAlign: 'right', padding: '10px 8px', fontSize: 12, color: t.textSub, fontWeight: 600 }}>Heures</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {volunteerHours > 0 ? (
+                                                <tr>
+                                                    <td style={{ padding: '10px 8px', fontSize: 13, color: isDark ? '#F0F4FF' : p.ink }}>Total accumulé</td>
+                                                    <td style={{ padding: '10px 8px', textAlign: 'right', fontSize: 13, fontWeight: 700, color: p.grn600 }}>{volunteerHours} h</td>
+                                                </tr>
+                                            ) : (
+                                                <tr>
+                                                    <td colSpan={2} style={{ textAlign: 'center', padding: '14px 0', fontSize: 12, color: t.textFaint }}>
+                                                        Aucune heure de volontariat enregistrée
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </SCard>
+                        </div>
+
+                        {/* Right Column: Derniers Équipements, Mes Formations à Venir, Mes Certifications Obtenues */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                            {/* Derniers Équipements Card */}
+                            <SCard isDark={isDark} accentLine={p.amb600}
+                                title={
+                                    <><InboxOutlined style={{ color: p.amb600, fontSize: 16, marginRight: 8 }} />
+                                        <span style={{ fontFamily: fonts.body, fontWeight: 700, fontSize: 14, color: isDark ? '#F0F4FF' : p.ink }}>
+                                            DERNIERS ÉQUIPEMENTS
+                                        </span></>
+                                }
+                            >
+                                <Empty description="Aucun équipement assigné" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                            </SCard>
+
+                            {/* Mes Formations à Venir Card */}
+                            <SCard isDark={isDark} accentLine="#7C3AED"
+                                title={
+                                    <><BookOutlined style={{ color: "#7C3AED", fontSize: 16, marginRight: 8 }} />
+                                        <span style={{ fontFamily: fonts.body, fontWeight: 700, fontSize: 14, color: isDark ? '#F0F4FF' : p.ink }}>
+                                            MES FORMATIONS À VENIR
+                                        </span></>
+                                }
+                            >
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                    {displayFormations.length > 0 ? (
+                                        displayFormations.map((f, i) => (
+                                            <div key={i} className="nd-row-hover" style={{
+                                                padding: '12px 14px', borderRadius: r.sm,
+                                                background: isDark ? 'rgba(255,255,255,0.02)' : p.mist,
+                                                borderBottom: i < displayFormations.length - 1 ? `1px solid ${t.divider}` : 'none',
+                                                display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                                            }}>
+                                                <span style={{ fontFamily: fonts.body, fontWeight: 600, fontSize: 13, color: isDark ? '#F0F4FF' : p.ink }}>
+                                                    {f.title}
+                                                </span>
+                                                <span style={{
+                                                    fontFamily: fonts.body, fontSize: 11, fontWeight: 700,
+                                                    color: '#7C3AED', background: isDark ? 'rgba(124,58,237,0.18)' : 'rgba(124,58,237,0.08)',
+                                                    padding: '3px 10px', borderRadius: r.pill,
+                                                    border: '1px solid rgba(124,58,237,0.20)'
+                                                }}>
+                                                    {f.schedule}
+                                                </span>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <Empty description="Aucune formation à venir" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                                    )}
+                                </div>
+                            </SCard>
+
+                            {/* Mes Certifications Obtenues Card */}
+                            <SCard isDark={isDark} accentLine={p.grn600}
+                                title={
+                                    <><TrophyOutlined style={{ color: p.grn600, fontSize: 16, marginRight: 8 }} />
+                                        <span style={{ fontFamily: fonts.body, fontWeight: 700, fontSize: 14, color: isDark ? '#F0F4FF' : p.ink }}>
+                                            MES CERTIFICATIONS OBTENUES
+                                        </span></>
+                                }
+                            >
+                                {displayCertificates.length > 0 ? (
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                        {displayCertificates.map((c, i) => (
+                                            <div key={i} className="nd-action" style={{
+                                                textAlign: 'center', padding: '16px 12px', borderRadius: r.md,
+                                                background: isDark ? 'rgba(255,255,255,0.02)' : p.mist,
+                                                border: `1px solid ${isDark ? `${c.color}22` : `${c.color}15`}`,
+                                                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8
+                                            }}>
+                                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={c.color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ filter: `drop-shadow(0 2px 6px ${c.color}22)` }}>
+                                                    <circle cx="12" cy="9" r="6" fill={`${c.color}18`} />
+                                                    <path d="M9 14.5l-1.5 6.5 4.5-2.5 4.5 2.5-1.5-6.5" />
+                                                </svg>
+                                                <span style={{ fontFamily: fonts.body, fontWeight: 700, fontSize: 11, color: isDark ? '#F0F4FF' : p.ink, lineHeight: 1.3 }}>
+                                                    {c.name}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <Empty description="Aucune certification obtenue" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                                )}
+                            </SCard>
+                        </div>
+                    </div>
+                </>
+            ) : (
+                <>
+                    {/* KPI */}
+                    {!isDomainOnly && (
+                        <div className="nd-kpi-grid" style={{
+                            display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14, marginBottom: 20,
+                        }}>
+                            {[
+                                { icon: <TeamOutlined />, value: totalVolunteers, label: 'Volontaires', accent: p.grn600, spark: [5, 10, 8, 15, 12, 20, totalVolunteers || 25], route: '/volunteers' },
+                                { icon: <ClockCircleOutlined />, value: pendingVolunteers, label: 'En Attente', accent: p.amb600, route: '/validation-queue' },
+                                { icon: <AlertOutlined />, value: activeAlerts, label: 'Alertes', accent: p.red600, route: '/stocks' },
+                                { icon: <InboxOutlined />, value: totalStock, label: 'En Stock', accent: '#5A78E6', spark: [3, 8, 5, 12, 10, 15, totalStock || 18], route: '/stocks' },
+                                { icon: <ApartmentOutlined />, value: totalCommittees, label: 'Comités', accent: '#7C3AED', spark: [1, 3, 2, 5, 4, 8, totalCommittees || 10], route: '/committees' },
+                            ].map((k, i) => (
+                                <KpiCard key={k.label} isDark={isDark} delay={i * 60}
+                                    icon={k.icon} value={k.value} label={k.label} accent={k.accent}
+                                    sparkData={(k as any).spark}
+                                    onClick={(k as any).route ? () => navigate((k as any).route) : undefined}
+                                />
+                            ))}
+                        </div>
+                    )}
+
+                    {/* National crisis center */}
+                    {permissions.sidebarKeys.includes('/catastrophes') && user?.committeeType === 'NATIONAL' && (
+                        <div className="nd-fade-up nd-scale-in" style={{
+                            borderRadius: r.lg, padding: 22, marginBottom: 20,
+                            background: isDark
+                                ? `linear-gradient(135deg, ${p.redGlow}, rgba(0,0,0,0))`
+                                : `linear-gradient(135deg, rgba(220,38,38,0.04), #fff)`,
+                            border: `1px solid ${p.red600}25`,
+                            boxShadow: isDark ? '0 4px 24px rgba(220,38,38,0.12)' : `0 4px 20px rgba(220,38,38,0.07)`,
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                    <GlobalOutlined style={{ fontSize: 22, color: p.red600 }} className="nd-pulse-red" />
+                                    <div>
+                                        <div style={{ fontFamily: fonts.body, fontWeight: 700, fontSize: 14, color: isDark ? '#F0F4FF' : p.ink }}>
+                                            Centre Opérationnel de Crise — NATIONAL
+                                        </div>
+                                        <div style={{ fontFamily: fonts.body, fontSize: 12, color: t.textFaint }}>
+                                            Surveillance temps réel · AlphaEarth API
                                         </div>
                                     </div>
-                                );
-                            })}
-                        </SCard>
-
-                        <SCard isDark={isDark} accentLine='#5A78E6'
-                            title={<><TrophyOutlined style={{ color: '#5A78E6', fontSize: 14, marginRight: 8 }} />
-                                <span style={{ fontFamily: fonts.body, fontWeight: 700, fontSize: 14, color: isDark ? '#F0F4FF' : p.ink }}>Top Comités</span></>}
-                        >
-                            {committees.slice(0, 5).map((c) => {
-                                const max = Math.max(...committees.map(x => x.totalVolunteers || 0), 1);
-                                const pct = (c.totalVolunteers || 0) / max;
-                                return (
-                                    <ProgRow key={c.id} isDark={isDark}
-                                        label={c.region || c.name || '—'}
-                                        value={c.totalVolunteers || 0} max={max}
-                                        color={pct > 0.6 ? p.red600 : pct > 0.3 ? p.amb600 : '#5A78E6'}
-                                    />
-                                );
-                            })}
-                        </SCard>
-                    </div>
-                </div>
-            )}
-
-            {/* Domain widget */}
-            {domainCfg && (
-                <div className="nd-fade-up" style={{
-                    borderRadius: r.lg, padding: 22, marginBottom: 20,
-                    background: isDark ? `${domainCfg.color}08` : `${domainCfg.color}04`,
-                    border: `1px solid ${domainCfg.color}20`,
-                    boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.3)' : sh.sm,
-                }}>
-                    <div style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        marginBottom: 18, flexWrap: 'wrap', gap: 14,
-                    }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                            <div style={{
-                                width: 48, height: 48, borderRadius: r.md,
-                                background: `${domainCfg.color}15`,
-                                border: `1px solid ${domainCfg.color}22`,
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, color: domainCfg.color,
-                            }}>
-                                {domainCfg.icon}
+                                </div>
+                                <button
+                                    onClick={() => navigate('/catastrophes')}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: 8,
+                                        background: `linear-gradient(135deg, ${p.red700}, ${p.red500})`,
+                                        color: '#fff', border: 'none', borderRadius: r.md,
+                                        padding: '10px 20px', fontFamily: fonts.body,
+                                        fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                                        boxShadow: sh.red,
+                                    }}
+                                    className="nd-action"
+                                >
+                                    <ThunderboltOutlined /> Ouvrir Radar AlphaEarth
+                                </button>
                             </div>
-                            <div>
-                                <div style={{ fontFamily: fonts.display, fontSize: 17, fontWeight: 700, color: isDark ? '#F0F4FF' : p.ink }}>
-                                    Mon Domaine — {domainCfg.label}
-                                </div>
-                                <div style={{ fontFamily: fonts.body, fontSize: 12, color: t.textFaint }}>
-                                    Statistiques spécifiques à votre domaine
-                                </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+                                {[
+                                    { icon: <SoundOutlined style={{ fontSize: 18, color: p.red600 }} />, title: 'Flux Météo', desc: 'Analyse prédictive · 27 variables · OpenWeather & USGS', color: p.red600, tag: <><AlertOutlined style={{ marginRight: 4 }} /> Alerte Orage</> },
+                                    { icon: <ThunderboltOutlined style={{ fontSize: 18, color: p.blu600 }} />, title: 'Pipeline RMQ', desc: 'Création interventions de sauvetage · CDC persistant', color: p.blu600, tag: <><CheckCircleOutlined style={{ marginRight: 4 }} /> Actif</> },
+                                    { icon: <TeamOutlined style={{ fontSize: 18, color: p.grn600 }} />, title: 'NDRT / RDRT', desc: '142 volontaires prêts au déploiement · Matching actif', color: p.grn600, tag: <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: p.grn600 }} /> 142 Prêts</span> },
+                                ].map((c, i) => (
+                                    <div key={i} style={{
+                                        padding: 14, borderRadius: r.md,
+                                        background: isDark ? 'rgba(0,0,0,0.28)' : '#fff',
+                                        border: `1px solid ${c.color}20`,
+                                    }}>
+                                        <div style={{ marginBottom: 6, display: 'flex', alignItems: 'center' }}>{c.icon}</div>
+                                        <div style={{ fontFamily: fonts.body, fontWeight: 700, fontSize: 12, color: c.color, marginBottom: 4 }}>{c.title}</div>
+                                        <div style={{ fontFamily: fonts.body, fontSize: 11, color: t.textFaint, lineHeight: 1.5, marginBottom: 8 }}>{c.desc}</div>
+                                        <div style={{
+                                            display: 'inline-block', background: `${c.color}14`, color: c.color,
+                                            borderRadius: r.pill, padding: '2px 10px', fontSize: 11, fontWeight: 600, fontFamily: fonts.body,
+                                        }}>{c.tag}</div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
-                        <button
-                            onClick={() => navigate(domainCfg.route)}
-                            className="nd-action"
-                            style={{
-                                background: `linear-gradient(135deg, ${domainCfg.color}dd, ${domainCfg.color})`,
-                                color: '#fff', border: 'none', borderRadius: r.md,
-                                padding: '10px 20px', fontFamily: fonts.body, fontSize: 13, fontWeight: 700,
-                                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
-                            }}
-                        >
-                            <BarChartOutlined /> Ouvrir {domainCfg.label}
-                        </button>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${domainStats.length}, 1fr)`, gap: 12 }}>
-                        {domainStats.map((s: any) => (
-                            <div key={s.label} style={{
-                                textAlign: 'center', padding: '16px 10px',
-                                background: isDark ? 'rgba(255,255,255,0.04)' : '#fff',
-                                borderRadius: r.md, border: `1px solid ${domainCfg.color}14`,
-                            }}>
-                                <div style={{ fontSize: 26, marginBottom: 6, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>{s.icon}</div>
-                                <div style={{ fontFamily: fonts.heading, fontSize: 28, fontWeight: 700, color: domainCfg.color }}>{s.val}</div>
-                                <div style={{ fontFamily: fonts.body, fontSize: 12, fontWeight: 600, color: t.textFaint }}>{s.label}</div>
+                    )}
+
+                    {/* Charts */}
+                    {!isDomainOnly && (
+                        <div className="nd-two-col" style={{
+                            display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 16, marginBottom: 20,
+                        }}>
+                            <SCard isDark={isDark} accentLine={p.red600}
+                                title={<><BarChartOutlined style={{ color: p.red600, fontSize: 16, marginRight: 8 }} />
+                                    <span style={{ fontFamily: fonts.body, fontWeight: 700, fontSize: 14, color: isDark ? '#F0F4FF' : p.ink }}>Volontaires par Comité</span></>}
+                            >
+                                <BarChart data={committees} isDark={isDark} />
+                            </SCard>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                                <SCard isDark={isDark} accentLine={p.amb600}
+                                    title={<><AlertOutlined style={{ color: p.amb600, fontSize: 14, marginRight: 8 }} />
+                                        <span style={{ fontFamily: fonts.body, fontWeight: 700, fontSize: 14, color: isDark ? '#F0F4FF' : p.ink }}>Alertes Stock</span></>}
+                                >
+                                    {alerts.length === 0 ? (
+                                        <div style={{ textAlign: 'center', padding: '14px 0', fontFamily: fonts.body, color: t.textFaint }}>
+                                            <CheckCircleOutlined style={{ fontSize: 24, color: p.grn600, marginBottom: 6 }} />
+                                            <br />Aucune alerte
+                                        </div>
+                                    ) : alerts.slice(0, 3).map((a, i) => {
+                                        const sev = SEVERITY_META[a.severity] || SEVERITY_META.MEDIUM;
+                                        return (
+                                            <div key={i} className="nd-row-hover" style={{
+                                                display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0',
+                                                borderBottom: i < 2 ? `1px solid ${t.divider}` : 'none',
+                                            }}>
+                                                <div style={{ width: 7, height: 7, borderRadius: '50%', background: sev.color, flexShrink: 0 }} />
+                                                <div>
+                                                    <div style={{ fontFamily: fonts.body, fontSize: 12, fontWeight: 600, color: isDark ? '#F0F4FF' : p.ink }}>
+                                                        Alerte #{a.itemId.substring(0, 8)}
+                                                    </div>
+                                                    <div style={{ fontFamily: fonts.body, fontSize: 11, color: t.textFaint }}>{a.alertType} · {sev.label}</div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </SCard>
+
+                                <SCard isDark={isDark} accentLine='#5A78E6'
+                                    title={<><TrophyOutlined style={{ color: '#5A78E6', fontSize: 14, marginRight: 8 }} />
+                                        <span style={{ fontFamily: fonts.body, fontWeight: 700, fontSize: 14, color: isDark ? '#F0F4FF' : p.ink }}>Top Comités</span></>}
+                                >
+                                    {committees.slice(0, 5).map((c) => {
+                                        const max = Math.max(...committees.map(x => x.totalVolunteers || 0), 1);
+                                        const pct = (c.totalVolunteers || 0) / max;
+                                        return (
+                                            <ProgRow key={c.id} isDark={isDark}
+                                                label={c.region || c.name || '—'}
+                                                value={c.totalVolunteers || 0} max={max}
+                                                color={pct > 0.6 ? p.red600 : pct > 0.3 ? p.amb600 : '#5A78E6'}
+                                            />
+                                        );
+                                    })}
+                                </SCard>
                             </div>
-                        ))}
-                    </div>
-                </div>
+                        </div>
+                    )}
+
+                    {/* Domain widget */}
+                    {domainCfg && (
+                        <div className="nd-fade-up" style={{
+                            borderRadius: r.lg, padding: 22, marginBottom: 20,
+                            background: isDark ? `${domainCfg.color}08` : `${domainCfg.color}04`,
+                            border: `1px solid ${domainCfg.color}20`,
+                            boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.3)' : sh.sm,
+                        }}>
+                            <div style={{
+                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                marginBottom: 18, flexWrap: 'wrap', gap: 14,
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                                    <div style={{
+                                        width: 48, height: 48, borderRadius: r.md,
+                                        background: `${domainCfg.color}15`,
+                                        border: `1px solid ${domainCfg.color}22`,
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, color: domainCfg.color,
+                                    }}>
+                                        {domainCfg.icon}
+                                    </div>
+                                    <div>
+                                        <div style={{ fontFamily: fonts.display, fontSize: 17, fontWeight: 700, color: isDark ? '#F0F4FF' : p.ink }}>
+                                            Mon Domaine — {domainCfg.label}
+                                        </div>
+                                        <div style={{ fontFamily: fonts.body, fontSize: 12, color: t.textFaint }}>
+                                            Statistiques spécifiques à votre domaine
+                                        </div>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => navigate(domainCfg.route)}
+                                    className="nd-action"
+                                    style={{
+                                        background: `linear-gradient(135deg, ${domainCfg.color}dd, ${domainCfg.color})`,
+                                        color: '#fff', border: 'none', borderRadius: r.md,
+                                        padding: '10px 20px', fontFamily: fonts.body, fontSize: 13, fontWeight: 700,
+                                        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                                    }}
+                                >
+                                    <BarChartOutlined /> Ouvrir {domainCfg.label}
+                                </button>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${domainStats.length}, 1fr)`, gap: 12 }}>
+                                {domainStats.map((s: any) => (
+                                    <div key={s.label} style={{
+                                        textAlign: 'center', padding: '16px 10px',
+                                        background: isDark ? 'rgba(255,255,255,0.04)' : '#fff',
+                                        borderRadius: r.md, border: `1px solid ${domainCfg.color}14`,
+                                    }}>
+                                        <div style={{ fontSize: 26, marginBottom: 6, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>{s.icon}</div>
+                                        <div style={{ fontFamily: fonts.heading, fontSize: 28, fontWeight: 700, color: domainCfg.color }}>{s.val}</div>
+                                        <div style={{ fontFamily: fonts.body, fontSize: 12, fontWeight: 600, color: t.textFaint }}>{s.label}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </>
             )}
 
             {/* Quick actions */}
-            {qActions.length > 0 && (
+            {actionsToRender.length > 0 && (
                 <SCard isDark={isDark} accentLine={p.amb600}
                     title={<><ThunderboltOutlined style={{ color: p.amb600, fontSize: 16, marginRight: 8 }} />
                         <span style={{ fontFamily: fonts.body, fontWeight: 700, fontSize: 14, color: isDark ? '#F0F4FF' : p.ink }}>Actions Rapides</span></>}
@@ -1144,7 +1488,7 @@ const VolunteerDash: React.FC<{
                     <div className="nd-action-grid" style={{
                         display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10,
                     }}>
-                        {qActions.slice(0, 8).map((a: any) => (
+                        {actionsToRender.slice(0, 8).map((a: any) => (
                             <QAction key={a.label} isDark={isDark}
                                 icon={a.icon} label={a.label} desc={a.desc} accent={a.accent}
                                 onClick={() => navigate(a.route)}
@@ -1173,6 +1517,8 @@ const DashboardPage: React.FC = () => {
     const [inventory, setInventory] = useState<InventoryItemDTO[]>([]);
     const [alerts, setAlerts] = useState<StockAlertDTO[]>([]);
     const [volunteerData, setVolunteerData] = useState<CommitteeOverview[]>([]);
+    const [upcomingEvents, setUpcomingEvents] = useState<CalendarEventDTO[]>([]);
+    const [myQuizResults, setMyQuizResults] = useState<QuizResultDTO[]>([]);
     const [secourismeEqCount, setSecourismeEqCount] = useState<number | string>('—');
     const [secourismeDvCount, setSecourismeDvCount] = useState<number | string>('—');
     const [jeunesseFormsCount, setJeunesseFormsCount] = useState<number | string>('—');
@@ -1220,6 +1566,16 @@ const DashboardPage: React.FC = () => {
                 }
                 if (permissions.sidebarKeys.includes('/immigration')) {
                     setImmigrationCasesCount((await ds.immigrationService.getCases().catch(() => [])).length);
+                }
+                if (permissions.dashboardType === 'volunteer') {
+                    // Fetch profile to sync fresh hours/matricule
+                    await useAuthStore.getState().fetchProfile().catch(() => {});
+                    // Fetch calendar events
+                    const evs = await calendarService.getUpcomingEvents().catch(() => []);
+                    setUpcomingEvents(evs);
+                    // Fetch quiz results
+                    const qres = await quizService.getMyResults().catch(() => []);
+                    setMyQuizResults(qres);
                 }
             } catch { /* silent */ }
             finally { setLoading(false); }
@@ -1284,6 +1640,8 @@ const DashboardPage: React.FC = () => {
                     socialFamiliesCount={socialFamiliesCount} socialActionsCount={socialActionsCount}
                     vffCasesCount={vffCasesCount} immigrationCasesCount={immigrationCasesCount}
                     secourismeEqCount={secourismeEqCount} secourismeDvCount={secourismeDvCount}
+                    upcomingEvents={upcomingEvents}
+                    myQuizResults={myQuizResults}
                 />
             )}
 

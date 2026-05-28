@@ -5,6 +5,7 @@
 // ============================================================
 
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '@/stores/authStore';
 import { useUIStore } from '@/stores';
@@ -190,13 +191,13 @@ function useUserRoles() {
 
 /* ═════════════════════ STATUS CONFIG ═══════════════════════ */
 
-const STATUS_CFG: Record<PubStatus, { label: string; color: string; bg: string; dot: string }> = {
-    draft:     { label: 'Brouillon',          color: '#6B7280', bg: 'rgba(107,114,128,0.1)', dot: '#6B7280' },
-    pending:   { label: 'En attente',         color: '#D97706', bg: 'rgba(217,119,6,0.12)',  dot: '#F59E0B' },
-    approved:  { label: 'Approuvé',           color: '#059669', bg: 'rgba(5,150,105,0.1)',   dot: '#10B981' },
-    rejected:  { label: 'Refusé',             color: '#DC2626', bg: 'rgba(220,38,38,0.1)',   dot: '#EF4444' },
-    published: { label: 'Publié',             color: '#2563EB', bg: 'rgba(37,99,235,0.1)',   dot: '#3B82F6' },
-    archived:  { label: 'Archivé',            color: '#374151', bg: 'rgba(55,65,81,0.1)',    dot: '#9CA3AF' },
+const STATUS_CFG: Record<PubStatus, { labelKey: string; color: string; bg: string; dot: string }> = {
+    draft:     { labelKey: 'home.news.draft',          color: '#6B7280', bg: 'rgba(107,114,128,0.1)', dot: '#6B7280' },
+    pending:   { labelKey: 'home.news.pendingStatus',   color: '#D97706', bg: 'rgba(217,119,6,0.12)',  dot: '#F59E0B' },
+    approved:  { labelKey: 'home.news.approved',       color: '#059669', bg: 'rgba(5,150,105,0.1)',   dot: '#10B981' },
+    rejected:  { labelKey: 'home.news.rejected',       color: '#DC2626', bg: 'rgba(220,38,38,0.1)',   dot: '#EF4444' },
+    published: { labelKey: 'home.news.published',      color: '#2563EB', bg: 'rgba(37,99,235,0.1)',   dot: '#3B82F6' },
+    archived:  { labelKey: 'home.news.archived',       color: '#374151', bg: 'rgba(55,65,81,0.1)',    dot: '#9CA3AF' },
 };
 
 /* ═════════════════════ TAG STYLE ════════════════════════════ */
@@ -220,11 +221,12 @@ function tagCss(color: Tag['color'], dark: boolean): React.CSSProperties {
 
 // Status pill
 const StatusPill: React.FC<{ status: PubStatus }> = ({ status }) => {
+    const { t } = useTranslation();
     const cfg = STATUS_CFG[status];
     return (
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 10px', borderRadius: 100, fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', background: cfg.bg, color: cfg.color }}>
             <span style={{ width: 5, height: 5, borderRadius: '50%', background: cfg.dot, flexShrink: 0 }} />
-            {cfg.label}
+            {t(cfg.labelKey)}
         </span>
     );
 };
@@ -277,7 +279,9 @@ const CreateForm: React.FC<{
     initial?: NewsItem;
     roles: ReturnType<typeof useUserRoles>;
 }> = ({ dark, onClose, onSave, initial, roles }) => {
+    const { t } = useTranslation();
     const [form, setForm] = useState<Partial<NewsItem>>(initial ?? { ...EMPTY_ITEM });
+    const [formSubmitted, setFormSubmitted] = useState(false);
     const [tagInput, setTagInput] = useState('');
     const fileRef = useRef<HTMLInputElement>(null);
 
@@ -331,11 +335,14 @@ const CreateForm: React.FC<{
                 style={{ position: 'relative', zIndex: 1, background: bg, borderRadius: 20, padding: 28, width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 32px 80px rgba(0,0,0,0.3)', border }}
             >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-                    <div>
-                        <div style={{ fontSize: 16, fontWeight: 700, color: fg, display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <IconEdit s={18} /> {initial ? 'Modifier la publication' : 'Nouvelle publication'}
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <IconEdit s={18} />
+                        <div>
+                            <div style={{ fontSize: 16, fontWeight: 700, color: fg }}>
+                                {initial ? t('home.news.editPublish', 'Modifier la publication') : t('home.news.newPublish', 'Nouvelle publication')}
+                            </div>
+                            <div style={{ fontSize: 11, color: sub, marginTop: 2 }}>Les publications nécessitent une validation avant publication.</div>
                         </div>
-                        <div style={{ fontSize: 11, color: sub, marginTop: 2 }}>Les publications nécessitent une validation avant publication.</div>
                     </div>
                     <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: '50%', border: dark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)', background: 'transparent', cursor: 'pointer', fontSize: 15, color: sub, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
                 </div>
@@ -411,11 +418,13 @@ const CreateForm: React.FC<{
 
                 {/* Actions */}
                 <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={() => submit('draft')} style={{ flex: 1, padding: '10px', borderRadius: 12, border: dark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)', background: 'transparent', fontSize: 13, fontWeight: 500, color: sub, cursor: 'pointer' }}>
-                        💾 Enregistrer brouillon
+                    <button onClick={() => submit('draft')} style={{ flex: 1, padding: '10px', borderRadius: 12, border: dark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)', background: 'transparent', fontSize: 13, fontWeight: 500, color: sub, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2v-5H4v5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                        {t('home.news.saveDraft', 'Enregistrer brouillon')}
                     </button>
-                    <button onClick={() => submit('pending')} style={{ flex: 2, padding: '10px', borderRadius: 12, border: 'none', background: '#C8102E', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 4px 14px rgba(200,16,46,0.35)' }}>
-                        📤 Soumettre pour validation
+                    <button onClick={() => submit('pending')} style={{ flex: 2, padding: '10px', borderRadius: 12, border: 'none', background: '#C8102E', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 4px 14px rgba(200,16,46,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
+                        {t('home.news.submitValidation', 'Soumettre pour validation')}
                     </button>
                 </div>
             </motion.div>
@@ -432,10 +441,21 @@ const DetailModal: React.FC<{
     onStatusChange: (id: string, status: PubStatus) => void;
     roles: ReturnType<typeof useUserRoles>;
 }> = ({ item, dark, onClose, onStatusChange, roles }) => {
+    const { t } = useTranslation();
     const bg = dark ? '#1E1E22' : '#FFFFFF';
     const fg = dark ? '#F4F4F5' : '#1F2937';
     const sub = dark ? '#A1A1AA' : '#4B5563';
     const border = dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+
+    const isDefault = ['caravane', 'jeunesse', 'urgence-jendouba', 'don-sang-tunis'].includes(item.id);
+    const displayCategory = isDefault ? t(`home.news.${item.id}.category`, item.category) : item.category;
+    const displayTitle = isDefault ? t(`home.news.${item.id}.title`, item.title) : item.title;
+    const displayDesc = isDefault ? t(`home.news.${item.id}.desc`, item.desc) : item.desc;
+    const displayFullText = isDefault ? t(`home.news.${item.id}.fullText`, item.fullText) : item.fullText;
+    const displayTags = item.tags.map((tag, tagIdx) => ({
+        ...tag,
+        label: isDefault ? t(`home.news.${item.id}.tags.${tagIdx}`, tag.label) : tag.label
+    }));
 
     useEffect(() => {
         const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -461,14 +481,14 @@ const DetailModal: React.FC<{
                     <div style={{ flex: 1 }}>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14, alignItems: 'center' }}>
                             <StatusPill status={item.status} />
-                            <span style={{ padding: '3px 10px', borderRadius: 100, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', background: 'rgba(200,16,46,0.1)', color: '#C8102E' }}>{item.category}</span>
+                            <span style={{ padding: '3px 10px', borderRadius: 100, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', background: 'rgba(200,16,46,0.1)', color: '#C8102E' }}>{displayCategory}</span>
                             <span style={{ fontSize: 11, color: sub }}>{item.date}</span>
                         </div>
                         <h2 className="font-display" style={{ fontSize: 'clamp(20px, 3vw, 28px)', fontWeight: 800, lineHeight: 1.2, color: fg, marginBottom: 10 }}>
-                            {item.title}
+                            {displayTitle}
                         </h2>
                         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
-                            {item.tags.map(t => (
+                            {displayTags.map(t => (
                                 <span key={t.label} style={{ padding: '3px 10px', borderRadius: 100, fontSize: 10, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', ...tagCss(t.color, dark) }}>{t.label}</span>
                             ))}
                         </div>
@@ -478,29 +498,36 @@ const DetailModal: React.FC<{
 
                 {/* Image carousel */}
                 <div style={{ padding: '0 26px' }}>
-                    <ImageCarousel images={item.images} title={item.title} />
+                    <ImageCarousel images={item.images} title={displayTitle} />
                 </div>
 
                 {/* Full text */}
                 <div style={{ padding: '0 26px 6px' }}>
-                    <p style={{ fontSize: 14.5, lineHeight: 1.78, color: sub }}>{item.fullText || item.desc}</p>
+                    <p style={{ fontSize: 14.5, lineHeight: 1.78, color: sub }}>{displayFullText || displayDesc}</p>
                     <div style={{ marginTop: 14, fontSize: 11, color: sub, fontStyle: 'italic' }}>
-                        Publié par : <strong style={{ color: fg }}>{item.authorName}</strong>
+                        {t('home.news.publishedBy', 'Publié par :')} <strong style={{ color: fg }}>{item.authorName}</strong>
                     </div>
                 </div>
 
                 {/* Admin validation row */}
                 {(roles.canValidateNational || roles.canValidateCommittee) && item.status === 'pending' && (
                     <div style={{ margin: '16px 26px', padding: '14px 16px', borderRadius: 14, background: dark ? 'rgba(255,255,255,0.04)' : '#FFF8F8', border: `1px solid ${border}` }}>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: '#C8102E', marginBottom: 10 }}>⚖️ Action de validation</div>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C8102E" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                            </svg>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: '#C8102E' }}>{t('home.news.validationAction', 'Action de validation')}</div>
+                        </div>
                         <div style={{ display: 'flex', gap: 8 }}>
                             <button onClick={() => onStatusChange(item.id, 'rejected')}
-                                style={{ flex: 1, padding: '9px', borderRadius: 10, border: '1.5px solid rgba(220,38,38,0.3)', background: 'rgba(220,38,38,0.06)', color: '#DC2626', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                                🚫 Refuser
+                                style={{ flex: 1, padding: '9px', borderRadius: 10, border: '1.5px solid rgba(220,38,38,0.3)', background: 'rgba(220,38,38,0.06)', color: '#DC2626', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                                {t('home.news.reject', 'Refuser')}
                             </button>
                             <button onClick={() => onStatusChange(item.id, roles.canValidateNational ? 'published' : 'approved')}
-                                style={{ flex: 2, padding: '9px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #059669, #047857)', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', boxShadow: '0 3px 12px rgba(5,150,105,0.3)' }}>
-                                ✅ {roles.canValidateNational ? 'Approuver & Publier' : 'Approuver'}
+                                style={{ flex: 2, padding: '9px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #059669, #047857)', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', boxShadow: '0 3px 12px rgba(5,150,105,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                {roles.canValidateNational ? t('home.news.approvePublish', 'Approuver & Publier') : t('home.news.approve', 'Approuver')}
                             </button>
                         </div>
                     </div>
@@ -510,8 +537,9 @@ const DetailModal: React.FC<{
                 {roles.canValidateNational && item.status === 'published' && (
                     <div style={{ margin: '0 26px 16px', display: 'flex', justifyContent: 'flex-end' }}>
                         <button onClick={() => onStatusChange(item.id, 'archived')}
-                            style={{ padding: '6px 14px', borderRadius: 100, border: `1px solid ${border}`, background: 'transparent', fontSize: 11, color: sub, cursor: 'pointer', fontWeight: 500 }}>
-                            📦 Archiver
+                            style={{ padding: '6px 14px', borderRadius: 100, border: `1px solid ${border}`, background: 'transparent', fontSize: 11, color: sub, cursor: 'pointer', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 5 }}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                            {t('home.news.archive', 'Archiver')}
                         </button>
                     </div>
                 )}
@@ -523,14 +551,14 @@ const DetailModal: React.FC<{
                         onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#C8102E'; e.currentTarget.style.color = '#C8102E'; }}
                         onMouseLeave={(e) => { e.currentTarget.style.borderColor = border; e.currentTarget.style.color = sub; }}
                     >
-                        Fermer
+                        {t('home.news.close', 'Fermer')}
                     </button>
                     <button
                         style={{ padding: '10px 28px', borderRadius: 100, border: 'none', background: '#C8102E', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', boxShadow: '0 4px 16px rgba(200,16,46,0.36)', transition: 'all 0.25s' }}
                         onMouseEnter={(e) => { e.currentTarget.style.background = '#9B0B22'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
                         onMouseLeave={(e) => { e.currentTarget.style.background = '#C8102E'; e.currentTarget.style.transform = 'none'; }}
                     >
-                        Lire l'article complet →
+                        {t('home.news.readFull', "Lire l'article complet")} →
                     </button>
                 </div>
             </motion.div>
@@ -546,10 +574,20 @@ const NewsCard: React.FC<{
     onClick: () => void;
     showStatus: boolean;
 }> = ({ item, dark, onClick, showStatus }) => {
+    const { t } = useTranslation();
     const [hovered, setHovered] = useState(false);
     const cardBg = dark ? '#1E1E22' : '#FFFFFF';
     const fg = dark ? '#F4F4F5' : '#1F2937';
     const sub = dark ? '#A1A1AA' : '#4B5563';
+
+    const isDefault = ['caravane', 'jeunesse', 'urgence-jendouba', 'don-sang-tunis'].includes(item.id);
+    const displayCategory = isDefault ? t(`home.news.${item.id}.category`, item.category) : item.category;
+    const displayTitle = isDefault ? t(`home.news.${item.id}.title`, item.title) : item.title;
+    const displayDesc = isDefault ? t(`home.news.${item.id}.desc`, item.desc) : item.desc;
+    const displayTags = item.tags.map((tag, tagIdx) => ({
+        ...tag,
+        label: isDefault ? t(`home.news.${item.id}.tags.${tagIdx}`, tag.label) : tag.label
+    }));
 
     return (
         <motion.article
@@ -581,7 +619,7 @@ const NewsCard: React.FC<{
                 <div style={{ position: 'relative', overflow: 'hidden', height: 200, flexShrink: 0 }}>
                     <img
                         src={item.images[0]}
-                        alt={item.title}
+                        alt={displayTitle}
                         style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', transform: hovered ? 'scale(1.06)' : 'scale(1)', transition: 'transform 0.55s ease' }}
                         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                     />
@@ -603,28 +641,28 @@ const NewsCard: React.FC<{
                 {/* Meta row */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
                     <span style={{ fontSize: 10.5, color: sub }}>{item.date}</span>
-                    <span style={{ padding: '2px 9px', borderRadius: 100, fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', background: 'rgba(200,16,46,0.08)', color: '#C8102E' }}>{item.category}</span>
+                    <span style={{ padding: '2px 9px', borderRadius: 100, fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', background: 'rgba(200,16,46,0.08)', color: '#C8102E' }}>{displayCategory}</span>
                     {!item.images[0] && showStatus && <StatusPill status={item.status} />}
                 </div>
 
                 <h3 className="font-display" style={{ fontSize: 18, fontWeight: 800, lineHeight: 1.3, color: fg, marginBottom: 8, letterSpacing: '-0.01em' }}>
-                    {item.title}
+                    {displayTitle}
                 </h3>
 
                 <p style={{ fontSize: 13, lineHeight: 1.65, color: sub, flex: 1, marginBottom: 14, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                    {item.desc}
+                    {displayDesc}
                 </p>
 
                 {/* Tags */}
                 <div style={{ marginTop: 'auto', display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 14 }}>
-                    {item.tags.map(t => (
+                    {displayTags.map(t => (
                         <span key={t.label} style={{ padding: '3px 9px', borderRadius: 100, fontSize: 9.5, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', ...tagCss(t.color, dark) }}>{t.label}</span>
                     ))}
                 </div>
 
                 {/* Read link */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12.5, fontWeight: 700, color: '#C8102E', transition: 'gap 0.25s' }}>
-                    {item.type === 'publication' ? 'Voir la publication' : 'Lire la suite'}
+                    {item.type === 'publication' ? t('home.news.viewPub', 'Voir la publication') : t('home.news.readMore', 'Lire la suite')}
                     <span style={{ transform: hovered ? 'translateX(4px)' : 'none', transition: 'transform 0.25s', display: 'inline-block' }}>→</span>
                 </div>
             </div>
@@ -635,6 +673,7 @@ const NewsCard: React.FC<{
 /* ═════════════════════ MAIN SECTION ════════════════════════ */
 
 const NewsSection: React.FC = () => {
+    const { t } = useTranslation();
     const roles = useUserRoles();
     const { themeMode } = useUIStore();
     const dark = themeMode === 'dark';
@@ -748,13 +787,13 @@ const NewsSection: React.FC = () => {
             <div className="news-header" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: 20, marginBottom: 52 }}>
                 <motion.div initial={{ opacity: 0, y: 18 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
                     <div style={{ fontSize: 11, fontWeight: 700, color: accentColor, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 14 }}>
-                        Actualités & Publications
+                        {t('home.news.tag', 'Actualités & Publications')}
                     </div>
                     <h2 className="font-display" style={{ fontSize: 'clamp(30px, 4vw, 52px)', fontWeight: 800, lineHeight: 1.1, color: fg, letterSpacing: '-0.02em', marginBottom: 10 }}>
-                        Dernières Nouvelles
+                        {t('home.news.title', 'Dernières Nouvelles')}
                     </h2>
                     <p style={{ fontSize: 15.5, color: sub, maxWidth: 440, lineHeight: 1.65 }}>
-                        Suivez nos actualités, mises à jour et publications officielles.
+                        {t('home.news.subtitle', 'Suivez nos actualités, mises à jour et publications officielles.')}
                     </p>
                 </motion.div>
 
@@ -762,9 +801,9 @@ const NewsSection: React.FC = () => {
                     {/* Filter pills */}
                     <div style={{ display: 'flex', gap: 6 }}>
                         {[
-                            { key: 'all' as FilterKey, label: 'Tous', icon: null },
-                            { key: 'actualite' as FilterKey, label: 'Actualités', icon: <IconNews s={14}/> },
-                            { key: 'publication' as FilterKey, label: 'Publications', icon: <IconScroll s={14}/> },
+                            { key: 'all' as FilterKey, label: t('home.news.filterAll', 'Tous'), icon: null },
+                            { key: 'actualite' as FilterKey, label: t('home.news.filterNews', 'Actualités'), icon: <IconNews s={14}/> },
+                            { key: 'publication' as FilterKey, label: t('home.news.filterPubs', 'Publications'), icon: <IconScroll s={14}/> },
                         ].map(f => (
                             <button key={f.key} onClick={() => setFilter(f.key)}
                                 style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px', borderRadius: 100, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', border: filter === f.key ? '1.5px solid #C8102E' : `1.5px solid ${dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`, background: filter === f.key ? 'rgba(200,16,46,0.1)' : 'transparent', color: filter === f.key ? '#C8102E' : sub, transition: 'all 0.22s', fontFamily: 'inherit' }}>
@@ -779,7 +818,7 @@ const NewsSection: React.FC = () => {
                             {(roles.canValidateNational || roles.canValidateCommittee) && pendingCount > 0 && (
                                 <span style={{ padding: '5px 12px', borderRadius: 100, fontSize: 11, fontWeight: 700, background: 'rgba(217,119,6,0.15)', color: '#D97706', border: '1px solid rgba(217,119,6,0.25)', display: 'flex', alignItems: 'center', gap: 5 }}>
                                     <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#F59E0B' }} />
-                                    {pendingCount} en attente
+                                    {pendingCount} {t('home.news.pending', 'en attente')}
                                 </span>
                             )}
                             <button onClick={() => setCreating(true)}
@@ -788,7 +827,7 @@ const NewsSection: React.FC = () => {
                                 onMouseLeave={(e) => { e.currentTarget.style.background = '#C8102E'; e.currentTarget.style.transform = 'none'; }}
                             >
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                                Nouvelle publication
+                                {t('home.news.newPublish', 'Nouvelle publication')}
                             </button>
                         </div>
                     )}
@@ -812,7 +851,7 @@ const NewsSection: React.FC = () => {
                 {filtered.length === 0 && (
                     <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '60px 0', color: sub }}>
                         <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'center' }}><IconInbox s={40} /></div>
-                        <div style={{ fontSize: 15, fontWeight: 500 }}>Aucune publication pour ce filtre.</div>
+                        <div style={{ fontSize: 15, fontWeight: 500 }}>{t('home.news.noData', 'Aucune publication pour ce filtre.')}</div>
                     </div>
                 )}
             </div>

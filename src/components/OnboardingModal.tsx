@@ -296,9 +296,10 @@ const OnboardingModal: React.FC = () => {
                                     alignItems: 'center', justifyContent: 'center',
                                     margin: '0 auto 16px',
                                     fontSize: 32,
+                                    color: '#22c55e',
                                 }}
                             >
-                                ✅
+                                <CheckCircleOutlined />
                             </div>
                             <Title level={4} style={{ marginBottom: 8 }}>Tout est prêt !</Title>
                             <Paragraph type="secondary" style={{ maxWidth: 400, margin: '0 auto 24px' }}>

@@ -4,6 +4,7 @@
 // ============================================================
 
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useState, useRef } from 'react';
 import { useAuthStore } from '@/stores/authStore';
@@ -124,6 +125,7 @@ const EditField: React.FC<{ label: string; value: string; onChange: (v: string) 
 /* ═══════════════════════════════════════════════════════════ */
 
 const HeroSection: React.FC = () => {
+    const { t } = useTranslation();
     const canEdit = useCanEditHero();
     const { themeMode } = useUIStore();
     const dark = themeMode === 'dark';
@@ -132,6 +134,20 @@ const HeroSection: React.FC = () => {
     const [content, setContent] = useState<HeroContent>(loadContent);
     const [draft, setDraft] = useState<HeroContent>(loadContent);
     const fileRef = useRef<HTMLInputElement>(null);
+
+    // Resolve translated labels if content matches the default French values
+    const displayHeadline1 = content.headline1 === DEFAULT_CONTENT.headline1 ? t('home.hero.headline1', DEFAULT_CONTENT.headline1) : content.headline1;
+    const displayHeadline2 = content.headline2 === DEFAULT_CONTENT.headline2 ? t('home.hero.headline2', DEFAULT_CONTENT.headline2) : content.headline2;
+    const displayHeadlineAccent = content.headlineAccent === DEFAULT_CONTENT.headlineAccent ? t('home.hero.headlineAccent', DEFAULT_CONTENT.headlineAccent) : content.headlineAccent;
+    const displaySubtitle = content.subtitle === DEFAULT_CONTENT.subtitle ? t('home.hero.subtitle', DEFAULT_CONTENT.subtitle) : content.subtitle;
+    const displayCtaLabel = content.ctaLabel === DEFAULT_CONTENT.ctaLabel ? t('home.hero.ctaLabel', DEFAULT_CONTENT.ctaLabel) : content.ctaLabel;
+    const displayBadge1Title = content.badge1Title === DEFAULT_CONTENT.badge1Title ? t('home.hero.badge1Title', DEFAULT_CONTENT.badge1Title) : content.badge1Title;
+    const displayBadge1Sub = content.badge1Sub === DEFAULT_CONTENT.badge1Sub ? t('home.hero.badge1Sub', DEFAULT_CONTENT.badge1Sub) : content.badge1Sub;
+    const displayBadge2Title = content.badge2Title === DEFAULT_CONTENT.badge2Title ? t('home.hero.badge2Title', DEFAULT_CONTENT.badge2Title) : content.badge2Title;
+    const displayBadge2Sub = content.badge2Sub === DEFAULT_CONTENT.badge2Sub ? t('home.hero.badge2Sub', DEFAULT_CONTENT.badge2Sub) : content.badge2Sub;
+    const displayStat1label = content.stat1label === DEFAULT_CONTENT.stat1label ? t('home.hero.stat1label', DEFAULT_CONTENT.stat1label) : content.stat1label;
+    const displayStat2label = content.stat2label === DEFAULT_CONTENT.stat2label ? t('home.hero.stat2label', DEFAULT_CONTENT.stat2label) : content.stat2label;
+    const displayStat3label = content.stat3label === DEFAULT_CONTENT.stat3label ? t('home.hero.stat3label', DEFAULT_CONTENT.stat3label) : content.stat3label;
 
     const setDraftField = (key: keyof HeroContent) => (val: string) =>
         setDraft((prev) => ({ ...prev, [key]: val }));
@@ -225,7 +241,7 @@ const HeroSection: React.FC = () => {
             {canEdit && (
                 <button
                     onClick={() => { setDraft(content); setEditOpen(true); }}
-                    title="Modifier le contenu de la page d'accueil"
+                    title={t('home.hero.editButton', 'Modifier la page')}
                     style={{
                         position: 'absolute',
                         top: 96,
@@ -254,7 +270,7 @@ const HeroSection: React.FC = () => {
                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                     </svg>
-                    Modifier la page
+                    {t('home.hero.editButton', 'Modifier la page')}
                 </button>
             )}
 
@@ -286,9 +302,15 @@ const HeroSection: React.FC = () => {
                         >
                             {/* Drawer header */}
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 20px 16px', borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
-                                <div>
-                                    <div style={{ fontSize: 15, fontWeight: 700, color: '#1A1A2E' }}>✏️ Modifier la page d'accueil</div>
-                                    <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>Président National / Vice-Président / Diffusion</div>
+                                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C8102E" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                    </svg>
+                                    <div>
+                                        <div style={{ fontSize: 15, fontWeight: 700, color: '#1A1A2E' }}>Modifier la page d'accueil</div>
+                                        <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>Président National / Vice-Président / Diffusion</div>
+                                    </div>
                                 </div>
                                 <button onClick={handleCancel} style={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid rgba(0,0,0,0.1)', background: 'transparent', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6B7280' }}>✕</button>
                             </div>
@@ -374,11 +396,12 @@ const HeroSection: React.FC = () => {
                                     Annuler
                                 </button>
                                 <button onClick={handleSave}
-                                    style={{ flex: 2, padding: '9px', borderRadius: 10, border: 'none', background: '#C8102E', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 3px 12px rgba(200,16,46,0.35)', transition: 'all 0.22s' }}
+                                    style={{ flex: 2, padding: '9px', borderRadius: 10, border: 'none', background: '#C8102E', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 3px 12px rgba(200,16,46,0.35)', transition: 'all 0.22s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
                                     onMouseEnter={(e) => { e.currentTarget.style.background = '#9B0B22'; }}
                                     onMouseLeave={(e) => { e.currentTarget.style.background = '#C8102E'; }}
                                 >
-                                    ✓ Enregistrer
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                    {t('common.save', 'Enregistrer')}
                                 </button>
                             </div>
                         </motion.div>
@@ -409,9 +432,9 @@ const HeroSection: React.FC = () => {
                         className="font-display"
                         style={{ fontSize: 'clamp(34px, 4.2vw, 62px)', fontWeight: 900, lineHeight: 1.1, color: dark ? '#F8FAFC' : '#1A1A2E', marginBottom: 22, letterSpacing: '-0.02em' }}
                     >
-                        {content.headline1}<br />
-                        {content.headline2}<br />
-                        <span style={{ color: '#C8102E' }}>{content.headlineAccent}</span>
+                        {displayHeadline1}<br />
+                        {displayHeadline2}<br />
+                        <span style={{ color: '#C8102E' }}>{displayHeadlineAccent}</span>
                     </motion.h1>
 
                     {/* Subtitle */}
@@ -419,7 +442,7 @@ const HeroSection: React.FC = () => {
                         initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.75, delay: 0.2 }}
                         style={{ fontSize: 15.5, lineHeight: 1.72, color: dark ? '#CBD5E1' : '#6B7280', maxWidth: 430, marginBottom: 36 }}
                     >
-                        {content.subtitle}
+                        {displaySubtitle}
                     </motion.p>
 
                     {/* CTAs */}
@@ -432,7 +455,7 @@ const HeroSection: React.FC = () => {
                             onMouseEnter={(e) => { e.currentTarget.style.background = '#9B0B22'; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 28px rgba(200,16,46,0.48)'; }}
                             onMouseLeave={(e) => { e.currentTarget.style.background = '#C8102E'; e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 5px 20px rgba(200,16,46,0.36)'; }}
                         >
-                            {content.ctaLabel}
+                            {displayCtaLabel}
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></svg>
                         </Link>
                         <a href="#modules"
@@ -441,7 +464,7 @@ const HeroSection: React.FC = () => {
                             onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#C8102E'; e.currentTarget.style.color = '#C8102E'; }}
                             onMouseLeave={(e) => { e.currentTarget.style.borderColor = dark ? 'rgba(255,255,255,0.18)' : 'rgba(26,26,46,0.18)'; e.currentTarget.style.color = dark ? '#F8FAFC' : '#374151'; }}
                         >
-                            En savoir plus
+                            {t('home.hero.secondaryCta', 'En savoir plus')}
                         </a>
                     </motion.div>
 
@@ -451,9 +474,9 @@ const HeroSection: React.FC = () => {
                         style={{ marginTop: 40, display: 'flex', gap: 28, flexWrap: 'wrap' }}
                     >
                         {[
-                            { n: content.stat1n, label: content.stat1label },
-                            { n: content.stat2n, label: content.stat2label },
-                            { n: content.stat3n, label: content.stat3label },
+                            { n: content.stat1n, label: displayStat1label },
+                            { n: content.stat2n, label: displayStat2label },
+                            { n: content.stat3n, label: displayStat3label },
                         ].map((s, i) => (
                             <div key={i} style={{ textAlign: 'left' }}>
                                 <div className="font-display" style={{ fontSize: 22, fontWeight: 700, color: '#C8102E', lineHeight: 1 }}>{s.n}</div>
@@ -476,7 +499,7 @@ const HeroSection: React.FC = () => {
                     <div style={{ position: 'relative', zIndex: 1, borderRadius: 26, overflow: 'hidden', boxShadow: '0 24px 64px rgba(0,0,0,0.13), 0 6px 18px rgba(200,16,46,0.1)' }}>
                         <img
                             src={content.heroImage}
-                            alt="Volontaires en formation PSE"
+                            alt={t('home.hero.heroImageAlt', 'Volontaires en formation PSE')}
                             style={{ width: '100%', height: 400, objectFit: 'cover', display: 'block' }}
                         />
                         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 70, background: 'linear-gradient(to top, rgba(0,0,0,0.28) 0%, transparent 100%)' }} />
@@ -491,8 +514,8 @@ const HeroSection: React.FC = () => {
                             {content.badge1Icon === 'heartbeat' ? <IconHeartbeat /> : <IconAlertTriangle />}
                         </div>
                         <div>
-                            <div style={{ fontSize: 12, fontWeight: 700, color: dark ? '#F8FAFC' : '#1A1A2E', whiteSpace: 'nowrap' }}>{content.badge1Title}</div>
-                            <div style={{ fontSize: 10, color: dark ? '#94A3B8' : '#9CA3AF', marginTop: 1, whiteSpace: 'nowrap' }}>{content.badge1Sub}</div>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: dark ? '#F8FAFC' : '#1A1A2E', whiteSpace: 'nowrap' }}>{displayBadge1Title}</div>
+                            <div style={{ fontSize: 10, color: dark ? '#94A3B8' : '#9CA3AF', marginTop: 1, whiteSpace: 'nowrap' }}>{displayBadge1Sub}</div>
                         </div>
                     </motion.div>
 
@@ -505,8 +528,8 @@ const HeroSection: React.FC = () => {
                             {content.badge2Icon === 'alert' ? <IconAlertTriangle /> : <IconHeartbeat />}
                         </div>
                         <div>
-                            <div style={{ fontSize: 12, fontWeight: 700, color: dark ? '#F8FAFC' : '#1A1A2E', whiteSpace: 'nowrap' }}>{content.badge2Title}</div>
-                            <div style={{ fontSize: 10, color: dark ? '#94A3B8' : '#9CA3AF', marginTop: 1, whiteSpace: 'nowrap' }}>{content.badge2Sub}</div>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: dark ? '#F8FAFC' : '#1A1A2E', whiteSpace: 'nowrap' }}>{displayBadge2Title}</div>
+                            <div style={{ fontSize: 10, color: dark ? '#94A3B8' : '#9CA3AF', marginTop: 1, whiteSpace: 'nowrap' }}>{displayBadge2Sub}</div>
                         </div>
                     </motion.div>
                 </motion.div>

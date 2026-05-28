@@ -16,6 +16,7 @@ import {
   FilterOutlined, SettingOutlined, ShareAltOutlined,
   EyeOutlined, BarChartOutlined, ReadOutlined,
   CalendarOutlined, TrophyOutlined, SendOutlined,
+  CheckCircleOutlined, CarOutlined
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -456,8 +457,8 @@ const DiffusionPage: React.FC = () => {
                   {activeTab === 'distributions' && (
                     <div>
                       <div style={{ marginBottom: 20, padding: '14px 18px', borderRadius: 14, background: 'rgba(224,28,46,0.06)', border: '1px solid rgba(224,28,46,0.15)' }}>
-                        <Text style={{ color: '#c0152a', fontSize: 13 }}>
-                          📦 Ces ressources médicales ont été <Text strong style={{ color: '#c0152a' }}>approuvées par le Président</Text> et sont disponibles pour distribution.
+                        <Text style={{ color: '#c0152a', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          <SendOutlined /> Ces ressources médicales ont été <Text strong style={{ color: '#c0152a' }}>approuvées par le Président</Text> et sont disponibles pour distribution.
                         </Text>
                       </div>
                       <Table<MedicalDistributionDTO>
@@ -507,7 +508,7 @@ const DiffusionPage: React.FC = () => {
                             key: 'status',
                             render: (s: string) => (
                               <Tag color={s === 'APPROVED' ? 'success' : 'cyan'} style={{ borderRadius: 8, fontWeight: 600 }}>
-                                {s === 'APPROVED' ? '✅ Approuvé' : '📦 Distribué'}
+                                {s === 'APPROVED' ? <Space size={4}><CheckCircleOutlined /> Approuvé</Space> : <Space size={4}><CarOutlined /> Distribué</Space>}
                               </Tag>
                             )
                           }

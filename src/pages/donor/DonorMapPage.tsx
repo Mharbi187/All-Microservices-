@@ -10,7 +10,12 @@ import { Typography, Space, Tag, Button, Select, Input, Badge, Drawer, Spin, mes
 import {
     EnvironmentOutlined, HeartOutlined, SearchOutlined,
     FilterOutlined, ReloadOutlined, InfoCircleOutlined,
+    CoffeeOutlined, MedicineBoxOutlined, ToolOutlined,
+    SkinOutlined, AlertOutlined, InboxOutlined, TeamOutlined,
+    CalendarOutlined, BankOutlined, ClockCircleOutlined,
+    CheckCircleOutlined, SyncOutlined
 } from '@ant-design/icons';
+import { renderToString } from 'react-dom/server';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -41,12 +46,12 @@ const REGION_COORDS: Record<string, { lat: number; lng: number }> = {
     'DEFAULT': { lat: 33.8869, lng: 9.5375 } // Center Tunisia
 };
 
-const TYPE_EMOJI: Record<string, string> = {
-    'Alimentaire': '🍞',
-    'Médical': '🏥',
-    'Équipement': '⚙️',
-    'Vêtements': '👕',
-    'Urgence': '🚨',
+const TYPE_EMOJI: Record<string, React.ReactNode> = {
+    'Alimentaire': <CoffeeOutlined />,
+    'Médical': <MedicineBoxOutlined />,
+    'Équipement': <ToolOutlined />,
+    'Vêtements': <SkinOutlined />,
+    'Urgence': <AlertOutlined />,
 };
 
 const TYPE_COLORS: Record<string, string> = {
@@ -63,10 +68,10 @@ const PRIORITY_COLORS: Record<string, string> = {
     'LOW': '#16a34a',
 };
 
-const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-    'OPEN': { label: '🟢 Ouvert', color: '#16a34a' },
-    'IN_PROGRESS': { label: '🟡 En cours', color: '#f59e0b' },
-    'COMPLETED': { label: '⚪ Complété', color: '#9ca3af' },
+const STATUS_LABELS: Record<string, { label: React.ReactNode; color: string }> = {
+    'OPEN': { label: <span><CheckCircleOutlined /> Ouvert</span>, color: '#16a34a' },
+    'IN_PROGRESS': { label: <span><SyncOutlined /> En cours</span>, color: '#f59e0b' },
+    'COMPLETED': { label: <span><CheckCircleOutlined /> Complété</span>, color: '#9ca3af' },
 };
 
 // ============================================================
@@ -75,7 +80,8 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 // ============================================================
 const createCustomIcon = (priority: string, type: string, isSelected: boolean) => {
     const color = PRIORITY_COLORS[priority] || '#16a34a';
-    const emoji = TYPE_EMOJI[type] || '📦';
+    const emojiNode = TYPE_EMOJI[type] || <InboxOutlined />;
+    const emojiHtml = renderToString(emojiNode as React.ReactElement);
     const size = isSelected ? 42 : 36;
     
     return L.divIcon({
@@ -109,7 +115,7 @@ const createCustomIcon = (priority: string, type: string, isSelected: boolean) =
                     box-shadow: 0 4px 16px ${color}50, 0 2px 6px rgba(0,0,0,0.2);
                     transition: all 0.2s ease;
                 ">
-                    ${emoji}
+                    ${emojiHtml}
                 </div>
             </div>
         `,
@@ -156,7 +162,7 @@ const NeedDetailPanel: React.FC<{
             width={380}
             title={
                 <Space>
-                    <span style={{ fontSize: 20 }}>{TYPE_EMOJI[need.type] || '📦'}</span>
+                    <span style={{ fontSize: 20 }}>{TYPE_EMOJI[need.type] || <InboxOutlined />}</span>
                     <span>{need.committeeName}</span>
                 </Space>
             }
@@ -174,7 +180,7 @@ const NeedDetailPanel: React.FC<{
                         fontSize: 12,
                         padding: '4px 14px',
                     }}>
-                        {need.priority === 'URGENT' ? '🔴' : need.priority === 'NORMAL' ? '🟡' : '🟢'} {need.priority}
+                        {need.priority === 'URGENT' ? <AlertOutlined /> : need.priority === 'NORMAL' ? <InfoCircleOutlined /> : <CheckCircleOutlined />} {need.priority}
                     </Tag>
                     <Tag style={{ background: `${color}15`, color, border: 'none', borderRadius: 8, fontSize: 12, padding: '4px 14px' }}>
                         {need.type}
@@ -215,10 +221,10 @@ const NeedDetailPanel: React.FC<{
                 {/* Details grid */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                     {[
-                        { label: 'Quantité demandée', value: need.quantityNeeded || 'Non spécifié', icon: '📦' },
-                        { label: 'Bénéficiaires', value: need.beneficiaries ? `${need.beneficiaries} personnes` : 'Non spécifié', icon: '👥' },
-                        { label: 'Publié le', value: new Date(need.publishedAt).toLocaleDateString('fr-FR'), icon: '📅' },
-                        { label: 'Comité', value: need.committeeName, icon: '🏛' },
+                        { label: 'Quantité demandée', value: need.quantityNeeded || 'Non spécifié', icon: <InboxOutlined /> },
+                        { label: 'Bénéficiaires', value: need.beneficiaries ? `${need.beneficiaries} personnes` : 'Non spécifié', icon: <TeamOutlined /> },
+                        { label: 'Publié le', value: new Date(need.publishedAt).toLocaleDateString('fr-FR'), icon: <CalendarOutlined /> },
+                        { label: 'Comité', value: need.committeeName, icon: <BankOutlined /> },
                     ].map((item) => (
                         <div key={item.label} style={{
                             background: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc',
@@ -252,7 +258,7 @@ const NeedDetailPanel: React.FC<{
                         marginTop: 'auto',
                     }}
                 >
-                    💝 Faire un don pour ce besoin
+                    Faire un don pour ce besoin
                 </Button>
 
                 <Text style={{ textAlign: 'center', fontSize: 12, color: isDark ? 'rgba(255,255,255,0.4)' : '#999' }}>
@@ -360,7 +366,7 @@ const DonorMapPage: React.FC = () => {
                         fontSize: 22,
                         boxShadow: '0 0 20px rgba(22,163,74,0.4)',
                     }}>
-                        🗺
+                        <EnvironmentOutlined />
                     </div>
                     <div>
                         <Title level={4} style={{ margin: 0 }}>Carte des Besoins</Title>
@@ -402,11 +408,11 @@ const DonorMapPage: React.FC = () => {
                     style={{ width: 150, borderRadius: 8 }}
                     options={[
                         { value: 'ALL', label: 'Tous les types' },
-                        { value: 'Alimentaire', label: '🍞 Alimentaire' },
-                        { value: 'Médical', label: '🏥 Médical' },
-                        { value: 'Équipement', label: '⚙️ Équipement' },
-                        { value: 'Vêtements', label: '👕 Vêtements' },
-                        { value: 'Urgence', label: '🚨 Urgence' },
+                        { value: 'Alimentaire', label: <span><CoffeeOutlined /> Alimentaire</span> },
+                        { value: 'Médical', label: <span><MedicineBoxOutlined /> Médical</span> },
+                        { value: 'Équipement', label: <span><ToolOutlined /> Équipement</span> },
+                        { value: 'Vêtements', label: <span><SkinOutlined /> Vêtements</span> },
+                        { value: 'Urgence', label: <span><AlertOutlined /> Urgence</span> },
                     ]}
                 />
                 <Select
@@ -415,9 +421,9 @@ const DonorMapPage: React.FC = () => {
                     style={{ width: 150 }}
                     options={[
                         { value: 'ALL', label: 'Toutes priorités' },
-                        { value: 'URGENT', label: '🔴 Urgent' },
-                        { value: 'NORMAL', label: '🟡 Normal' },
-                        { value: 'LOW', label: '🟢 Bas' },
+                        { value: 'URGENT', label: <span><AlertOutlined /> Urgent</span> },
+                        { value: 'NORMAL', label: <span><InfoCircleOutlined /> Normal</span> },
+                        { value: 'LOW', label: <span><CheckCircleOutlined /> Bas</span> },
                     ]}
                 />
                 <Select
@@ -426,9 +432,9 @@ const DonorMapPage: React.FC = () => {
                     style={{ width: 140 }}
                     options={[
                         { value: 'ALL', label: 'Tous statuts' },
-                        { value: 'OPEN', label: '🟢 Ouvert' },
-                        { value: 'IN_PROGRESS', label: '🟡 En cours' },
-                        { value: 'COMPLETED', label: '⚪ Complété' },
+                        { value: 'OPEN', label: <span><CheckCircleOutlined /> Ouvert</span> },
+                        { value: 'IN_PROGRESS', label: <span><SyncOutlined /> En cours</span> },
+                        { value: 'COMPLETED', label: <span><CheckCircleOutlined /> Complété</span> },
                     ]}
                 />
                 <Button
@@ -508,15 +514,15 @@ const DonorMapPage: React.FC = () => {
                         </Text>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                             <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: '#ef4444' }} />
-                            <Text style={{ fontSize: 11, color: '#ef4444', fontWeight: 600 }}>🔴 Urgent</Text>
+                            <Text style={{ fontSize: 11, color: '#ef4444', fontWeight: 600 }}><AlertOutlined /> Urgent</Text>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                             <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: '#f59e0b' }} />
-                            <Text style={{ fontSize: 11, color: '#f59e0b', fontWeight: 600 }}>🟡 Normal</Text>
+                            <Text style={{ fontSize: 11, color: '#f59e0b', fontWeight: 600 }}><InfoCircleOutlined /> Normal</Text>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                             <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: '#16a34a' }} />
-                            <Text style={{ fontSize: 11, color: '#16a34a', fontWeight: 600 }}>🟢 Bas</Text>
+                            <Text style={{ fontSize: 11, color: '#16a34a', fontWeight: 600 }}><CheckCircleOutlined /> Bas</Text>
                         </div>
                     </div>
                 </div>
@@ -559,7 +565,7 @@ const DonorMapPage: React.FC = () => {
                         >
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                                 <Space size={4}>
-                                    <span style={{ fontSize: 16 }}>{TYPE_EMOJI[need.type] || '📦'}</span>
+                                    <span style={{ fontSize: 16 }}>{TYPE_EMOJI[need.type] || <InboxOutlined />}</span>
                                     <Text strong style={{ fontSize: 13 }}>{need.city}</Text>
                                 </Space>
                                 <Badge color={PRIORITY_COLORS[need.priority]} text={

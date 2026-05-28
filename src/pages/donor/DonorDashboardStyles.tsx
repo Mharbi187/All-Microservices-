@@ -4,6 +4,22 @@
 // ============================================================
 
 // ─── Color Palette ───────────────────────────────────────────
+import React from 'react';
+import {
+    ClockCircleOutlined,
+    InboxOutlined,
+    CheckCircleOutlined,
+    QuestionCircleOutlined,
+    CoffeeOutlined,
+    MedicineBoxOutlined,
+    ToolOutlined,
+    SkinOutlined,
+    AlertOutlined,
+    ExclamationCircleFilled,
+    InfoCircleFilled,
+    CheckCircleFilled
+} from '@ant-design/icons';
+
 export const palette = {
     // Primary — Croissant-Rouge red
     redDeep: '#B91C1C',
@@ -100,45 +116,45 @@ export const makeTheme = (isDark: boolean) => ({
 });
 
 // ─── Status configs ───────────────────────────────────────────
-export const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: string }> = {
+export const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
     PENDING_RECEPTION: {
         label: 'En attente',
         color: palette.goldCore,
         bg: palette.goldSoft,
-        icon: '⏳',
+        icon: <ClockCircleOutlined />,
     },
     RECEIVED: {
         label: 'Reçu',
         color: '#0EA5E9',
         bg: '#E0F2FE',
-        icon: '📦',
+        icon: <InboxOutlined />,
     },
     VALIDATED: {
         label: 'Validé',
         color: palette.greenCore,
         bg: palette.greenSoft,
-        icon: '✅',
+        icon: <CheckCircleOutlined />,
     },
     DEFAULT: {
         label: 'Inconnu',
         color: palette.slate,
         bg: palette.fog,
-        icon: '❓',
+        icon: <QuestionCircleOutlined />,
     },
 };
 
-export const TYPE_META: Record<string, { color: string; emoji: string }> = {
-    'Alimentaire': { color: palette.greenCore, emoji: '🍞' },
-    'Médical': { color: '#0EA5E9', emoji: '🏥' },
-    'Équipement': { color: '#8B5CF6', emoji: '⚙️' },
-    'Vêtements': { color: palette.goldCore, emoji: '👕' },
-    'Urgence': { color: palette.redCore, emoji: '🚨' },
+export const TYPE_META: Record<string, { color: string; emoji: React.ReactNode }> = {
+    'Alimentaire': { color: palette.greenCore, emoji: <CoffeeOutlined /> },
+    'Médical': { color: '#0EA5E9', emoji: <MedicineBoxOutlined /> },
+    'Équipement': { color: '#8B5CF6', emoji: <ToolOutlined /> },
+    'Vêtements': { color: palette.goldCore, emoji: <SkinOutlined /> },
+    'Urgence': { color: palette.redCore, emoji: <AlertOutlined /> },
 };
 
-export const PRIORITY_META: Record<string, { color: string; label: string; dot: string }> = {
-    URGENT: { color: palette.redCore, label: 'URGENT', dot: '🔴' },
-    NORMAL: { color: palette.goldCore, label: 'NORMAL', dot: '🟡' },
-    LOW: { color: palette.greenCore, label: 'Faible', dot: '🟢' },
+export const PRIORITY_META: Record<string, { color: string; label: string; dot: React.ReactNode }> = {
+    URGENT: { color: palette.redCore, label: 'URGENT', dot: <ExclamationCircleFilled /> },
+    NORMAL: { color: palette.goldCore, label: 'NORMAL', dot: <InfoCircleFilled /> },
+    LOW: { color: palette.greenCore, label: 'Faible', dot: <CheckCircleFilled /> },
 };
 
 // ─── Keyframe injection (call once in root) ──────────────────

@@ -85,7 +85,7 @@ const DonationsPage: React.FC = () => {
             title: 'Type',
             dataIndex: 'type',
             key: 'type',
-            render: (t: string) => <Tag color={t === 'monetary' ? 'green' : 'purple'} bordered={false}>{t === 'monetary' ? '💰 Financier' : '📦 Matériel'}</Tag>,
+            render: (t: string) => <Tag color={t === 'monetary' ? 'green' : 'purple'} bordered={false}>{t === 'monetary' ? <Space><DollarOutlined /> Financier</Space> : <Space><GiftOutlined /> Matériel</Space>}</Tag>,
             responsive: ['md'],
         },
         {
@@ -163,9 +163,9 @@ const DonationsPage: React.FC = () => {
                     <Input prefix={<SearchOutlined style={{ color: '#bbb' }} />} placeholder="Rechercher un donateur..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ width: 260 }} allowClear />
                     <Select placeholder="Statut" allowClear style={{ width: 160 }} value={statusFilter} onChange={setStatusFilter} suffixIcon={<FilterOutlined />}
                         options={[
-                            { value: 'pending', label: '⏳ En attente' },
-                            { value: 'confirmed', label: '✅ Confirmé' },
-                            { value: 'receipted', label: '📄 Reçu fiscal' },
+                            { value: 'pending', label: <Space><ClockCircleOutlined style={{ color: '#f59e0b' }} />En attente</Space> },
+                            { value: 'confirmed', label: <Space><CheckCircleOutlined style={{ color: '#1890ff' }} />Confirmé</Space> },
+                            { value: 'receipted', label: <Space><FilePdfOutlined style={{ color: '#16a34a' }} />Reçu fiscal</Space> },
                         ]}
                     />
                     <Text style={{ fontSize: 12, color: '#999', marginLeft: 'auto' }}>{filtered.length} donation{filtered.length > 1 ? 's' : ''}</Text>

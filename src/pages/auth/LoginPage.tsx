@@ -8,11 +8,15 @@ import { motion } from 'framer-motion';
 import AuthVisual from '@/components/auth/AuthVisual';
 import { useAuthStore } from '@/stores';
 import { useUIStore } from '@/stores/uiStore';
+import { useTranslation } from 'react-i18next';
 import AccountStatusModal from '@/components/auth/AccountStatusModal';
+import { Dropdown } from 'antd';
+import { GlobalOutlined } from '@ant-design/icons';
 
 const LoginPage: React.FC = () => {
     const navigate = useNavigate();
     const login = useAuthStore((s) => s.login);
+    const { t, i18n } = useTranslation();
     const { themeMode, toggleTheme } = useUIStore();
     const dark = themeMode === 'dark';
 
@@ -26,6 +30,12 @@ const LoginPage: React.FC = () => {
     const [statusModal, setStatusModal] = useState<{ visible: boolean; type: 'PENDING' | 'REJECTED' | 'SUSPENDED' | 'NONE' }>({
         visible: false, type: 'NONE'
     });
+
+    const languageMenuItems = [
+        { key: 'fr', label: 'Français (FR)' },
+        { key: 'ar', label: 'العربية (AR)' },
+        { key: 'en', label: 'English (EN)' },
+    ];
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -49,13 +59,12 @@ const LoginPage: React.FC = () => {
                 navigate('/dashboard');
             }
         } catch (err: unknown) {
-            // authStore throws a typed object { accountStatus?, message } for non-token responses
             const typedErr = err as { accountStatus?: string; message?: string; captchaRequired?: boolean; response?: { data?: { error?: string, message?: string } } };
 
             const accountStatus = typedErr?.accountStatus;
             const errorMessage = typedErr?.message
                 || typedErr?.response?.data?.message
-                || 'Email ou mot de passe incorrect';
+                || t('auth_page.loginError', 'Email ou mot de passe incorrect');
 
             if (typedErr?.captchaRequired || errorMessage.includes('CAPTCHA')) {
                 setCaptchaRequired(true);
@@ -124,12 +133,34 @@ const LoginPage: React.FC = () => {
                     onMouseLeave={(e) => { e.currentTarget.style.color = dark ? '#A1A1AA' : '#6B7280'; e.currentTarget.style.background = dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'; }}
                 >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-                    RETOUR ACCUEIL
+                    {t('auth_page.backHome', 'RETOUR ACCUEIL')}
                 </Link>
             </div>
 
-            {/* Top Right Action: Theme Toggle */}
-            <div style={{ position: 'absolute', top: 30, right: 30, zIndex: 10 }}>
+            {/* Top Right Actions: Language + Theme Toggle */}
+            <div style={{ position: 'absolute', top: 30, right: 30, zIndex: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Dropdown
+                    menu={{
+                        items: languageMenuItems,
+                        onClick: (e) => i18n.changeLanguage(e.key),
+                        selectedKeys: [i18n.language],
+                    }}
+                    placement="bottomRight"
+                    trigger={['click']}
+                >
+                    <button
+                        style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            width: 36, height: 36, borderRadius: '50%',
+                            background: dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+                            border: 'none', cursor: 'pointer',
+                            color: dark ? '#F4F4F5' : '#1A1A2E', fontSize: 16,
+                        }}
+                        aria-label="Changer la langue"
+                    >
+                        <GlobalOutlined />
+                    </button>
+                </Dropdown>
                 <button
                     onClick={toggleTheme}
                     style={{
@@ -140,7 +171,7 @@ const LoginPage: React.FC = () => {
                         fontSize: 12, fontWeight: 600,
                     }}
                 >
-                    {dark ? 'LIGHT MODE' : 'DARK MODE'}
+                    {dark ? t('nav.theme.light', 'Mode Clair') : t('nav.theme.dark', 'Mode Sombre')}
                     <div style={{ width: 36, height: 20, borderRadius: 10, background: dark ? '#4ade80' : '#C8102E', position: 'relative' }}>
                         <div style={{
                             width: 16, height: 16, borderRadius: '50%', background: '#fff',
@@ -169,12 +200,12 @@ const LoginPage: React.FC = () => {
             >
                 {/* Left Panel - Immersive Visual */}
                 <AuthVisual
-                    headline="Bienvenue sur la plateforme humanitaire"
-                    description="Accédez à votre espace de gestion, coordonnez vos équipes et intervenez rapidement grâce à l'IA."
+                    headline={t("auth_page.heroLoginTitle", "Bienvenue sur la plateforme humanitaire")}
+                    description={t("auth_page.heroLoginDesc", "Accédez à votre espace de gestion, coordonnez vos équipes et intervenez rapidement grâce à l'IA.")}
                     stats={[
-                        { value: '2,841', label: 'Volontaires' },
-                        { value: '89', label: 'Comités' },
-                        { value: '24', label: 'Gouvernorats' },
+                        { value: '2,841', label: t('auth_page.statsVolunteers', 'Volontaires') },
+                        { value: '89', label: t('auth_page.statsCommittees', 'Comités') },
+                        { value: '24', label: t('auth_page.statsGov', 'Gouvernorats') },
                     ]}
                 />
 
@@ -189,16 +220,16 @@ const LoginPage: React.FC = () => {
                     }}
                 >
                     <h3 className="font-display" style={{ fontSize: 28, fontWeight: 700, marginBottom: 8, color: dark ? '#F4F4F5' : '#1A1A2E' }}>
-                        Connexion
+                        {t('auth_page.loginTitle', 'Connexion')}
                     </h3>
                     <div style={{ fontSize: 14, color: dark ? '#A1A1AA' : '#6B7280', marginBottom: 40 }}>
-                        Entrez vos identifiants pour accéder à votre tableau de bord
+                        {t('auth_page.loginSubtitle', 'Entrez vos identifiants pour accéder à votre tableau de bord')}
                     </div>
 
                     <form onSubmit={handleSubmit}>
                         {/* Email */}
                         <div style={{ marginBottom: 20 }}>
-                            <label style={labelStyle}>Email ou CIN</label>
+                            <label style={labelStyle}>{t("auth_page.emailOrCin", "Email ou CIN")}</label>
                             <div style={{ position: 'relative' }}>
                                 <svg style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={dark ? '#A1A1AA' : '#6B7280'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                                 <input
@@ -224,7 +255,7 @@ const LoginPage: React.FC = () => {
 
                         {/* Password */}
                         <div style={{ marginBottom: 20 }}>
-                            <label style={labelStyle}>Mot de passe</label>
+                            <label style={labelStyle}>{t("auth_page.password", "Mot de passe")}</label>
                             <div style={{ position: 'relative' }}>
                                 <svg style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={dark ? '#A1A1AA' : '#6B7280'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                                 <input
@@ -286,7 +317,7 @@ const LoginPage: React.FC = () => {
                                     required
                                 />
                                 <label htmlFor="captcha-bypass" style={{ fontSize: 13, color: dark ? '#F4F4F5' : '#1A1A2E', cursor: 'pointer', fontWeight: 500 }}>
-                                    Je ne suis pas un robot (Validation de sécurité)
+                                    {t('auth_page.notARobot', 'Je ne suis pas un robot (Validation de sécurité)')}
                                 </label>
                             </div>
                         )}
@@ -300,10 +331,10 @@ const LoginPage: React.FC = () => {
                                     onChange={(e) => setRemember(e.target.checked)}
                                     style={{ accentColor: '#f10316' }}
                                 />
-                                Se souvenir de moi
+                                {t('auth_page.rememberMe', 'Se souvenir de moi')}
                             </label>
                             <a href="#" style={{ fontSize: 13, color: '#f10316', textDecoration: 'none', transition: 'color 0.3s' }}>
-                                Mot de passe oublié ?
+                                {t('auth_page.forgotPassword', 'Mot de passe oublié ?')}
                             </a>
                         </div>
 
@@ -348,14 +379,14 @@ const LoginPage: React.FC = () => {
                                 }
                             }}
                         >
-                            {isLoading ? '⏳ Connexion en cours...' : 'Se connecter'}
+                            {isLoading ? t('auth_page.loginConnecting', '⏳ Connexion en cours...') : t('auth_page.loginBtn', 'Se connecter')}
                         </button>
                     </form>
 
                     {/* Divider */}
                     <div style={{ display: 'flex', alignItems: 'center', margin: '32px 0 20px' }}>
                         <div style={{ flex: 1, height: 1, background: dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)' }} />
-                        <div style={{ padding: '0 12px', fontSize: 12, color: dark ? '#71717A' : '#9CA3AF' }}>ou continuer avec</div>
+                        <div style={{ padding: '0 12px', fontSize: 12, color: dark ? '#71717A' : '#9CA3AF' }}>{t('auth_page.orContinueWith', 'ou continuer avec')}</div>
                         <div style={{ flex: 1, height: 1, background: dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)' }} />
                     </div>
 
@@ -370,7 +401,7 @@ const LoginPage: React.FC = () => {
                             onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                         >
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-                            SSO CRT National
+                            {t('auth_page.sso', 'SSO CRT National')}
                         </button>
                         <button style={{
                             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
@@ -381,12 +412,12 @@ const LoginPage: React.FC = () => {
                             onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                         >
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                            Carte Volontaire
+                            {t('auth_page.volunteerCard', 'Carte Volontaire')}
                         </button>
                     </div>
 
                     <div style={{ marginTop: 30, textAlign: 'center', fontSize: 13, color: dark ? '#A1A1AA' : '#6B7280' }}>
-                        Pas encore de compte ? <Link to="/register" style={{ color: '#f10316', fontWeight: 600, textDecoration: 'none' }}>S'inscrire</Link> | <Link to="/" style={{ color: dark ? '#A1A1AA' : '#6B7280', textDecoration: 'none' }}>← Retour</Link>
+                        {t('auth_page.noAccount', 'Pas encore de compte ?')} <Link to="/register" style={{ color: '#f10316', fontWeight: 600, textDecoration: 'none' }}>{t('auth_page.registerLink', "S'inscrire")}</Link> | <Link to="/" style={{ color: dark ? '#A1A1AA' : '#6B7280', textDecoration: 'none' }}>{t("auth_page.back", "← Retour")}</Link>
                     </div>
                 </div>
             </motion.div>
@@ -397,4 +428,3 @@ const LoginPage: React.FC = () => {
 };
 
 export default LoginPage;
-

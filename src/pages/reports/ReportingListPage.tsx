@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Card, Table, Tag, Space, Typography, Spin, Select, Input, Empty, message, Dropdown, Button, Avatar } from 'antd';
 import {
   FileTextOutlined, EditOutlined, CheckCircleOutlined,
-  FilePdfOutlined, LockOutlined, ThunderboltOutlined, SearchOutlined, EyeOutlined, MoreOutlined
+  FilePdfOutlined, LockOutlined, ThunderboltOutlined, SearchOutlined, EyeOutlined, MoreOutlined,
+  CloudUploadOutlined, FlagOutlined, FolderOutlined
 } from '@ant-design/icons';
 import { adminReportService } from '@/services/adminReportService';
 import { useAuthStore } from '@/stores';
@@ -158,14 +159,14 @@ export default function ReportingListPage() {
           <Select
             value={statusFilter}
             onChange={setStatusFilter}
-            style={{ width: 160 }}
+            style={{ width: 180 }}
             options={[
               { value: 'ALL', label: 'Tous les statuts' },
-              { value: 'DRAFT', label: '🖊 Brouillons' },
-              { value: 'SUBMITTED', label: '📤 Soumis' },
-              { value: 'VALIDATED', label: '✅ Validés' },
-              { value: 'FINALIZED', label: '🏁 Finalisés' },
-              { value: 'ARCHIVED', label: '📦 Archivés' },
+              { value: 'DRAFT', label: <Space><EditOutlined style={{ color: '#1890ff' }} />Brouillons</Space> },
+              { value: 'SUBMITTED', label: <Space><CloudUploadOutlined style={{ color: '#faad14' }} />Soumis</Space> },
+              { value: 'VALIDATED', label: <Space><CheckCircleOutlined style={{ color: '#52c41a' }} />Validés</Space> },
+              { value: 'FINALIZED', label: <Space><FlagOutlined style={{ color: '#eb2f96' }} />Finalisés</Space> },
+              { value: 'ARCHIVED', label: <Space><FolderOutlined style={{ color: '#8c8c8c' }} />Archivés</Space> },
             ]}
           />
           <Text style={{ fontSize: 12, color: '#999' }}>

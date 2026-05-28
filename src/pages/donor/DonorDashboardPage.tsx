@@ -239,9 +239,9 @@ const ImpactChart: React.FC<{ isDark: boolean }> = ({ isDark }) => {
                     width: 34, height: 34, borderRadius: radius.sm,
                     background: `${palette.goldCore}18`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 16,
+                    fontSize: 16, color: palette.goldCore,
                 }}>
-                    🏆
+                    <TrophyOutlined />
                 </div>
                 <div>
                     <div style={{ fontFamily: fonts.heading, fontWeight: 700, fontSize: 16, color: isDark ? '#F1F5F9' : palette.ink }}>
@@ -309,10 +309,10 @@ const QuickActions: React.FC<{ isDark: boolean; onNavigate: (r: string) => void 
 }) => {
     const t = makeTheme(isDark);
     const actions = [
-        { icon: '🗺️', label: 'Carte des besoins', route: '/donor/map', color: '#0EA5E9' },
-        { icon: '💝', label: 'Faire un don', route: '/donor/donate', color: palette.redCore },
-        { icon: '🧾', label: 'Mes reçus', route: '/donor/receipts', color: '#8B5CF6' },
-        { icon: '🔔', label: 'Notifications', route: '/donor/notifications', color: palette.goldCore },
+        { icon: <EnvironmentOutlined />, label: 'Carte des besoins', route: '/donor/map', color: '#0EA5E9' },
+        { icon: <HeartOutlined />, label: 'Faire un don', route: '/donor/donate', color: palette.redCore },
+        { icon: <ReadOutlined />, label: 'Mes reçus', route: '/donor/receipts', color: '#8B5CF6' },
+        { icon: <BellOutlined />, label: 'Notifications', route: '/donor/notifications', color: palette.goldCore },
     ];
 
     return (
@@ -322,7 +322,7 @@ const QuickActions: React.FC<{ isDark: boolean; onNavigate: (r: string) => void 
             boxShadow: isDark ? '0 4px 24px rgba(0,0,0,0.3)' : shadows.sm,
         }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-                <div style={{ fontSize: 18 }}>⚡</div>
+                <ThunderboltOutlined style={{ fontSize: 18, color: palette.goldCore }} />
                 <span style={{ fontFamily: fonts.heading, fontWeight: 700, fontSize: 16, color: isDark ? '#F1F5F9' : palette.ink }}>
                     Actions Rapides
                 </span>
@@ -568,9 +568,9 @@ const DonorDashboardPage: React.FC = () => {
                             width: 64, height: 64, borderRadius: radius.lg,
                             background: `linear-gradient(135deg, ${palette.redDeep}, ${palette.redBright})`,
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontSize: 30, boxShadow: shadows.redGlow,
+                            fontSize: 30, color: '#fff', boxShadow: shadows.redGlow,
                         }} className="float-anim">
-                            💝
+                            <HeartOutlined />
                         </div>
                         <div style={{
                             position: 'absolute', bottom: -2, right: -2,
@@ -714,10 +714,12 @@ const DonorDashboardPage: React.FC = () => {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                             <div style={{
                                 width: 36, height: 36, borderRadius: radius.sm,
-                                background: `${palette.redCore}12`,
+                                background: `${palette.redCore}12`, color: palette.redCore,
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 fontSize: 17,
-                            }}>⏱️</div>
+                            }}>
+                                <ClockCircleOutlined />
+                            </div>
                             <div>
                                 <div style={{ fontFamily: fonts.heading, fontWeight: 700, fontSize: 17, color: isDark ? '#F1F5F9' : palette.ink }}>
                                     Mes Derniers Dons
@@ -747,7 +749,9 @@ const DonorDashboardPage: React.FC = () => {
                                 textAlign: 'center', padding: '40px 20px',
                                 fontFamily: fonts.body, color: t.textMuted,
                             }}>
-                                <div style={{ fontSize: 32, marginBottom: 12 }}>🎁</div>
+                                <div style={{ fontSize: 32, marginBottom: 12, color: palette.redCore }}>
+                                    <GiftOutlined />
+                                </div>
                                 Vous n'avez pas encore effectué de don.
                             </div>
                         ) : recentDonations.map((don) => (
@@ -779,11 +783,11 @@ const DonorDashboardPage: React.FC = () => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <div style={{
                             width: 42, height: 42, borderRadius: radius.md,
-                            background: `${palette.redCore}15`,
+                            background: `${palette.redCore}15`, color: palette.redCore,
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             fontSize: 20,
                         }} className="pulse-red">
-                            🚨
+                            <BellOutlined />
                         </div>
                         <div>
                             <div style={{
@@ -816,7 +820,9 @@ const DonorDashboardPage: React.FC = () => {
                         textAlign: 'center', padding: '48px',
                         fontFamily: fonts.body, color: t.textMuted,
                     }}>
-                        <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
+                        <div style={{ fontSize: 40, marginBottom: 12, color: palette.greenCore }}>
+                            <CheckCircleOutlined />
+                        </div>
                         <div style={{ fontSize: 16, fontWeight: 600 }}>Aucun besoin urgent pour le moment</div>
                         <div style={{ fontSize: 13, marginTop: 6 }}>Merci à tous les donateurs !</div>
                     </div>

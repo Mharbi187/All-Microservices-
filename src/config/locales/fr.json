@@ -13,7 +13,18 @@
         "reports": "Rapports",
         "disasters": "Catastrophes",
         "settings": "Paramètres",
-        "profile": "Mon Profil"
+        "profile": "Mon Profil",
+        "home": "Accueil",
+        "about": "À Propos",
+        "modules": "Modules",
+        "news": "Actualités",
+        "contact": "Contact",
+        "login": "Connexion",
+        "register": "S'inscrire",
+        "theme": {
+            "dark": "Mode Sombre",
+            "light": "Mode Clair"
+        }
     },
     "auth": {
         "login": "Se connecter",
@@ -52,5 +63,255 @@
         "date": "Date",
         "name": "Nom",
         "description": "Description"
+    },
+    "auth_page": {
+        "backHome": "RETOUR ACCUEIL",
+        "loginTitle": "Connexion",
+        "loginSubtitle": "Entrez vos identifiants pour accéder à votre tableau de bord",
+        "emailOrCin": "Email ou CIN",
+        "password": "Mot de passe",
+        "notARobot": "Je ne suis pas un robot (Validation de sécurité)",
+        "rememberMe": "Se souvenir de moi",
+        "forgotPassword": "Mot de passe oublié ?",
+        "loginConnecting": "⏳ Connexion en cours...",
+        "loginBtn": "Se connecter",
+        "loginError": "Email ou mot de passe incorrect",
+        "orContinueWith": "ou continuer avec",
+        "sso": "SSO CRT National",
+        "volunteerCard": "Carte Volontaire",
+        "noAccount": "Pas encore de compte ?",
+        "registerLink": "S'inscrire",
+        "back": "← Retour",
+        "registerTitle": "Créer un compte",
+        "registerSubtitle": "Profil volontaire — Croissant Rouge Tunisien",
+        "firstName": "Prénom",
+        "lastName": "Nom",
+        "cin": "CIN",
+        "dob": "Date de naissance",
+        "email": "Email",
+        "phone": "Téléphone",
+        "governorate": "Gouvernorat",
+        "committee": "Comité d'affiliation",
+        "selectCommittee": "Sélectionner votre comité...",
+        "selectGov": "Sélectionner...",
+        "certification": "Certification secourisme",
+        "confirmPassword": "Confirmer le mot de passe",
+        "acceptTerms": "J'accepte les conditions d'utilisation et la politique de confidentialité du CRT",
+        "registering": "⏳ Création en cours...",
+        "registerBtn": "Créer mon profil volontaire",
+        "alreadyAccount": "Déjà un compte ?",
+        "heroLoginTitle": "Bienvenue sur la plateforme humanitaire",
+        "heroLoginDesc": "Accédez à votre espace de gestion, coordonnez vos équipes et intervenez rapidement grâce à l'IA.",
+        "heroRegTitle": "Rejoignez le réseau humanitaire national",
+        "heroRegDesc": "Créez votre profil volontaire et commencez à contribuer à travers les 24 gouvernorats tunisiens.",
+        "statsVolunteers": "Volontaires",
+        "statsCommittees": "Comités",
+        "statsGov": "Gouvernorats",
+        "statsBase": "Formation base",
+        "statsSupport": "Support",
+        "passwordsNoMatch": "Les mots de passe ne correspondent pas.",
+        "ageError": "Vous devez avoir au moins 16 ans pour vous inscrire."
+    },
+    "home": {
+        "hero": {
+            "headline1": "Gérez Vos",
+            "headline2": "Opérations",
+            "headlineAccent": "Humanitaires",
+            "subtitle": "Découvrez la plateforme intégrée Nexus-AID pour la gestion des dons, volontaires et interventions du Croissant-Rouge Tunisien.",
+            "ctaLabel": "Voir nos modules",
+            "secondaryCta": "En savoir plus",
+            "badge1Title": "Formation PSE1",
+            "badge1Sub": "En cours • 3 équipes",
+            "badge2Title": "12 alertes actives",
+            "badge2Sub": "Mise à jour en direct",
+            "stat1label": "Volontaires actifs",
+            "stat2label": "Disponibilité",
+            "stat3label": "Comités actifs",
+            "heroImageAlt": "Volontaires en formation PSE",
+            "editButton": "Modifier la page"
+        },
+        "stats": {
+            "govCovered": "Gouvernorats couverts",
+            "activeServices": "Services actifs",
+            "platformAvailability": "Disponibilité plateforme",
+            "apiResponseTime": "Temps de réponse API"
+        },
+        "services": {
+            "tag": "Croissant-Rouge Tunisien",
+            "title": "Nos Services",
+            "subtitle": "Découvrez nos actions humanitaires et nos programmes de formation certifiés.",
+            "editButton": "Modifier les services",
+            "secourisme": {
+                "subtitle": "Programme de formation certifié",
+                "title": "Formation Secourisme & RCP",
+                "desc": "Sessions de formation PSE1/PSE2 en premiers secours et réanimation cardio-pulmonaire, encadrées par des formateurs agréés. Certification reconnue avec suivi des compétences par notre système IA intégré Nexus-AID.",
+                "tags": {
+                    "0": "PSE1 / PSE2",
+                    "1": "Certification",
+                    "2": "IA Assistée"
+                }
+            },
+            "catastrophes": {
+                "subtitle": "Équipes NDRT/RDRT déployées",
+                "title": "Intervention Catastrophes Naturelles",
+                "desc": "Coordination des opérations d'urgence lors de catastrophes naturelles — inondations, séismes, incendies. Déploiement rapide des équipes NDRT avec gestion centralisée via la salle de crise virtuelle Nexus-AID.",
+                "tags": {
+                    "0": "NDRT",
+                    "1": "Urgence",
+                    "2": "Coordination"
+                }
+            },
+            "sang": {
+                "subtitle": "Collectes régulières dans toute la Tunisie",
+                "title": "Campagnes de Don de Sang",
+                "desc": "Organisation de campagnes de don de sang en partenariat avec les centres de transfusion sanguine. Suivi des stocks sanguins, planification des collectes et sensibilisation du public à l'importance du don de sang.",
+                "tags": {
+                    "0": "Don de Sang",
+                    "1": "Santé Publique",
+                    "2": "National"
+                }
+            },
+            "aide": {
+                "subtitle": "Soutien aux populations vulnérables",
+                "title": "Aide Humanitaire & Sociale",
+                "desc": "Distribution de colis alimentaires, couvertures et produits de première nécessité aux familles en situation de précarité. Accompagnement social personnalisé et suivi des bénéficiaires via le système de gestion Nexus-AID.",
+                "tags": {
+                    "0": "Aide Sociale",
+                    "1": "Distribution",
+                    "2": "Suivi"
+                }
+            }
+        },
+        "news": {
+            "tag": "Actualités & Publications",
+            "title": "Dernières Nouvelles",
+            "subtitle": "Suivez nos actualités, mises à jour et publications officielles.",
+            "filterAll": "Tous",
+            "filterNews": "Actualités",
+            "filterPubs": "Publications",
+            "readMore": "Lire la suite",
+            "viewPub": "Voir la publication",
+            "pending": "en attente",
+            "draft": "Brouillon",
+            "pendingStatus": "En attente",
+            "approved": "Approuvé",
+            "rejected": "Refusé",
+            "published": "Publié",
+            "archived": "Archivé",
+            "newPublish": "Nouvelle publication",
+            "noData": "Aucune publication pour ce filtre.",
+            "readFull": "Lire l'article complet",
+            "close": "Fermer",
+            "publishedBy": "Publié par :",
+            "validationAction": "Action de validation",
+            "reject": "Refuser",
+            "approvePublish": "Approuver & Publier",
+            "approve": "Approuver",
+            "archive": "Archiver",
+            "saveDraft": "Enregistrer brouillon",
+            "submitValidation": "Soumettre pour validation",
+            "caravane": {
+                "category": "Guide",
+                "title": "Caravanes Médicales & Sanitaires",
+                "desc": "Guide opérationnel des caravanes médicales mobiles du CRT offrant des consultations gratuites dans les zones rurales.",
+                "fullText": "Guide opérationnel des caravanes médicales mobiles du CRT offrant des consultations gratuites dans les zones rurales. Inclut les protocoles de déploiement d'urgence, la gestion du matériel médical certifié, et les rapports d'intervention terrain par des médecins généralistes et infirmiers. Ce document de 50 pages détaille également les stratégies de sensibilisation communautaire.",
+                "tags": {
+                    "0": "Santé",
+                    "1": "Zones Rurales",
+                    "2": "Guide"
+                }
+            },
+            "jeunesse": {
+                "category": "Rapport",
+                "title": "Programme Jeunesse & Volontariat",
+                "desc": "Document détaillant les activités du programme jeunesse du CRT : camps de formation, actions de sensibilisation communautaire et engagement citoyen des jeunes volontaires à travers les 24 comités régionaux.",
+                "fullText": "Document complet détaillant les activités du programme jeunesse du CRT : camps de formation, actions de sensibilisation communautaire, campagnes de prévention et engagement citoyen des jeunes volontaires à travers les 24 comités régionaux. Inclut les résultats des évaluations et les perspectives 2025.",
+                "tags": {
+                    "0": "Jeunesse",
+                    "1": "Volontariat",
+                    "2": "Rapport 2024"
+                }
+            },
+            "urgence-jendouba": {
+                "category": "Intervention",
+                "title": "Opération Secours à Jendouba",
+                "desc": "Mobilisation réussie de 120 volontaires en moins de 2h grâce au système d'alerte précoce Nexus-AID lors des inondations.",
+                "fullText": "Suite aux fortes pluies qui ont touché la région de Jendouba, le CRT a mobilisé 120 volontaires en moins de 2 heures grâce au système d'alerte précoce Nexus-AID. Les équipes NDRT ont été déployées sur 8 zones sinistrées, assurant l'évacuation de 340 familles et la distribution de kits de première nécessité.",
+                "tags": {
+                    "0": "NDRT",
+                    "1": "Urgence",
+                    "2": "Coordination"
+                }
+            },
+            "don-sang-tunis": {
+                "category": "Campagne",
+                "title": "Campagne Don de Sang — Tunis",
+                "desc": "Grande campagne de collecte de sang organisée dans 12 points de la wilaya de Tunis. Objectif : 500 poches en 3 jours.",
+                "fullText": "Le CRT organise une grande campagne de collecte de sang dans 12 points de la wilaya de Tunis du 25 au 27 février 2026. Objectif : 500 poches en 3 jours. Des unités mobiles seront déployées dans les universités, centres commerciaux et places publiques. Chaque donneur reçoit un kit de sensibilisation et un certificat numérique via Nexus-AID.",
+                "tags": {
+                    "0": "Don de Sang",
+                    "1": "Santé Publique",
+                    "2": "National"
+                }
+            }
+        },
+        "contact": {
+            "tag": "Nous contacter",
+            "title": "Restons en Contact",
+            "subtitle": "Une question ? Un partenariat ? Contactez-nous !",
+            "manageCommittees": "Gérer les comités",
+            "loading": "Chargement...",
+            "addressLabel": "Adresse",
+            "phoneLabel": "Téléphone",
+            "emailLabel": "Email",
+            "hoursLabel": "Horaires",
+            "hoursValue": "Lun — Ven : 08:00 — 17:00",
+            "mapLoading": "Chargement de la carte...",
+            "committees": {
+                "siege": {
+                    "name": "Siège National — Tunis",
+                    "address": "Boulevard 9 Avril 1938, Tunis 1001"
+                }
+            },
+            "groups": {
+                "national": "Siège National",
+                "regional": "Comités Régionaux",
+                "local": "Comités Locaux"
+            },
+            "form": {
+                "fullName": "Nom Complet",
+                "fullNamePlaceholder": "Votre nom",
+                "email": "Email",
+                "emailPlaceholder": "email@example.tn",
+                "committee": "Comité à contacter",
+                "selectCommittee": "Sélectionnez un comité",
+                "subject": "Sujet",
+                "subjectPlaceholder": "Objet de votre message",
+                "message": "Message",
+                "messagePlaceholder": "Décrivez votre demande...",
+                "send": "Envoyer le message",
+                "sending": "Message envoyé !",
+                "successMessage": "Votre message a été envoyé. Nous vous répondrons sous 48h."
+            }
+        },
+        "footer": {
+            "desc": "Système ERP humanitaire de nouvelle génération intégrant l'IA pour le Croissant-Rouge Tunisien.",
+            "version": "v3.0 — Février 2026",
+            "socials": "Réseaux Sociaux",
+            "org": "Organisation",
+            "orgLinks": {
+                "national": "Comité National",
+                "regional": "Comités Régionaux",
+                "local": "Comités Locaux",
+                "doc": "Documentation"
+            },
+            "alertsTitle": "Alertes & News",
+            "alertsDesc": "Notifications des urgences et mises à jour du système IA.",
+            "emailPlaceholder": "Votre email...",
+            "subscribe": "S'abonner",
+            "copyright": "© 2026 Croissant Rouge Tunisien — Nexus-AID ERP.",
+            "authors": "Rédacteur: M. Harbi & A. Amara",
+            "location": "Tunis"
+        }
     }
 }

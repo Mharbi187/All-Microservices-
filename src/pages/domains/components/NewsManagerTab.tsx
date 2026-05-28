@@ -13,7 +13,8 @@ import {
   PlusOutlined, EyeOutlined, DeleteOutlined, CheckCircleOutlined,
   ClockCircleOutlined, CloseCircleOutlined, SendOutlined,
   GlobalOutlined, ApartmentOutlined, TeamOutlined,
-  CheckOutlined, StopOutlined, PictureOutlined,
+  CheckOutlined, StopOutlined, PictureOutlined, LockOutlined,
+  FileTextOutlined
 } from '@ant-design/icons';
 import { motion } from 'framer-motion';
 import type { ColumnsType } from 'antd/es/table';
@@ -143,7 +144,7 @@ const NewsManagerTab: React.FC<Props> = ({ isDark = false }) => {
     try {
       const updated = await newsService.updateStatus(id, action);
       setItems(prev => prev.map(item => item.id === id ? updated : item));
-      message.success(action === 'PUBLIE' ? '✅ Actualité approuvée et publiée' : '🚫 Actualité rejetée');
+      message.success(action === 'PUBLIE' ? 'Actualité approuvée et publiée' : 'Actualité rejetée');
     } catch {
       message.error("Erreur lors de la validation");
     } finally {
@@ -398,13 +399,13 @@ const NewsManagerTab: React.FC<Props> = ({ isDark = false }) => {
               <Form.Item name="targetScope" label={<span style={{ fontWeight: 600, fontSize: 13 }}>Portée Hiérarchique</span>} rules={[{ required: true }]} initialValue="LOCAL">
                 <Select size="large">
                   <Option value="LOCAL">
-                    <span style={{ color: SCOPE_CFG.LOCAL.color, fontWeight: 700 }}>🏠 Local — Mon comité</span>
+                    <span style={{ color: SCOPE_CFG.LOCAL.color, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6 }}><ApartmentOutlined /> Local — Mon comité</span>
                   </Option>
                   <Option value="REGIONAL">
-                    <span style={{ color: SCOPE_CFG.REGIONAL.color, fontWeight: 700 }}>🌍 Régional — Tous les comités locaux</span>
+                    <span style={{ color: SCOPE_CFG.REGIONAL.color, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6 }}><ApartmentOutlined /> Régional — Tous les comités locaux</span>
                   </Option>
                   <Option value="NATIONAL">
-                    <span style={{ color: SCOPE_CFG.NATIONAL.color, fontWeight: 700 }}>🇹🇳 National — Toute la structure CRT</span>
+                    <span style={{ color: SCOPE_CFG.NATIONAL.color, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6 }}><GlobalOutlined /> National — Toute la structure CRT</span>
                   </Option>
                 </Select>
               </Form.Item>
@@ -412,8 +413,12 @@ const NewsManagerTab: React.FC<Props> = ({ isDark = false }) => {
 
             <Form.Item name="isPublic" label={<span style={{ fontWeight: 600, fontSize: 13 }}>Visibilité de l'actualité</span>} rules={[{ required: true }]} initialValue={true}>
               <Select size="large" style={{ borderRadius: 10 }}>
-                <Option value={true}>🌐 Public — Visible sur la page d'accueil par tout le monde</Option>
-                <Option value={false}>🔒 Interne — Réservé aux membres connectés sur le portail</Option>
+                <Option value={true}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><GlobalOutlined /> Public — Visible sur la page d'accueil par tout le monde</span>
+                </Option>
+                <Option value={false}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><LockOutlined /> Interne — Réservé aux membres connectés sur le portail</span>
+                </Option>
               </Select>
             </Form.Item>
 

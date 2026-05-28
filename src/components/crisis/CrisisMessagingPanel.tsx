@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Card, Input, Button, Typography, Space, Tag } from 'antd';
-import { SendOutlined, WarningOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { SendOutlined, WarningOutlined, CheckCircleOutlined, AlertOutlined, AuditOutlined, MessageOutlined } from '@ant-design/icons';
 import { crisisApi } from '@/services/crisisApi';
 import { useCrisisSocket } from '@/hooks/useCrisisSocket';
 
@@ -82,7 +82,7 @@ export default function CrisisMessagingPanel({ roomId, initialMessages }: { room
 
     return (
         <Card
-            title={<Text style={{ color: '#fff' }}>💬 Tactical Comms Feed</Text>}
+            title={<Text style={{ color: '#fff' }}><MessageOutlined style={{ marginRight: 8 }} />Tactical Comms Feed</Text>}
             style={{ background: '#1e293b', borderColor: '#334155', height: '100%', display: 'flex', flexDirection: 'column' }}
             bodyStyle={{ padding: 0, flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
         >
@@ -99,8 +99,8 @@ export default function CrisisMessagingPanel({ roomId, initialMessages }: { room
                         style={{ background: '#0f172a', borderColor: '#334155', color: '#fff' }}
                     />
                     <Button type="primary" danger icon={<SendOutlined />} onClick={() => handleSend('text')} />
-                    <Button danger onClick={() => handleSend('alert')} title="Send Alert">🚨</Button>
-                    <Button type="primary" style={{ background: '#22c55e' }} onClick={() => handleSend('decision')} title="Log Decision">⚖️</Button>
+                    <Button danger icon={<AlertOutlined />} onClick={() => handleSend('alert')} title="Send Alert" />
+                    <Button type="primary" style={{ background: '#22c55e' }} icon={<AuditOutlined />} onClick={() => handleSend('decision')} title="Log Decision" />
                 </Space.Compact>
             </div>
         </Card>

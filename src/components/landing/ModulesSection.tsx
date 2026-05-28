@@ -4,6 +4,7 @@
 // ============================================================
 
 import { useState, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '@/stores/authStore';
 import { useUIStore } from '@/stores';
@@ -67,8 +68,7 @@ function saveCards(c: ServiceCard[]) {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(c)); } catch { /**/ }
 }
 
-/* ═══════════════════ ACCESS CONTROL ═══════════════════ */
-
+/* ── Check if user can edit ── */
 function useCanEdit() {
     const user = useAuthStore((s) => s.user);
     if (!user) return false;
@@ -86,8 +86,7 @@ function useCanEdit() {
     );
 }
 
-/* ═══════════════════ TAG STYLES ═══════════════════ */
-
+/* ── Tag Styles ── */
 function tagStyle(color: Tag['color'], dark: boolean): React.CSSProperties {
     if (dark) {
         const map = {
@@ -105,8 +104,7 @@ function tagStyle(color: Tag['color'], dark: boolean): React.CSSProperties {
     return map[color];
 }
 
-/* ═══════════════════ SMALL EDIT FIELD ═══════════════════ */
-
+/* ── Small Edit Field ── */
 const EF: React.FC<{ label: string; value: string; onChange: (v: string) => void; multi?: boolean }> = ({ label, value, onChange, multi }) => (
     <div style={{ marginBottom: 9 }}>
         <label style={{ display: 'block', fontSize: 10, fontWeight: 700, color: '#9CA3AF', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>{label}</label>
@@ -120,6 +118,7 @@ const EF: React.FC<{ label: string; value: string; onChange: (v: string) => void
 /* ═══════════════════ SINGLE CARD ═══════════════════ */
 
 const Card: React.FC<{ card: ServiceCard; dark: boolean; index: number }> = ({ card, dark, index }) => {
+    const { t } = useTranslation();
     const [hovered, setHovered] = useState(false);
 
     const cardBg = dark ? '#1E222F' : '#FFFFFF';
@@ -130,6 +129,15 @@ const Card: React.FC<{ card: ServiceCard; dark: boolean; index: number }> = ({ c
     const subtitleColor = dark ? '#FC8181' : '#E53E3E';
     const titleColor = dark ? '#FFFFFF' : '#1A202C';
     const descColor = dark ? '#A0AEC0' : '#718096';
+
+    const isDefault = ['secourisme', 'catastrophes', 'sang', 'aide'].includes(card.id);
+    const displaySubtitle = isDefault ? t(`home.services.${card.id}.subtitle`, card.subtitle) : card.subtitle;
+    const displayTitle = isDefault ? t(`home.services.${card.id}.title`, card.title) : card.title;
+    const displayDesc = isDefault ? t(`home.services.${card.id}.desc`, card.desc) : card.desc;
+    const displayTags = card.tags.map((tag, tagIdx) => ({
+        ...tag,
+        label: isDefault ? t(`home.services.${card.id}.tags.${tagIdx}`, tag.label) : tag.label
+    }));
 
     return (
         <motion.div
@@ -156,7 +164,7 @@ const Card: React.FC<{ card: ServiceCard; dark: boolean; index: number }> = ({ c
             <div style={{ position: 'relative', overflow: 'hidden', aspectRatio: '16/9', flexShrink: 0 }}>
                 <img
                     src={card.image}
-                    alt={card.title}
+                    alt={displayTitle}
                     style={{
                         width: '100%', height: '100%',
                         objectFit: 'cover', display: 'block',
@@ -195,22 +203,22 @@ const Card: React.FC<{ card: ServiceCard; dark: boolean; index: number }> = ({ c
             <div style={{ padding: '20px 22px 22px', flex: 1, display: 'flex', flexDirection: 'column' }}>
                 {/* Subtitle */}
                 <div style={{ fontSize: 10.5, fontWeight: 700, color: subtitleColor, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 7 }}>
-                    {card.subtitle}
+                    {displaySubtitle}
                 </div>
 
                 {/* Title */}
                 <h3 className="font-display" style={{ fontSize: 19, fontWeight: 800, lineHeight: 1.28, color: titleColor, marginBottom: 10, letterSpacing: '-0.01em' }}>
-                    {card.title}
+                    {displayTitle}
                 </h3>
 
                 {/* Desc */}
                 <p style={{ fontSize: 13, lineHeight: 1.68, color: descColor, flex: 1, marginBottom: 18, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                    {card.desc}
+                    {displayDesc}
                 </p>
 
                 {/* Tags — pushed to bottom */}
                 <div style={{ marginTop: 'auto', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    {card.tags.map((t) => (
+                    {displayTags.map((t) => (
                         <span key={t.label} style={{ padding: '4px 11px', borderRadius: 100, fontSize: 10, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', ...tagStyle(t.color, dark) }}>
                             {t.label}
                         </span>
@@ -224,6 +232,7 @@ const Card: React.FC<{ card: ServiceCard; dark: boolean; index: number }> = ({ c
 /* ═══════════════════ MAIN SECTION ═══════════════════ */
 
 const ServicesSection: React.FC = () => {
+    const { t } = useTranslation();
     const canEdit = useCanEdit();
     const { themeMode } = useUIStore();
     const dark = themeMode === 'dark';
@@ -270,7 +279,7 @@ const ServicesSection: React.FC = () => {
             {canEdit && (
                 <button
                     onClick={() => { setDraft(cards); setEditOpen(true); }}
-                    title="Modifier les services"
+                    title={t('home.services.editButton', 'Modifier les services')}
                     style={{
                         position: 'absolute', top: 28, right: 28, zIndex: 10,
                         display: 'flex', alignItems: 'center', gap: 6,
@@ -289,7 +298,7 @@ const ServicesSection: React.FC = () => {
                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                     </svg>
-                    Modifier les services
+                    {t('home.services.editButton', 'Modifier les services')}
                 </button>
             )}
 
@@ -300,13 +309,13 @@ const ServicesSection: React.FC = () => {
                 style={{ marginBottom: 52 }}
             >
                 <div style={{ fontSize: 11, fontWeight: 700, color: accentColor, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 14 }}>
-                    Croissant-Rouge Tunisien
+                    {t('home.services.tag', 'Croissant-Rouge Tunisien')}
                 </div>
                 <h2 className="font-display" style={{ fontSize: 'clamp(30px, 3.8vw, 50px)', fontWeight: 800, lineHeight: 1.1, color: headingColor, marginBottom: 12, letterSpacing: '-0.02em' }}>
-                    Nos Services
+                    {t('home.services.title', 'Nos Services')}
                 </h2>
                 <p style={{ fontSize: 15.5, color: subheadingColor, maxWidth: 480, lineHeight: 1.65 }}>
-                    Découvrez nos actions humanitaires et nos programmes de formation certifiés.
+                    {t('home.services.subtitle', 'Découvrez nos actions humanitaires et nos programmes de formation certifiés.')}
                 </p>
             </motion.div>
 
@@ -336,9 +345,15 @@ const ServicesSection: React.FC = () => {
                         >
                             {/* Header */}
                             <div style={{ padding: '18px 20px 14px', borderBottom: '1px solid rgba(0,0,0,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                <div>
-                                    <div style={{ fontSize: 15, fontWeight: 700, color: '#1A1A2E' }}>✏️ Modifier les Services</div>
-                                    <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>Président / Vice-Président / Diffusion Nationale</div>
+                                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C8102E" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                    </svg>
+                                    <div>
+                                        <div style={{ fontSize: 15, fontWeight: 700, color: '#1A1A2E' }}>Modifier les Services</div>
+                                        <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>Président / Vice-Président / Diffusion Nationale</div>
+                                    </div>
                                 </div>
                                 <button onClick={handleCancel} style={{ width: 30, height: 30, borderRadius: '50%', border: '1px solid rgba(0,0,0,0.1)', background: 'transparent', cursor: 'pointer', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6B7280' }}>✕</button>
                             </div>
@@ -405,10 +420,13 @@ const ServicesSection: React.FC = () => {
                                 >Réinit.</button>
                                 <button onClick={handleCancel} style={{ flex: 1, padding: '9px', borderRadius: 10, border: '1.5px solid rgba(0,0,0,0.1)', background: 'transparent', fontSize: 13, fontWeight: 500, color: '#374151', cursor: 'pointer' }}>Annuler</button>
                                 <button onClick={handleSave}
-                                    style={{ flex: 2, padding: '9px', borderRadius: 10, border: 'none', background: '#C8102E', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 3px 12px rgba(200,16,46,0.35)', transition: 'all 0.22s' }}
+                                    style={{ flex: 2, padding: '9px', borderRadius: 10, border: 'none', background: '#C8102E', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 3px 12px rgba(200,16,46,0.35)', transition: 'all 0.22s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
                                     onMouseEnter={(e) => { e.currentTarget.style.background = '#9B0B22'; }}
                                     onMouseLeave={(e) => { e.currentTarget.style.background = '#C8102E'; }}
-                                >✓ Enregistrer tout</button>
+                                >
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                    {t('common.save', 'Enregistrer tout')}
+                                </button>
                             </div>
                         </motion.div>
                     </>

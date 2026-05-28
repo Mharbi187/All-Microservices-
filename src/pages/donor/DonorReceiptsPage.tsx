@@ -9,7 +9,8 @@ import {
     FileProtectOutlined, SearchOutlined, DownloadOutlined,
     CheckCircleOutlined, ClockCircleOutlined, QrcodeOutlined,
     FilterOutlined, EyeOutlined, EnvironmentOutlined,
-    HeartOutlined,
+    HeartOutlined, CoffeeOutlined, MedicineBoxOutlined,
+    ToolOutlined, SkinOutlined, AlertOutlined, InboxOutlined
 } from '@ant-design/icons';
 import { useUIStore } from '@/stores';
 import { donationService } from '@/services/donationService';
@@ -26,13 +27,13 @@ const TYPE_COLORS: Record<string, string> = {
     'Alimentaire': '#16a34a', 'Médical': '#0ea5e9', 'Équipement': '#8b5cf6',
     'Vêtements': '#f59e0b', 'Urgence': '#ef4444',
 };
-const TYPE_EMOJI: Record<string, string> = {
-    'Alimentaire': '🍞', 'Médical': '🏥', 'Équipement': '⚙️', 'Vêtements': '👕', 'Urgence': '🚨',
+const TYPE_EMOJI: Record<string, React.ReactNode> = {
+    'Alimentaire': <CoffeeOutlined />, 'Médical': <MedicineBoxOutlined />, 'Équipement': <ToolOutlined />, 'Vêtements': <SkinOutlined />, 'Urgence': <AlertOutlined />,
 };
 const STATUS_CONFIG: Record<string, any> = {
     'PENDING_RECEPTION': { label: 'En attente', color: '#f59e0b', icon: <ClockCircleOutlined />, bg: 'rgba(245,158,11,0.1)' },
     'RECEIVED': { label: 'Reçu par comité', color: '#0ea5e9', icon: <CheckCircleOutlined />, bg: 'rgba(14,165,233,0.1)' },
-    'VALIDATED': { label: '✅ Validé & Certifié', color: '#16a34a', icon: <CheckCircleOutlined />, bg: 'rgba(22,163,74,0.1)' },
+    'VALIDATED': { label: 'Validé & Certifié', color: '#16a34a', icon: <CheckCircleOutlined />, bg: 'rgba(22,163,74,0.1)' },
     'DEFAULT': { label: 'Inconnu', color: '#999', icon: <ClockCircleOutlined />, bg: 'rgba(153,153,153,0.1)' },
 };
 
@@ -63,7 +64,9 @@ const QRVisual: React.FC<{ donationId: string; size?: number; isDark?: boolean }
         <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size}>
             <rect x={0} y={0} width={size} height={size} rx={6} fill={isDark ? '#1f2937' : '#fff'} />
             {cells}
-            <text x={size / 2} y={size / 2 + 6} textAnchor="middle" fontSize={14}>💝</text>
+            <foreignObject x={size / 2 - 8} y={size / 2 - 8} width={16} height={16}>
+                <HeartOutlined style={{ fontSize: 16, color: '#16a34a', display: 'block' }} />
+            </foreignObject>
         </svg>
     );
 };
@@ -112,7 +115,7 @@ const ReceiptCard: React.FC<{
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
                     <div>
                         <Space size={6}>
-                            <span style={{ fontSize: 18 }}>{TYPE_EMOJI[receipt.donationType] || '📦'}</span>
+                            <span style={{ fontSize: 18 }}>{TYPE_EMOJI[receipt.donationType] || <InboxOutlined />}</span>
                             <Text strong style={{ fontSize: 16 }}>{receipt.committeeName}</Text>
                         </Space>
                         <Space size={4} style={{ display: 'block', marginTop: 4 }}>
@@ -140,7 +143,7 @@ const ReceiptCard: React.FC<{
                         {receipt.donationType}
                     </Tag>
                     <Tag style={{ background: isDark ? 'rgba(255,255,255,0.06)' : '#f8fafc', color: isDark ? 'rgba(255,255,255,0.6)' : '#555', border: 'none', borderRadius: 6, fontSize: 12 }}>
-                        📦 {receipt.quantity}
+                        <InboxOutlined style={{ marginRight: 4 }} /> {receipt.quantity}
                     </Tag>
                 </div>
 
@@ -326,7 +329,7 @@ Ce document certifie la réception et validation du don.
 
                 {receipt.validationNote && (
                     <div style={{ background: '#fffbeb', borderRadius: 10, padding: '12px 16px', border: '1px solid #fcd34d' }}>
-                        <Text style={{ color: '#92400e', fontSize: 13 }}>📝 {receipt.validationNote}</Text>
+                        <Text style={{ color: '#92400e', fontSize: 13 }}><FileProtectOutlined /> {receipt.validationNote}</Text>
                     </div>
                 )}
 
@@ -346,7 +349,7 @@ Ce document certifie la réception et validation du don.
                             fontWeight: 700,
                         }}
                     >
-                        📄 Télécharger Reçu
+                        Télécharger Reçu
                     </Button>
                 </div>
             </div>
@@ -398,8 +401,8 @@ const DonorReceiptsPage: React.FC = () => {
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16,
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                    <div style={{ width: 52, height: 52, borderRadius: 16, background: 'linear-gradient(135deg, #16a34a, #4ade80)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, boxShadow: '0 0 20px rgba(22,163,74,0.4)' }}>
-                        🧾
+                    <div style={{ width: 52, height: 52, borderRadius: 16, background: 'linear-gradient(135deg, #16a34a, #4ade80)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, boxShadow: '0 0 20px rgba(22,163,74,0.4)', color: '#fff' }}>
+                        <FileProtectOutlined />
                     </div>
                     <div>
                         <Title level={4} style={{ margin: 0 }}>Mes Reçus de Dons</Title>
@@ -410,13 +413,13 @@ const DonorReceiptsPage: React.FC = () => {
                 </div>
                 <Space wrap>
                     <Badge count={validatedCount} color="#16a34a">
-                        <Tag style={{ background: 'rgba(22,163,74,0.12)', color: '#16a34a', border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 13 }}>
-                            ✅ Validés
+                        <Tag style={{ background: 'rgba(22,163,74,0.12)', color: '#16a34a', border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                            <CheckCircleOutlined /> Validés
                         </Tag>
                     </Badge>
                     <Badge count={pendingCount} color="#f59e0b">
-                        <Tag style={{ background: 'rgba(245,158,11,0.12)', color: '#f59e0b', border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 13 }}>
-                            ⏳ En attente
+                        <Tag style={{ background: 'rgba(245,158,11,0.12)', color: '#f59e0b', border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                            <ClockCircleOutlined /> En attente
                         </Tag>
                     </Badge>
                 </Space>
@@ -443,9 +446,9 @@ const DonorReceiptsPage: React.FC = () => {
                     style={{ width: 180 }}
                     options={[
                         { value: 'ALL', label: 'Tous les statuts' },
-                        { value: 'PENDING_RECEPTION', label: '⏳ En attente' },
-                        { value: 'RECEIVED', label: '📦 Reçu' },
-                        { value: 'VALIDATED', label: '✅ Validé' },
+                        { value: 'PENDING_RECEPTION', label: <span><ClockCircleOutlined /> En attente</span> },
+                        { value: 'RECEIVED', label: <span><InboxOutlined /> Reçu</span> },
+                        { value: 'VALIDATED', label: <span><CheckCircleOutlined /> Validé</span> },
                     ]}
                 />
                 <Select
@@ -454,11 +457,11 @@ const DonorReceiptsPage: React.FC = () => {
                     style={{ width: 160 }}
                     options={[
                         { value: 'ALL', label: 'Tous les types' },
-                        { value: 'Alimentaire', label: '🍞 Alimentaire' },
-                        { value: 'Médical', label: '🏥 Médical' },
-                        { value: 'Équipement', label: '⚙️ Équipement' },
-                        { value: 'Vêtements', label: '👕 Vêtements' },
-                        { value: 'Urgence', label: '🚨 Urgence' },
+                        { value: 'Alimentaire', label: <span><CoffeeOutlined /> Alimentaire</span> },
+                        { value: 'Médical', label: <span><MedicineBoxOutlined /> Médical</span> },
+                        { value: 'Équipement', label: <span><ToolOutlined /> Équipement</span> },
+                        { value: 'Vêtements', label: <span><SkinOutlined /> Vêtements</span> },
+                        { value: 'Urgence', label: <span><AlertOutlined /> Urgence</span> },
                     ]}
                 />
             </div>

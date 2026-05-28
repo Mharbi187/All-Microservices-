@@ -354,10 +354,10 @@ const StocksPage: React.FC = () => {
 
             if (locModal.editing) {
                 await inventoryService.updateLocation(locModal.editing.id!, payload);
-                messageApi.success('🏠 Local de stockage mis à jour !');
+                messageApi.success('Local de stockage mis à jour !');
             } else {
                 await inventoryService.createLocation(payload);
-                messageApi.success('🏠 Local de stockage enregistré avec succès !');
+                messageApi.success('Local de stockage enregistré avec succès !');
             }
             setLocModal({ open: false, editing: null });
             setLocPhoto('');
@@ -412,7 +412,7 @@ const StocksPage: React.FC = () => {
                 entries: validEntries
             };
             await inventoryService.recordBulkEntry(payload);
-            messageApi.success(`📦 Réception en lot enregistrée (${validEntries.length} articles ajoutés) !`);
+            messageApi.success(`Réception en lot enregistrée (${validEntries.length} articles ajoutés) !`);
             setBulkModalOpen(false);
             setBulkEntries([{ itemId: '', quantity: 1, reason: '' }]);
             setBulkProofPhoto('');
@@ -441,13 +441,13 @@ const StocksPage: React.FC = () => {
 
             if (movementModal.type === 'in') {
                 await inventoryService.stockIn(movementModal.item.id, payload);
-                messageApi.success(`📥 Entrée de +${movementQty} ${movementModal.item.name} enregistrée !`);
+                messageApi.success(`Entrée de +${movementQty} ${movementModal.item.name} enregistrée !`);
             } else {
                 await inventoryService.stockOut(movementModal.item.id, payload);
                 if (isPresident) {
-                    messageApi.success(`📤 Sortie de -${movementQty} ${movementModal.item.name} effectuée !`);
+                    messageApi.success(`Sortie de -${movementQty} ${movementModal.item.name} effectuée !`);
                 } else {
-                    messageApi.success(`⏳ Demande de sortie de -${movementQty} ${movementModal.item.name} soumise pour validation.`);
+                    messageApi.success(`Demande de sortie de -${movementQty} ${movementModal.item.name} soumise pour validation.`);
                 }
             }
             
@@ -491,7 +491,7 @@ const StocksPage: React.FC = () => {
     const handleApproveMovement = async (id: string) => {
         try {
             await inventoryService.approveMovement(id);
-            messageApi.success('✅ Mouvement approuvé avec succès !');
+            messageApi.success('Mouvement approuvé avec succès !');
             fetchItems();
             fetchPendingMovements();
             fetchAllMovements();
@@ -505,7 +505,7 @@ const StocksPage: React.FC = () => {
         setRejectSubmitLoading(true);
         try {
             await inventoryService.rejectMovement(rejectingId, rejectionReason);
-            messageApi.success('❌ Mouvement rejeté.');
+            messageApi.success('Mouvement rejeté.');
             setRejectModalOpen(false);
             setRejectingId(null);
             setRejectionReason('');
@@ -1208,7 +1208,7 @@ const StocksPage: React.FC = () => {
                             children: (
                                 <div style={{ padding: '24px 32px' }}>
                                     <div style={{ marginBottom: 16 }}>
-                                        <Title level={4} style={{ margin: 0, fontWeight: 800 }}>📋 Demandes de Sortie en Attente</Title>
+                                        <Title level={4} style={{ margin: 0, fontWeight: 800 }}><AuditOutlined style={{ marginRight: 8, color: CRC.red }} />Demandes de Sortie en Attente</Title>
                                         <Text type="secondary">En tant que Président, validez ou rejetez les demandes de sortie de stock de vos responsables opérationnels.</Text>
                                     </div>
 
@@ -1242,7 +1242,7 @@ const StocksPage: React.FC = () => {
                                 <div style={{ padding: '24px 32px' }}>
                                     <div className="flex justify-between items-center mb-4">
                                         <div>
-                                            <Title level={4} style={{ margin: 0, fontWeight: 800 }}>📜 Journal Complet des Mouvements</Title>
+                                            <Title level={4} style={{ margin: 0, fontWeight: 800 }}><HistoryOutlined style={{ marginRight: 8, color: CRC.red }} />Journal Complet des Mouvements</Title>
                                             <Text type="secondary">Suivi et audit de toutes les entrées, sorties et demandes de stock.</Text>
                                         </div>
                                         <Button size="small" onClick={fetchAllMovements} loading={allMovementsLoading}>
@@ -1279,7 +1279,7 @@ const StocksPage: React.FC = () => {
                                 <div style={{ padding: '24px 32px' }}>
                                     <div className="flex items-center justify-between mb-4">
                                         <div>
-                                            <Title level={4} style={{ margin: 0, fontWeight: 800 }}>🚨 Alertes de Stock actives</Title>
+                                            <Title level={4} style={{ margin: 0, fontWeight: 800 }}><AlertOutlined style={{ marginRight: 8, color: CRC.orange }} />Alertes de Stock actives</Title>
                                             <Text type="secondary">Suivi des ruptures de stock critiques et des produits sous le seuil minimum.</Text>
                                         </div>
                                         <Button size="small" onClick={fetchAlerts} loading={alertsLoading}>

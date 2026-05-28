@@ -538,8 +538,12 @@ export const ComplaintDetailsDialog: React.FC<ComplaintDetailsProps> = ({
               marginTop: 24,
             }}
           >
-            <span style={{ fontSize: 20 }}>
-              {complaint.status === ComplaintStatus.RESOLU ? '✅' : '🚫'}
+            <span style={{ fontSize: 20, display: 'flex', alignItems: 'center' }}>
+              {complaint.status === ComplaintStatus.RESOLU ? (
+                <CheckCircleOutlined style={{ color: '#15803D' }} />
+              ) : (
+                <CloseCircleOutlined style={{ color: '#DC2626' }} />
+              )}
             </span>
             <span
               style={{

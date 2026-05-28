@@ -13,7 +13,18 @@
         "reports": "Reports",
         "disasters": "Disasters",
         "settings": "Settings",
-        "profile": "My Profile"
+        "profile": "My Profile",
+        "home": "Home",
+        "about": "About",
+        "modules": "Modules",
+        "news": "News",
+        "contact": "Contact",
+        "login": "Login",
+        "register": "Sign Up",
+        "theme": {
+            "dark": "Dark Mode",
+            "light": "Light Mode"
+        }
     },
     "auth": {
         "login": "Log in",
@@ -52,5 +63,255 @@
         "date": "Date",
         "name": "Name",
         "description": "Description"
+    },
+    "auth_page": {
+        "backHome": "BACK HOME",
+        "loginTitle": "Login",
+        "loginSubtitle": "Enter your credentials to access your dashboard",
+        "emailOrCin": "Email or ID",
+        "password": "Password",
+        "notARobot": "I am not a robot (Security Check)",
+        "rememberMe": "Remember me",
+        "forgotPassword": "Forgot password?",
+        "loginConnecting": "⏳ Connecting...",
+        "loginBtn": "Log in",
+        "loginError": "Incorrect email or password",
+        "orContinueWith": "or continue with",
+        "sso": "National TRC SSO",
+        "volunteerCard": "Volunteer Card",
+        "noAccount": "Don't have an account?",
+        "registerLink": "Sign up",
+        "back": "← Back",
+        "registerTitle": "Create an account",
+        "registerSubtitle": "Volunteer Profile — Tunisian Red Crescent",
+        "firstName": "First Name",
+        "lastName": "Last Name",
+        "cin": "ID Number",
+        "dob": "Date of Birth",
+        "email": "Email",
+        "phone": "Phone",
+        "governorate": "Governorate",
+        "committee": "Affiliation Committee",
+        "selectCommittee": "Select your committee...",
+        "selectGov": "Select...",
+        "certification": "First Aid Certification",
+        "confirmPassword": "Confirm Password",
+        "acceptTerms": "I accept the TRC terms of use and privacy policy",
+        "registering": "⏳ Creating account...",
+        "registerBtn": "Create my volunteer profile",
+        "alreadyAccount": "Already have an account?",
+        "heroLoginTitle": "Welcome to the humanitarian platform",
+        "heroLoginDesc": "Access your management space, coordinate your teams and intervene quickly using AI.",
+        "heroRegTitle": "Join the national humanitarian network",
+        "heroRegDesc": "Create your volunteer profile and start contributing across the 24 Tunisian governorates.",
+        "statsVolunteers": "Volunteers",
+        "statsCommittees": "Committees",
+        "statsGov": "Governorates",
+        "statsBase": "Basic Training",
+        "statsSupport": "Support",
+        "passwordsNoMatch": "Passwords do not match.",
+        "ageError": "You must be at least 16 years old to register."
+    },
+    "home": {
+        "hero": {
+            "headline1": "Manage Your",
+            "headline2": "Humanitarian",
+            "headlineAccent": "Operations",
+            "subtitle": "Discover the integrated Nexus-AID platform for managing donations, volunteers, and interventions of the Tunisian Red Crescent.",
+            "ctaLabel": "View Our Modules",
+            "secondaryCta": "Learn More",
+            "badge1Title": "PSE1 Training",
+            "badge1Sub": "In Progress • 3 Teams",
+            "badge2Title": "12 Active Alerts",
+            "badge2Sub": "Live Update",
+            "stat1label": "Active Volunteers",
+            "stat2label": "Availability",
+            "stat3label": "Active Committees",
+            "heroImageAlt": "Volunteers in PSE training",
+            "editButton": "Edit Page"
+        },
+        "stats": {
+            "govCovered": "Governorates Covered",
+            "activeServices": "Active Services",
+            "platformAvailability": "Platform Availability",
+            "apiResponseTime": "API Response Time"
+        },
+        "services": {
+            "tag": "Tunisian Red Crescent",
+            "title": "Our Services",
+            "subtitle": "Discover our humanitarian actions and certified training programs.",
+            "editButton": "Manage Services",
+            "secourisme": {
+                "subtitle": "Certified Training Program",
+                "title": "First Aid & CPR Training",
+                "desc": "PSE1/PSE2 first aid and cardiopulmonary resuscitation training sessions, supervised by certified trainers. Recognized certification with competence tracking by our integrated Nexus-AID AI system.",
+                "tags": {
+                    "0": "PSE1 / PSE2",
+                    "1": "Certification",
+                    "2": "AI Assisted"
+                }
+            },
+            "catastrophes": {
+                "subtitle": "NDRT/RDRT Teams Deployed",
+                "title": "Natural Disaster Intervention",
+                "desc": "Coordination of emergency operations during natural disasters — floods, earthquakes, fires. Rapid deployment of NDRT teams with centralized management via the Nexus-AID virtual crisis room.",
+                "tags": {
+                    "0": "NDRT",
+                    "1": "Emergency",
+                    "2": "Coordination"
+                }
+            },
+            "sang": {
+                "subtitle": "Regular Blood Drives Across Tunisia",
+                "title": "Blood Donation Campaigns",
+                "desc": "Organization of blood donation campaigns in partnership with blood transfusion centers. Tracking blood stocks, planning collections, and raising public awareness of the importance of blood donation.",
+                "tags": {
+                    "0": "Blood Donation",
+                    "1": "Public Health",
+                    "2": "National"
+                }
+            },
+            "aide": {
+                "subtitle": "Support for Vulnerable Populations",
+                "title": "Humanitarian & Social Aid",
+                "desc": "Distribution of food parcels, blankets, and essential items to families in precarious situations. Personalized social support and beneficiary follow-up via the Nexus-AID management system.",
+                "tags": {
+                    "0": "Social Aid",
+                    "1": "Distribution",
+                    "2": "Follow-up"
+                }
+            }
+        },
+        "news": {
+            "tag": "News & Publications",
+            "title": "Latest News",
+            "subtitle": "Follow our news, updates, and official publications.",
+            "filterAll": "All",
+            "filterNews": "News",
+            "filterPubs": "Publications",
+            "readMore": "Read More",
+            "viewPub": "View Publication",
+            "pending": "pending",
+            "draft": "Draft",
+            "pendingStatus": "Pending",
+            "approved": "Approved",
+            "rejected": "Rejected",
+            "published": "Published",
+            "archived": "Archived",
+            "newPublish": "New Publication",
+            "noData": "No publications for this filter.",
+            "readFull": "Read Full Article",
+            "close": "Close",
+            "publishedBy": "Published by:",
+            "validationAction": "Validation Action",
+            "reject": "Reject",
+            "approvePublish": "Approve & Publish",
+            "approve": "Approve",
+            "archive": "Archive",
+            "saveDraft": "Save Draft",
+            "submitValidation": "Submit for Validation",
+            "caravane": {
+                "category": "Guide",
+                "title": "Medical & Health Caravans",
+                "desc": "Operational guide of the TRC mobile medical caravans offering free consultations in rural areas.",
+                "fullText": "Operational guide of the TRC mobile medical caravans offering free consultations in rural areas. Includes deployment protocols, certified medical equipment management, and field reports by general practitioners and nurses. This 50-page document details community awareness strategies.",
+                "tags": {
+                    "0": "Health",
+                    "1": "Rural Areas",
+                    "2": "Guide"
+                }
+            },
+            "jeunesse": {
+                "category": "Report",
+                "title": "Youth & Volunteering Program",
+                "desc": "Document detailing the TRC youth program activities: training camps, community awareness actions, and youth volunteer citizen engagement across the 24 regional committees.",
+                "fullText": "Comprehensive document detailing the TRC youth program activities: training camps, community awareness actions, prevention campaigns, and citizen engagement of young volunteers across the 24 regional committees. Includes evaluation results and outlook for 2025.",
+                "tags": {
+                    "0": "Youth",
+                    "1": "Volunteering",
+                    "2": "2024 Report"
+                }
+            },
+            "urgence-jendouba": {
+                "category": "Intervention",
+                "title": "Rescue Operation in Jendouba",
+                "desc": "Successful mobilization of 120 volunteers in less than 2 hours during the floods, thanks to the Nexus-AID early warning system.",
+                "fullText": "Following heavy rains that affected the Jendouba region, the TRC mobilized 120 volunteers in less than 2 hours using the Nexus-AID early warning system. NDRT teams were deployed to 8 affected areas, evacuating 340 families and distributing emergency kits.",
+                "tags": {
+                    "0": "NDRT",
+                    "1": "Emergency",
+                    "2": "Coordination"
+                }
+            },
+            "don-sang-tunis": {
+                "category": "Campaign",
+                "title": "Blood Donation Campaign — Tunis",
+                "desc": "Major blood collection campaign organized in 12 points of the Tunis governorate. Goal: 500 bags in 3 days.",
+                "fullText": "The TRC is organizing a major blood collection campaign in 12 points of the Tunis governorate from February 25 to 27, 2026. Goal: 500 bags in 3 days. Mobile units will be deployed in universities, shopping centers, and public squares. Each donor receives an awareness kit and a digital certificate via Nexus-AID.",
+                "tags": {
+                    "0": "Blood Donation",
+                    "1": "Public Health",
+                    "2": "National"
+                }
+            }
+        },
+        "contact": {
+            "tag": "Contact Us",
+            "title": "Get in Touch",
+            "subtitle": "Have a question? A partnership? Contact us!",
+            "manageCommittees": "Manage Committees",
+            "loading": "Loading...",
+            "addressLabel": "Address",
+            "phoneLabel": "Phone",
+            "emailLabel": "Email",
+            "hoursLabel": "Hours",
+            "hoursValue": "Mon — Fri: 08:00 — 17:00",
+            "mapLoading": "Loading map...",
+            "committees": {
+                "siege": {
+                    "name": "National Headquarters — Tunis",
+                    "address": "9 April 1938 Boulevard, Tunis 1001"
+                }
+            },
+            "groups": {
+                "national": "National Headquarters",
+                "regional": "Regional Committees",
+                "local": "Local Committees"
+            },
+            "form": {
+                "fullName": "Full Name",
+                "fullNamePlaceholder": "Your name",
+                "email": "Email",
+                "emailPlaceholder": "email@example.tn",
+                "committee": "Committee to contact",
+                "selectCommittee": "Select a committee",
+                "subject": "Subject",
+                "subjectPlaceholder": "Subject of your message",
+                "message": "Message",
+                "messagePlaceholder": "Describe your request...",
+                "send": "Send Message",
+                "sending": "Message sent!",
+                "successMessage": "Your message has been sent. We will respond within 48 hours."
+            }
+        },
+        "footer": {
+            "desc": "Next-generation AI-integrated humanitarian ERP system for the Tunisian Red Crescent.",
+            "version": "v3.0 — February 2026",
+            "socials": "Social Media",
+            "org": "Organization",
+            "orgLinks": {
+                "national": "National Committee",
+                "regional": "Regional Committees",
+                "local": "Local Committees",
+                "doc": "Documentation"
+            },
+            "alertsTitle": "Alertes & News",
+            "alertsDesc": "Emergency notifications and updates on the AI system.",
+            "emailPlaceholder": "Your email...",
+            "subscribe": "Subscribe",
+            "copyright": "© 2026 Tunisian Red Crescent — Nexus-AID ERP.",
+            "authors": "Editors: M. Harbi & A. Amara",
+            "location": "Tunis"
+        }
     }
 }

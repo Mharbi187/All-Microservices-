@@ -417,10 +417,10 @@ const VolunteersPage: React.FC = () => {
                             onChange={setStatusFilter}
                             suffixIcon={<FilterOutlined />}
                             options={[
-                                { value: 'APPROVED', label: '✅ Approuvé' },
-                                { value: 'PENDING', label: '⏳ En attente' },
-                                { value: 'REJECTED', label: '❌ Rejeté' },
-                                { value: 'SUSPENDED', label: '🚫 Suspendu' },
+                                { value: 'APPROVED', label: <Space><CheckCircleOutlined style={{ color: '#16a34a' }} />Approuvé</Space> },
+                                { value: 'PENDING', label: <Space><ClockCircleOutlined style={{ color: '#f59e0b' }} />En attente</Space> },
+                                { value: 'REJECTED', label: <Space><CloseCircleOutlined style={{ color: '#ef4444' }} />Rejeté</Space> },
+                                { value: 'SUSPENDED', label: <Space><StopOutlined style={{ color: '#999' }} />Suspendu</Space> },
                             ]}
                         />
                     )}

@@ -11,6 +11,9 @@ import authService from '@/services/authService';
 import apiClient from '@/services/api';
 import type { UserType } from '@/types';
 import { useUIStore } from '@/stores/uiStore';
+import { useTranslation } from 'react-i18next';
+import { Dropdown } from 'antd';
+import { GlobalOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 
 const gouvernorats = [
     'Tunis', 'Ariana', 'Ben Arous', 'Manouba', 'Nabeul', 'Zaghouan',
@@ -30,6 +33,7 @@ const certifications = [
 const RegisterPage: React.FC = () => {
     const navigate = useNavigate();
     const { themeMode, toggleTheme } = useUIStore();
+    const { t, i18n } = useTranslation();
     const dark = themeMode === 'dark';
 
     const [isLoading, setIsLoading] = useState(false);
@@ -51,6 +55,12 @@ const RegisterPage: React.FC = () => {
     const [birthDate, setBirthDate] = useState('');
     const [selectedCommittee, setSelectedCommittee] = useState('');
 
+    const languageMenuItems = [
+        { key: 'fr', label: 'Français (FR)' },
+        { key: 'ar', label: 'العربية (AR)' },
+        { key: 'en', label: 'English (EN)' },
+    ];
+
     // Fetch real committees on mount
     useEffect(() => {
         apiClient.get<{ id: string; name: string; type: string; region: string }[]>(
@@ -66,7 +76,7 @@ const RegisterPage: React.FC = () => {
         setSuccess('');
 
         if (password !== confirmPassword) {
-            setError('Les mots de passe ne correspondent pas.');
+            setError(t('auth_page.passwordsNoMatch', 'Les mots de passe ne correspondent pas.'));
             return;
         }
 
@@ -77,7 +87,7 @@ const RegisterPage: React.FC = () => {
             const age = today.getFullYear() - birth.getFullYear() -
                 (today < new Date(today.getFullYear(), birth.getMonth(), birth.getDate()) ? 1 : 0);
             if (age < 16) {
-                setError('Vous devez avoir au moins 16 ans pour vous inscrire.');
+                setError(t('auth_page.ageError', 'Vous devez avoir au moins 16 ans pour vous inscrire.'));
                 return;
             }
         }
@@ -181,12 +191,34 @@ const RegisterPage: React.FC = () => {
                     onMouseLeave={(e) => { e.currentTarget.style.color = dark ? '#A1A1AA' : '#6B7280'; e.currentTarget.style.background = dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'; }}
                 >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-                    RETOUR ACCUEIL
+                    {t('auth_page.backHome', 'RETOUR ACCUEIL')}
                 </Link>
             </div>
 
-            {/* Top Right Action: Theme Toggle */}
-            <div style={{ position: 'absolute', top: 30, right: 30, zIndex: 10 }}>
+            {/* Top Right Actions: Language + Theme Toggle */}
+            <div style={{ position: 'absolute', top: 30, right: 30, zIndex: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Dropdown
+                    menu={{
+                        items: languageMenuItems,
+                        onClick: (e) => i18n.changeLanguage(e.key),
+                        selectedKeys: [i18n.language],
+                    }}
+                    placement="bottomRight"
+                    trigger={['click']}
+                >
+                    <button
+                        style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            width: 36, height: 36, borderRadius: '50%',
+                            background: dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+                            border: 'none', cursor: 'pointer',
+                            color: dark ? '#F4F4F5' : '#1A1A2E', fontSize: 16,
+                        }}
+                        aria-label="Changer la langue"
+                    >
+                        <GlobalOutlined />
+                    </button>
+                </Dropdown>
                 <button
                     onClick={toggleTheme}
                     style={{
@@ -197,7 +229,7 @@ const RegisterPage: React.FC = () => {
                         fontSize: 12, fontWeight: 600,
                     }}
                 >
-                    {dark ? 'LIGHT MODE' : 'DARK MODE'}
+                    {dark ? t('nav.theme.light', 'Mode Clair') : t('nav.theme.dark', 'Mode Sombre')}
                     <div style={{ width: 36, height: 20, borderRadius: 10, background: dark ? '#4ade80' : '#C8102E', position: 'relative' }}>
                         <div style={{
                             width: 16, height: 16, borderRadius: '50%', background: '#fff',
@@ -214,7 +246,7 @@ const RegisterPage: React.FC = () => {
                 className="auth-container"
                 style={{
                     display: 'grid',
-                    gridTemplateColumns: '1fr 1.2fr', // Form is slightly wider on register page
+                    gridTemplateColumns: '1fr 1.2fr',
                     width: '100%',
                     maxWidth: 1200,
                     borderRadius: 24,
@@ -225,11 +257,11 @@ const RegisterPage: React.FC = () => {
                 }}
             >
                 <AuthVisual
-                    headline="Rejoignez le réseau humanitaire national"
-                    description="Créez votre profil volontaire et commencez à contribuer à travers les 24 gouvernorats tunisiens."
+                    headline={t("auth_page.heroRegTitle", "Rejoignez le réseau humanitaire national")}
+                    description={t("auth_page.heroRegDesc", "Créez votre profil volontaire et commencez à contribuer à travers les 24 gouvernorats tunisiens.")}
                     stats={[
-                        { value: 'PSC1', label: 'Formation base' },
-                        { value: '36M', label: 'Support' },
+                        { value: 'PSC1', label: t('auth_page.statsBase', 'Formation base') },
+                        { value: '36M', label: t('auth_page.statsSupport', 'Support') },
                     ]}
                 />
 
@@ -245,23 +277,23 @@ const RegisterPage: React.FC = () => {
                         className="font-display"
                         style={{ fontSize: 28, fontWeight: 700, marginBottom: 8, color: dark ? '#F4F4F5' : '#1A1A2E' }}
                     >
-                        Créer un compte
+                        {t('auth_page.registerTitle', 'Créer un compte')}
                     </h3>
                     <div style={{ fontSize: 14, color: dark ? '#A1A1AA' : '#6B7280', marginBottom: 30 }}>
-                        Profil volontaire — Croissant Rouge Tunisien
+                        {t('auth_page.registerSubtitle', 'Profil volontaire — Croissant Rouge Tunisien')}
                     </div>
 
                     {/* Success message */}
                     {success && (
-                        <div style={{ background: dark ? 'rgba(22,163,106,0.15)' : 'rgba(22,163,106,0.1)', border: dark ? '1px solid rgba(22,163,106,0.4)' : '1px solid rgba(22,163,106,0.3)', borderRadius: 12, padding: '12px 16px', marginBottom: 20, color: dark ? '#4ade80' : '#16a34a', fontSize: 14 }}>
-                            ✅ {success}
+                        <div style={{ background: dark ? 'rgba(22,163,106,0.15)' : 'rgba(22,163,106,0.1)', border: dark ? '1px solid rgba(22,163,106,0.4)' : '1px solid rgba(22,163,106,0.3)', borderRadius: 12, padding: '12px 16px', marginBottom: 20, color: dark ? '#4ade80' : '#16a34a', fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <CheckCircleOutlined /> {success}
                         </div>
                     )}
 
                     {/* Error message */}
                     {error && (
-                        <div style={{ background: dark ? 'rgba(239,68,68,0.15)' : 'rgba(239,68,68,0.1)', border: dark ? '1px solid rgba(239,68,68,0.4)' : '1px solid rgba(239,68,68,0.3)', borderRadius: 12, padding: '12px 16px', marginBottom: 20, color: dark ? '#f87171' : '#ef4444', fontSize: 14 }}>
-                            ❌ {error}
+                        <div style={{ background: dark ? 'rgba(239,68,68,0.15)' : 'rgba(239,68,68,0.1)', border: dark ? '1px solid rgba(239,68,68,0.4)' : '1px solid rgba(239,68,68,0.3)', borderRadius: 12, padding: '12px 16px', marginBottom: 20, color: dark ? '#f87171' : '#ef4444', fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <CloseCircleOutlined /> {error}
                         </div>
                     )}
 
@@ -269,12 +301,12 @@ const RegisterPage: React.FC = () => {
                         {/* Name Row */}
                         <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
                             <div>
-                                <label style={labelStyle}>Prénom</label>
+                                <label style={labelStyle}>{t("auth_page.firstName", "Prénom")}</label>
                                 <input type="text" placeholder="Mohamed" style={inputStyle} required {...focusHandlers}
                                     value={firstName} onChange={(e) => setFirstName(e.target.value)} />
                             </div>
                             <div>
-                                <label style={labelStyle}>Nom</label>
+                                <label style={labelStyle}>{t("auth_page.lastName", "Nom")}</label>
                                 <input type="text" placeholder="Ben Ali" style={inputStyle} required {...focusHandlers}
                                     value={lastName} onChange={(e) => setLastName(e.target.value)} />
                             </div>
@@ -283,12 +315,12 @@ const RegisterPage: React.FC = () => {
                         {/* CIN + DOB */}
                         <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
                             <div>
-                                <label style={labelStyle}>CIN</label>
+                                <label style={labelStyle}>{t("auth_page.cin", "CIN")}</label>
                                 <input type="text" placeholder="12345678" maxLength={8} style={inputStyle} required {...focusHandlers}
                                     value={cin} onChange={(e) => setCin(e.target.value)} />
                             </div>
                             <div>
-                                <label style={labelStyle}>Date de naissance</label>
+                                <label style={labelStyle}>{t("auth_page.dob", "Date de naissance")}</label>
                                 <input
                                     type="date"
                                     style={inputStyle}
@@ -303,7 +335,7 @@ const RegisterPage: React.FC = () => {
 
                         {/* Email */}
                         <div style={{ marginBottom: 20 }}>
-                            <label style={labelStyle}>Email</label>
+                            <label style={labelStyle}>{t("auth_page.email", "Email")}</label>
                             <div style={{ position: 'relative' }}>
                                 <svg style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={dark ? '#A1A1AA' : '#6B7280'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
                                 <input
@@ -321,14 +353,14 @@ const RegisterPage: React.FC = () => {
                         {/* Phone + Gouvernorat */}
                         <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
                             <div>
-                                <label style={labelStyle}>Téléphone</label>
+                                <label style={labelStyle}>{t("auth_page.phone", "Téléphone")}</label>
                                 <input type="tel" placeholder="+216 XX XXX XXX" style={inputStyle} {...focusHandlers}
                                     value={phone} onChange={(e) => setPhone(e.target.value)} />
                             </div>
                             <div>
-                                <label style={labelStyle}>Gouvernorat</label>
+                                <label style={labelStyle}>{t("auth_page.governorate", "Gouvernorat")}</label>
                                 <select style={selectStyle} required {...focusHandlers}>
-                                    <option style={optionStyle} value="" disabled>Sélectionner...</option>
+                                    <option style={optionStyle} value="" disabled>{t("auth_page.selectGov", "Sélectionner...")}</option>
                                     {gouvernorats.map((g) => (
                                         <option style={optionStyle} key={g} value={g}>{g}</option>
                                     ))}
@@ -338,10 +370,10 @@ const RegisterPage: React.FC = () => {
 
                         {/* Comité — dynamic from API */}
                         <div style={{ marginBottom: 20 }}>
-                            <label style={labelStyle}>Comité d'affiliation</label>
+                            <label style={labelStyle}>{t("auth_page.committee", "Comité d'affiliation")}</label>
                             <select style={selectStyle} required {...focusHandlers}
                                 value={selectedCommittee} onChange={(e) => setSelectedCommittee(e.target.value)}>
-                                <option style={optionStyle} value="" disabled>Sélectionner votre comité...</option>
+                                <option style={optionStyle} value="" disabled>{t("auth_page.selectCommittee", "Sélectionner votre comité...")}</option>
                                 {committees.map((c) => (
                                     <option style={optionStyle} key={c.id} value={c.id}>{c.name} ({c.type})</option>
                                 ))}
@@ -350,7 +382,7 @@ const RegisterPage: React.FC = () => {
 
                         {/* Certification */}
                         <div style={{ marginBottom: 20 }}>
-                            <label style={labelStyle}>Certification secourisme</label>
+                            <label style={labelStyle}>{t("auth_page.certification", "Certification secourisme")}</label>
                             <select style={selectStyle} {...focusHandlers}>
                                 {certifications.map((c) => (
                                     <option style={optionStyle} key={c.value} value={c.value}>{c.label}</option>
@@ -361,7 +393,7 @@ const RegisterPage: React.FC = () => {
                         {/* Passwords */}
                         <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
                             <div>
-                                <label style={labelStyle}>Mot de passe</label>
+                                <label style={labelStyle}>{t("auth_page.password", "Mot de passe")}</label>
                                 <div style={{ position: 'relative' }}>
                                     <input
                                         type={showPassword ? 'text' : 'password'}
@@ -393,7 +425,7 @@ const RegisterPage: React.FC = () => {
                                 <PasswordStrength password={password} />
                             </div>
                             <div>
-                                <label style={labelStyle}>Confirmer le mot de passe</label>
+                                <label style={labelStyle}>{t("auth_page.confirmPassword", "Confirmer le mot de passe")}</label>
                                 <div style={{ position: 'relative' }}>
                                     <input
                                         type={showConfirmPassword ? 'text' : 'password'}
@@ -439,11 +471,7 @@ const RegisterPage: React.FC = () => {
                                     style={{ accentColor: '#f10316', marginTop: 2 }}
                                 />
                                 <span>
-                                    J'accepte les{' '}
-                                    <a href="#" style={{ color: '#f10316', textDecoration: 'none' }}>conditions d'utilisation</a>
-                                    {' '}et la{' '}
-                                    <a href="#" style={{ color: '#f10316', textDecoration: 'none' }}>politique de confidentialité</a>
-                                    {' '}du CRT
+                                    {t('auth_page.acceptTerms', "J'accepte les conditions d'utilisation et la politique de confidentialité du CRT")}
                                 </span>
                             </label>
                         </div>
@@ -482,15 +510,15 @@ const RegisterPage: React.FC = () => {
                                 }
                             }}
                         >
-                            {isLoading ? '⏳ Création en cours...' : 'Créer mon profil volontaire'}
+                            {isLoading ? t('auth_page.registering', '⏳ Création en cours...') : t('auth_page.registerBtn', 'Créer mon profil volontaire')}
                         </button>
                     </form>
 
                     {/* Switch */}
                     <div style={{ textAlign: 'center', marginTop: 28, fontSize: 14, color: dark ? '#A1A1AA' : '#6B7280' }}>
-                        Déjà un compte ?{' '}
+                        {t('auth_page.alreadyAccount', 'Déjà un compte ?')}{' '}
                         <Link to="/login" style={{ color: '#f10316', fontWeight: 600, textDecoration: 'none' }}>
-                            Se connecter
+                            {t('auth.login', 'Se connecter')}
                         </Link>
                     </div>
                 </div>

@@ -48,9 +48,15 @@ const { Sider, Header, Content } = Layout;
 const { Text } = Typography;
 
 const MainLayout: React.FC = () => {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const navigate = useNavigate();
     const location = useLocation();
+
+    const languageMenuItems = [
+        { key: 'fr', label: 'Français (FR)' },
+        { key: 'ar', label: 'العربية (AR)' },
+        { key: 'en', label: 'English (EN)' },
+    ];
 
     const { sidebarCollapsed, toggleSidebar, themeMode, toggleTheme } = useUIStore();
     const { user, logout } = useAuthStore();
@@ -582,7 +588,7 @@ const MainLayout: React.FC = () => {
     };
 
     // Build breadcrumb labels including domain pages
-    const breadcrumbLabels: Record<string, string> = {
+    const breadcrumbLabels: Record<string, React.ReactNode> = {
         dashboard: t('nav.dashboard'),
         volunteers: t('nav.volunteers'),
         committees: t('nav.committees'),
@@ -598,7 +604,7 @@ const MainLayout: React.FC = () => {
         immigration: 'Immigration',
         vff: 'VFF',
         catastrophes: 'Moniteur Météo',
-        'distribution-medicale': '📦 Distribution Médicale',
+        'distribution-medicale': <Space><MedicineBoxOutlined /> Distribution Médicale</Space>,
         reporting: 'Système Reporting',
         'admin-reports': 'Rapports Admin',
         templates: 'Modèles',
@@ -857,6 +863,21 @@ const MainLayout: React.FC = () => {
                                 onClick={toggleTheme}
                             />
                         </Tooltip>
+
+                        {/* Language Switcher */}
+                        <Dropdown
+                            menu={{
+                                items: languageMenuItems,
+                                onClick: (e) => i18n.changeLanguage(e.key),
+                                selectedKeys: [i18n.language],
+                            }}
+                            placement="bottomRight"
+                            trigger={['click']}
+                        >
+                            <Tooltip title={t('nav.language', 'Langue')}>
+                                <Button type="text" icon={<GlobalOutlined />} />
+                            </Tooltip>
+                        </Dropdown>
 
                         {/* Notifications */}
                         <Popover

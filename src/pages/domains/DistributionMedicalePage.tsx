@@ -43,20 +43,20 @@ const CRC = {
 };
 
 const STATUS_CONFIG: Record<string, { color: string; label: string; icon: React.ReactNode }> = {
-    PENDING: { color: 'warning', label: '⏳ En attente validation', icon: <ClockCircleOutlined /> },
-    APPROVED: { color: 'success', label: '✅ Approuvé', icon: <CheckCircleOutlined /> },
-    REJECTED: { color: 'error', label: '❌ Rejeté', icon: <CloseOutlined /> },
-    DISTRIBUTED: { color: 'cyan', label: '📦 Distribué', icon: <BoxPlotOutlined /> },
+    PENDING: { color: 'warning', label: 'En attente validation', icon: <ClockCircleOutlined /> },
+    APPROVED: { color: 'success', label: 'Approuvé', icon: <CheckCircleOutlined /> },
+    REJECTED: { color: 'error', label: 'Rejeté', icon: <CloseOutlined /> },
+    DISTRIBUTED: { color: 'cyan', label: 'Distribué', icon: <BoxPlotOutlined /> },
 };
 
 const RESOURCE_TYPES = [
-    { value: 'MEDICAMENTS', label: '💊 Médicaments', icon: '💊' },
-    { value: 'KITS_MEDICAUX', label: '🧰 Kits Médicaux', icon: '🧰' },
-    { value: 'POCHES_SANG', label: '🩸 Poches de Sang', icon: '🩸' },
-    { value: 'EQUIPEMENTS', label: '🏥 Équipements Médicaux', icon: '🏥' },
-    { value: 'DISPOSITIFS_MEDICAUX', label: '🔬 Dispositifs Médicaux', icon: '🔬' },
-    { value: 'DOCUMENTS_MEDICAUX', label: '📄 Documents & Protocoles', icon: '📄' },
-    { value: 'AUTRES', label: '📦 Autres', icon: '📦' },
+    { value: 'MEDICAMENTS', label: 'Médicaments', icon: <MedicineBoxOutlined /> },
+    { value: 'KITS_MEDICAUX', label: 'Kits Médicaux', icon: <MedicineBoxOutlined /> },
+    { value: 'POCHES_SANG', label: 'Poches de Sang', icon: <MedicineBoxOutlined /> },
+    { value: 'EQUIPEMENTS', label: 'Équipements Médicaux', icon: <MedicineBoxOutlined /> },
+    { value: 'DISPOSITIFS_MEDICAUX', label: 'Dispositifs Médicaux', icon: <MedicineBoxOutlined /> },
+    { value: 'DOCUMENTS_MEDICAUX', label: 'Documents & Protocoles', icon: <FileTextOutlined /> },
+    { value: 'AUTRES', label: 'Autres', icon: <BoxPlotOutlined /> },
 ];
 
 // ============================================================
@@ -196,7 +196,7 @@ const DistributionMedicalePage: React.FC = () => {
                 documentsUrls: docs.length > 0 ? docs : undefined,
             };
             await santeService.createDistribution(payload);
-            messageApi.success('📦 Demande soumise au Président pour validation !');
+            messageApi.success('Demande soumise au Président pour validation !');
             setIsModalOpen(false);
             form.resetFields();
             setPhotos([]);
@@ -212,7 +212,7 @@ const DistributionMedicalePage: React.FC = () => {
     const handleApprove = async (id: string) => {
         try {
             await santeService.approveDistribution(id, user?.fullName || '');
-            messageApi.success('✅ Distribution approuvée ! Visible dans Diffusion > Distribution Méd.');
+            messageApi.success('Distribution approuvée ! Visible dans Diffusion > Distribution Méd.');
             loadData();
         } catch { messageApi.error('Erreur approbation.'); }
     };
@@ -228,7 +228,7 @@ const DistributionMedicalePage: React.FC = () => {
     const handleMarkDistributed = async (id: string) => {
         try {
             await santeService.markDistributed(id);
-            messageApi.success('📦 Distribution marquée comme effectuée !');
+            messageApi.success('Distribution marquée comme effectuée !');
             loadData();
         } catch { messageApi.error('Erreur lors de la mise à jour.'); }
     };
@@ -263,12 +263,12 @@ const DistributionMedicalePage: React.FC = () => {
                             background: CRC.redBgDark,
                             display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0
                         }}>
-                            {rt?.icon || '📦'}
+                            {rt?.icon || <BoxPlotOutlined />}
                         </div>
                         <div>
                             <Text strong style={{ fontSize: 14, display: 'block' }}>{r.title}</Text>
                             <Tag style={{ borderRadius: 6, background: CRC.redBg, color: CRC.red, border: `1px solid ${CRC.redBorder}`, fontSize: 11 }}>
-                                {rt?.label?.replace(/^\S+\s/, '') || r.resourceType}
+                                {rt?.label || r.resourceType}
                             </Tag>
                         </div>
                     </Space>
@@ -396,9 +396,7 @@ const DistributionMedicalePage: React.FC = () => {
                             <div style={{ position: 'sticky', top: 40 }}>
                                 {/* Header */}
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 32 }}>
-                                    <div style={{ width: 54, height: 54, borderRadius: 18, background: CRC.gradient, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, boxShadow: '0 8px 20px rgba(224,28,46,0.3)' }}>
-                                        📦
-                                    </div>
+                                        <MedicineBoxOutlined />
                                     <div>
                                         <Title level={4} style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>Distribution</Title>
                                         <Text type="secondary" style={{ fontSize: 12 }}>Ressources Médicales</Text>
@@ -408,9 +406,9 @@ const DistributionMedicalePage: React.FC = () => {
                                 {/* Stats */}
                                 <Space direction="vertical" style={{ width: '100%' }} size={12}>
                                     {[
-                                        { label: 'Total demandes', value: totalCount, icon: '📋', color: CRC.red },
-                                        { label: 'En attente', value: pendingCount, icon: '⏳', color: '#ea580c' },
-                                        { label: 'Approuvées', value: approvedCount, icon: '✅', color: '#16a34a' },
+                                        { label: 'Total demandes', value: totalCount, icon: <FileTextOutlined />, color: CRC.red },
+                                        { label: 'En attente', value: pendingCount, icon: <ClockCircleOutlined />, color: '#ea580c' },
+                                        { label: 'Approuvées', value: approvedCount, icon: <CheckCircleOutlined />, color: '#16a34a' },
                                     ].map((s, i) => (
                                         <div key={i} style={{ padding: '14px 16px', borderRadius: 16, background: isDark ? CRC.redBgDark : '#fff', border: `1px solid ${CRC.redBorder}` }}>
                                             <Text type="secondary" style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>
@@ -452,7 +450,7 @@ const DistributionMedicalePage: React.FC = () => {
                                 {/* Info workflow */}
                                 <div style={{ marginTop: 20, padding: '12px 14px', borderRadius: 14, background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)' }}>
                                     <Text type="secondary" style={{ fontSize: 11, display: 'block', lineHeight: 1.8 }}>
-                                        📋 <Text strong>Workflow :</Text><br />
+                                        <FileTextOutlined /> <Text strong>Workflow :</Text><br />
                                         1. RESP_SANTE crée une demande<br />
                                         2. Président approuve ou rejette<br />
                                         3. Ressource visible dans Diffusion
@@ -467,7 +465,7 @@ const DistributionMedicalePage: React.FC = () => {
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28, flexWrap: 'wrap', gap: 12 }}>
                                 <div>
                                     <Title level={4} style={{ margin: 0, fontWeight: 800, fontSize: 20 }}>
-                                        {isPresident ? '📋 Validation des Demandes' : '📦 Mes Demandes de Distribution'}
+                                        {isPresident ? <><CheckCircleOutlined /> Validation des Demandes</> : <><BoxPlotOutlined /> Mes Demandes de Distribution</>}
                                     </Title>
                                     <Text type="secondary" style={{ fontSize: 13 }}>
                                         {isPresident ? 'Approuvez ou rejetez les demandes de votre comité' : 'Gérez vos demandes de ressources médicales'}
@@ -480,11 +478,11 @@ const DistributionMedicalePage: React.FC = () => {
                                         style={{ width: 160, borderRadius: 10 }}
                                         size="middle"
                                     >
-                                        <Option value="ALL">🔵 Tous les statuts</Option>
-                                        <Option value="PENDING">⏳ En attente</Option>
-                                        <Option value="APPROVED">✅ Approuvé</Option>
-                                        <Option value="REJECTED">❌ Rejeté</Option>
-                                        <Option value="DISTRIBUTED">📦 Distribué</Option>
+                                        <Option value="ALL"><GlobalOutlined /> Tous les statuts</Option>
+                                        <Option value="PENDING"><ClockCircleOutlined /> En attente</Option>
+                                        <Option value="APPROVED"><CheckCircleOutlined /> Approuvé</Option>
+                                        <Option value="REJECTED"><CloseOutlined /> Rejeté</Option>
+                                        <Option value="DISTRIBUTED"><BoxPlotOutlined /> Distribué</Option>
                                     </Select>
                                     <Button icon={<FilterOutlined />} style={{ borderRadius: 10, height: 36, borderColor: CRC.redBorder }} />
                                 </Space>
@@ -503,7 +501,7 @@ const DistributionMedicalePage: React.FC = () => {
                                         locale={{
                                             emptyText: (
                                                 <div style={{ padding: '60px 0', textAlign: 'center' }}>
-                                                    <div style={{ fontSize: 52, marginBottom: 12 }}>📭</div>
+                                                    <div style={{ fontSize: 52, marginBottom: 12, color: CRC.redBorder }}><BoxPlotOutlined /></div>
                                                     <Title level={5} style={{ color: CRC.red }}>Aucune demande de distribution</Title>
                                                     <Text type="secondary">
                                                         {isRespSante ? 'Cliquez sur "Nouvelle Demande" pour soumettre une demande au Président.' : 'Aucune distribution enregistrée.'}
@@ -548,7 +546,7 @@ const DistributionMedicalePage: React.FC = () => {
 
                 <Form form={form} layout="vertical" onFinish={handleCreate} requiredMark={false}>
                     <Divider orientation="left" orientationMargin={0} style={{ color: CRC.red, borderColor: CRC.redBorder }}>
-                        <Text style={{ color: CRC.red, fontWeight: 700, fontSize: 13 }}>📋 Ressource à distribuer</Text>
+                        <Text style={{ color: CRC.red, fontWeight: 700, fontSize: 13 }}><FileTextOutlined style={{ marginRight: 6 }} /> Ressource à distribuer</Text>
                     </Divider>
                     <Row gutter={16}>
                         <Col span={12}>
@@ -571,17 +569,17 @@ const DistributionMedicalePage: React.FC = () => {
                     </Form.Item>
 
                     <Divider orientation="left" orientationMargin={0} style={{ color: CRC.red, borderColor: CRC.redBorder }}>
-                        <Text style={{ color: CRC.red, fontWeight: 700, fontSize: 13 }}>🎯 Destination</Text>
+                        <Text style={{ color: CRC.red, fontWeight: 700, fontSize: 13 }}><EnvironmentOutlined style={{ marginRight: 6 }} /> Destination</Text>
                     </Divider>
                     <Row gutter={16}>
                         <Col xs={24} sm={8}>
                             <Form.Item name="destinationType" label="Type" rules={[{ required: true }]}>
                                 <Select size="large">
-                                    <Option value="HOPITAL">🏥 Hôpital</Option>
-                                    <Option value="ASSOCIATION">🤝 Association</Option>
-                                    <Option value="MISSION">🚑 Mission Terrain</Option>
-                                    <Option value="COMITE">🏛️ Comité</Option>
-                                    <Option value="BENEFICIAIRE">👤 Bénéficiaire</Option>
+                                    <Option value="HOPITAL"><MedicineBoxOutlined /> Hôpital</Option>
+                                    <Option value="ASSOCIATION"><GlobalOutlined /> Association</Option>
+                                    <Option value="MISSION"><CarOutlined /> Mission Terrain</Option>
+                                    <Option value="COMITE"><GlobalOutlined /> Comité</Option>
+                                    <Option value="BENEFICIAIRE"><EnvironmentOutlined /> Bénéficiaire</Option>
                                 </Select>
                             </Form.Item>
                         </Col>
@@ -610,7 +608,7 @@ const DistributionMedicalePage: React.FC = () => {
                     </Row>
 
                     <Divider orientation="left" orientationMargin={0} style={{ color: CRC.red, borderColor: CRC.redBorder }}>
-                        <Text style={{ color: CRC.red, fontWeight: 700, fontSize: 13 }}>📎 Preuves & Justificatifs</Text>
+                        <Text style={{ color: CRC.red, fontWeight: 700, fontSize: 13 }}><FileTextOutlined style={{ marginRight: 6 }} /> Preuves & Justificatifs</Text>
                     </Divider>
                     <Row gutter={16}>
                         <Col span={12}>

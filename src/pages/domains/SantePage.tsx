@@ -271,7 +271,7 @@ const SantePage: React.FC = () => {
                 volunteersList: selectedVolunteers.length > 0 ? selectedVolunteers : undefined,
             };
             await santeService.createAction(user.committeeId, payload);
-            messageApi.success('✅ Action sanitaire planifiée avec succès !');
+            messageApi.success('Action sanitaire planifiée avec succès !');
             setIsActionModalOpen(false);
             actionForm.resetFields();
             setActionPhotos([]);
@@ -344,7 +344,7 @@ const SantePage: React.FC = () => {
                 documentsUrls: distribDocs.length > 0 ? distribDocs : undefined,
             };
             await santeService.createDistribution(payload);
-            messageApi.success('📦 Demande de distribution soumise pour validation au Président !');
+            messageApi.success('Demande de distribution soumise pour validation au Président !');
             setIsDistribModalOpen(false);
             distribForm.resetFields();
             setDistribPhotos([]);
@@ -360,7 +360,7 @@ const SantePage: React.FC = () => {
     const handleApproveDistribution = async (distId: string) => {
         try {
             await santeService.approveDistribution(distId, user?.fullName || '');
-            messageApi.success('✅ Distribution approuvée ! Elle sera visible dans la page Ressources.');
+            messageApi.success('Distribution approuvée ! Elle sera visible dans la page Ressources.');
             loadData();
         } catch {
             messageApi.error('Erreur lors de l\'approbation.');
@@ -577,7 +577,7 @@ const SantePage: React.FC = () => {
             key: 'status',
             render: (s) => (
                 <Tag color={STATUS_COLORS[s] || 'default'} style={{ borderRadius: 8, padding: '2px 10px', fontWeight: 600 }}>
-                    {s === 'PENDING' ? '⏳ En attente' : s === 'APPROVED' ? '✅ Approuvé' : s === 'REJECTED' ? '❌ Rejeté' : '📦 Distribué'}
+                    {s === 'PENDING' ? <Space size={4}><ClockCircleOutlined /> En attente</Space> : s === 'APPROVED' ? <Space size={4}><CheckCircleOutlined /> Approuvé</Space> : s === 'REJECTED' ? <Space size={4}><StopOutlined /> Rejeté</Space> : <Space size={4}><CarOutlined /> Distribué</Space>}
                 </Tag>
             )
         },
@@ -1314,8 +1314,8 @@ const SantePage: React.FC = () => {
                 </div>
                 {selectedVolunteers.length > 0 && (
                     <div style={{ marginTop: 12, padding: 12, borderRadius: 12, background: CRC.redBg }}>
-                        <Text style={{ color: CRC.red, fontWeight: 600, fontSize: 13 }}>
-                            ✅ {selectedVolunteers.length} volontaire(s) sélectionné(s) :
+                        <Text style={{ color: CRC.red, fontWeight: 600, fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                            <CheckCircleOutlined /> {selectedVolunteers.length} volontaire(s) sélectionné(s) :
                         </Text>
                         <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                             {selectedVolunteers.map((v, i) => (

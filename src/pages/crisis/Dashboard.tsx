@@ -137,7 +137,7 @@ export default function Dashboard() {
             setSimCurrentPhase(4);
 
             if (result.success) {
-                message.success({ content: `✅ Simulation "${result.scenario_name}" deployed! Radar is fetching data.`, duration: 5 });
+                message.success({ content: `Simulation "${result.scenario_name}" deployed! Radar is fetching data.`, duration: 5 });
             } else {
                 message.warning({ content: 'Simulation partially complete.', duration: 4 });
             }

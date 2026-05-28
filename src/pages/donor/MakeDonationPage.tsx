@@ -13,7 +13,9 @@ import {
     HeartOutlined, EnvironmentOutlined, UploadOutlined,
     QrcodeOutlined, CheckCircleOutlined, ClockCircleOutlined,
     ArrowLeftOutlined, ArrowRightOutlined, CameraOutlined,
-    FileProtectOutlined,
+    FileProtectOutlined, CoffeeOutlined, MedicineBoxOutlined,
+    ToolOutlined, SkinOutlined, AlertOutlined, InboxOutlined,
+    BulbOutlined, GiftOutlined
 } from '@ant-design/icons';
 import { useUIStore, useAuthStore } from '@/stores';
 import { donationService } from '@/services/donationService';
@@ -28,8 +30,8 @@ const TYPE_COLORS: Record<string, string> = {
     'Alimentaire': '#16a34a', 'Médical': '#0ea5e9', 'Équipement': '#8b5cf6',
     'Vêtements': '#f59e0b', 'Urgence': '#ef4444',
 };
-const TYPE_EMOJI: Record<string, string> = {
-    'Alimentaire': '🍞', 'Médical': '🏥', 'Équipement': '⚙️', 'Vêtements': '👕', 'Urgence': '🚨',
+const TYPE_EMOJI: Record<string, React.ReactNode> = {
+    'Alimentaire': <CoffeeOutlined />, 'Médical': <MedicineBoxOutlined />, 'Équipement': <ToolOutlined />, 'Vêtements': <SkinOutlined />, 'Urgence': <AlertOutlined />,
 };
 
 interface DonationFormData {
@@ -60,7 +62,7 @@ const Step1SelectNeed: React.FC<{
             border: '1px solid rgba(22,163,74,0.2)',
         }}>
             <Space>
-                <span>💡</span>
+                <span><BulbOutlined style={{ color: '#16a34a' }} /></span>
                 <Text style={{ fontSize: 13, color: isDark ? 'rgba(255,255,255,0.7)' : '#555' }}>
                     Sélectionnez un besoin publié par un comité. Vous pouvez aussi{' '}
                     <Text style={{ color: '#16a34a', fontWeight: 600 }}>naviguer sur la carte</Text>{' '}
@@ -102,7 +104,7 @@ const Step1SelectNeed: React.FC<{
                         fontSize: 24,
                         flexShrink: 0,
                     }}>
-                        {TYPE_EMOJI[need.type] || '📦'}
+                        {TYPE_EMOJI[need.type] || <InboxOutlined />}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
@@ -111,7 +113,7 @@ const Step1SelectNeed: React.FC<{
                                 {need.type}
                             </Tag>
                             {need.priority === 'URGENT' && (
-                                <Tag color="error" style={{ margin: 0, fontSize: 11 }}>🔴 URGENT</Tag>
+                                <Tag color="error" style={{ margin: 0, fontSize: 11 }}><AlertOutlined /> URGENT</Tag>
                             )}
                         </div>
                         <Space size={4}>
@@ -152,7 +154,7 @@ const Step2DonationDetails: React.FC<{
                 border: `1px solid ${TYPE_COLORS[selectedNeed.type] || '#6b7280'}30`,
             }}>
                 <Space>
-                    <span style={{ fontSize: 22 }}>{TYPE_EMOJI[selectedNeed.type] || '📦'}</span>
+                    <span style={{ fontSize: 22 }}>{TYPE_EMOJI[selectedNeed.type] || <InboxOutlined />}</span>
                     <div>
                         <Text strong>{selectedNeed.committeeName}</Text>
                         <Text style={{ color: isDark ? 'rgba(255,255,255,0.5)' : '#888', fontSize: 13, display: 'block' }}>
@@ -174,11 +176,11 @@ const Step2DonationDetails: React.FC<{
                 size="large"
                 placeholder="Choisissez le type de don"
                 options={[
-                    { value: 'Alimentaire', label: '🍞 Don alimentaire (paniers, colis...)' },
-                    { value: 'Médical', label: '🏥 Don médical (médicaments, kits...)' },
-                    { value: 'Équipement', label: '⚙️ Équipement (tentes, matériels...)' },
-                    { value: 'Vêtements', label: '👕 Vêtements et effets personnels' },
-                    { value: 'Urgence', label: '🚨 Don d\'urgence (matériel divers)' },
+                    { value: 'Alimentaire', label: <span><CoffeeOutlined /> Don alimentaire (paniers, colis...)</span> },
+                    { value: 'Médical', label: <span><MedicineBoxOutlined /> Don médical (médicaments, kits...)</span> },
+                    { value: 'Équipement', label: <span><ToolOutlined /> Équipement (tentes, matériels...)</span> },
+                    { value: 'Vêtements', label: <span><SkinOutlined /> Vêtements et effets personnels</span> },
+                    { value: 'Urgence', label: <span><AlertOutlined /> Don d'urgence (matériel divers)</span> },
                 ]}
             />
         </div>
@@ -339,7 +341,7 @@ const Step3Photo: React.FC<{
                 border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#f0f0f0'}`,
             }}>
                 <Text strong style={{ display: 'block', marginBottom: 10, fontSize: 13 }}>
-                    💡 Conseils pour une bonne photo
+                    <BulbOutlined /> Conseils pour une bonne photo
                 </Text>
                 {[
                     'Photographiez tous les articles rassemblés',
@@ -415,7 +417,7 @@ const Step4QRCode: React.FC<{
                 border: '1px solid rgba(22,163,74,0.2)',
                 textAlign: 'center',
             }}>
-                <div style={{ fontSize: 48, marginBottom: 12 }}>🎉</div>
+                <div style={{ fontSize: 48, marginBottom: 12, color: '#16a34a' }}><CheckCircleOutlined /></div>
                 <Title level={4} style={{ color: '#16a34a', marginBottom: 8 }}>Don enregistré avec succès !</Title>
                 <Text style={{ color: isDark ? 'rgba(255,255,255,0.6)' : '#555', fontSize: 14 }}>
                     Votre don a été soumis. Le comité bénéficiaire va le récupérer.
@@ -457,7 +459,9 @@ const Step4QRCode: React.FC<{
                         {generateQRPattern()}
                         {/* Center logo */}
                         <rect x={124} y={124} width={40} height={40} rx={8} fill={isDark ? '#1f2937' : '#fff'} />
-                        <text x={144} y={150} textAnchor="middle" fontSize={22}>💝</text>
+                        <foreignObject x={132} y={132} width={24} height={24}>
+                            <HeartOutlined style={{ fontSize: 24, color: '#16a34a', display: 'block' }} />
+                        </foreignObject>
                     </svg>
 
                     <Text style={{ display: 'block', marginTop: 12, fontSize: 11, fontFamily: 'monospace', color: '#16a34a', fontWeight: 700 }}>
@@ -481,12 +485,12 @@ const Step4QRCode: React.FC<{
                 </Text>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                     {[
-                        { label: 'ID Don', value: donationId, icon: '🔖' },
-                        { label: 'Comité', value: selectedNeed?.committeeName || '-', icon: '🏛' },
-                        { label: 'Type', value: form.donationType, icon: '📦' },
-                        { label: 'Quantité', value: form.quantity, icon: '⚖️' },
-                        { label: 'Région', value: selectedNeed?.committeeRegion || '-', icon: '📍' },
-                        { label: 'Statut', value: 'En attente réception', icon: '⏳' },
+                        { label: 'ID Don', value: donationId, icon: <FileProtectOutlined /> },
+                        { label: 'Comité', value: selectedNeed?.committeeName || '-', icon: <EnvironmentOutlined /> },
+                        { label: 'Type', value: form.donationType, icon: <InboxOutlined /> },
+                        { label: 'Quantité', value: form.quantity, icon: <GiftOutlined /> },
+                        { label: 'Région', value: selectedNeed?.committeeRegion || '-', icon: <EnvironmentOutlined /> },
+                        { label: 'Statut', value: 'En attente réception', icon: <ClockCircleOutlined /> },
                     ].map((item) => (
                         <div key={item.label} style={{
                             background: isDark ? 'rgba(255,255,255,0.03)' : '#fff',
@@ -528,7 +532,7 @@ const Step4QRCode: React.FC<{
                 border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#f0f0f0'}`,
             }}>
                 <Text strong style={{ display: 'block', marginBottom: 14, fontSize: 13 }}>
-                    🔄 Suivi de votre don
+                    <ClockCircleOutlined /> Suivi de votre don
                 </Text>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
                     {[
@@ -736,7 +740,7 @@ const MakeDonationPage: React.FC = () => {
                     display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22,
                     boxShadow: '0 0 20px rgba(22,163,74,0.4)',
                 }}>
-                    💝
+                    <HeartOutlined />
                 </div>
                 <div>
                     <Title level={4} style={{ margin: 0 }}>Faire un Don</Title>
@@ -777,10 +781,10 @@ const MakeDonationPage: React.FC = () => {
                     boxShadow: isDark ? 'none' : '0 2px 12px rgba(0,0,0,0.04)',
                 }}>
                     <Title level={5} style={{ marginBottom: 20 }}>
-                        {currentStep === 0 && '📍 Étape 1 — Sélectionnez un besoin'}
-                        {currentStep === 1 && '📦 Étape 2 — Détails de votre don'}
-                        {currentStep === 2 && '📷 Étape 3 — Photo de votre don'}
-                        {currentStep === 3 && '🎉 Confirmation & QR Code de réception'}
+                        {currentStep === 0 && <><EnvironmentOutlined /> Étape 1 — Sélectionnez un besoin</>}
+                        {currentStep === 1 && <><InboxOutlined /> Étape 2 — Détails de votre don</>}
+                        {currentStep === 2 && <><CameraOutlined /> Étape 3 — Photo de votre don</>}
+                        {currentStep === 3 && <><CheckCircleOutlined /> Confirmation & QR Code de réception</>}
                     </Title>
 
                     <Divider style={{ margin: '0 0 24px' }} />

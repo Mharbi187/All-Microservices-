@@ -7,7 +7,8 @@ import {
   Button, Card, Col, Row, Space, Spin, Typography, message, Alert, Popconfirm
 } from 'antd';
 import {
-  SaveOutlined, SendOutlined, ArrowLeftOutlined, CheckCircleOutlined
+  SaveOutlined, SendOutlined, ArrowLeftOutlined, CheckCircleOutlined,
+  LoadingOutlined, CloseCircleOutlined
 } from '@ant-design/icons';
 import { adminReportService } from '@/services/adminReportService';
 import { signatureService } from '@/services/signatureService';
@@ -131,9 +132,9 @@ const ReportFillPage: React.FC = () => {
             <div>
               <Title level={4} style={{ margin: 0 }}>{report.title}</Title>
               <Text type="secondary">
-                {autoSaveStatus === 'saving' && '⏳ Sauvegarde automatique...'}
-                {autoSaveStatus === 'saved' && '✅ Sauvegardé'}
-                {autoSaveStatus === 'error' && '❌ Erreur de sauvegarde'}
+                {autoSaveStatus === 'saving' && <Space><LoadingOutlined /> Sauvegarde automatique...</Space>}
+                {autoSaveStatus === 'saved' && <Space><CheckCircleOutlined style={{ color: '#52c41a' }} /> Sauvegardé</Space>}
+                {autoSaveStatus === 'error' && <Space><CloseCircleOutlined style={{ color: '#f5222d' }} /> Erreur de sauvegarde</Space>}
               </Text>
             </div>
           </Space>

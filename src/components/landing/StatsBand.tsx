@@ -3,6 +3,7 @@
 // ============================================================
 
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { useUIStore } from '@/stores/uiStore';
 
 const stats = [
@@ -13,6 +14,7 @@ const stats = [
 ];
 
 const StatsBand: React.FC = () => {
+    const { t } = useTranslation();
     const { themeMode } = useUIStore();
     const dark = themeMode === 'dark';
 
@@ -31,32 +33,41 @@ const StatsBand: React.FC = () => {
                 zIndex: 2,
             }}
         >
-            {stats.map((stat, i) => (
-                <motion.div
-                    key={stat.label}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.6, delay: i * 0.1 }}
-                    style={{ textAlign: 'center' }}
-                >
-                    <span
-                        className="font-display"
-                        style={{
-                            fontSize: 48,
-                            fontWeight: 900,
-                        color: dark ? '#FC8181' : '#C8102E',
-                        display: 'block',
-                        lineHeight: 1,
-                    }}
-                >
-                    {stat.value}
-                </span>
-                <div style={{ fontSize: 13, color: dark ? '#A0AEC0' : '#718096', marginTop: 8 }}>
-                        {stat.label}
-                    </div>
-                </motion.div>
-            ))}
+            {stats.map((stat, i) => {
+                const translationKeys = [
+                    'home.stats.govCovered',
+                    'home.stats.activeServices',
+                    'home.stats.platformAvailability',
+                    'home.stats.apiResponseTime'
+                ];
+                const translatedLabel = t(translationKeys[i], stat.label);
+                return (
+                    <motion.div
+                        key={stat.label}
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.6, delay: i * 0.1 }}
+                        style={{ textAlign: 'center' }}
+                    >
+                        <span
+                            className="font-display"
+                            style={{
+                                fontSize: 48,
+                                fontWeight: 900,
+                                color: dark ? '#FC8181' : '#C8102E',
+                                display: 'block',
+                                lineHeight: 1,
+                            }}
+                        >
+                            {stat.value}
+                        </span>
+                        <div style={{ fontSize: 13, color: dark ? '#A0AEC0' : '#718096', marginTop: 8 }}>
+                            {translatedLabel}
+                        </div>
+                    </motion.div>
+                );
+            })}
 
             <style>{`
         @media (max-width: 1024px) {
