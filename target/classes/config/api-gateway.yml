@@ -125,6 +125,16 @@ spring:
           predicates:
             - Path=/api/v1/onboarding/**
 
+        - id: core-notifications
+          uri: lb://core-service
+          predicates:
+            - Path=/api/v1/notifications/**
+
+        - id: core-donations
+          uri: lb://core-service
+          predicates:
+            - Path=/api/v1/donations/**
+
         # MS3 - Admin Service (Module 3: Admin, Reporting, Donations)
         - id: admin-templates
           uri: lb://admin-service
@@ -177,11 +187,11 @@ spring:
           predicates:
             - Path=/ws/**
 
-        # Unified Frontend (Catch-all only for UI routes)
+        # Unified Frontend — all SPA pages + public static assets
         - id: main-frontend
-          uri: ${FRONTEND_URL:http://frontend:80}
+          uri: ${FRONTEND_URL:http://nexus-aid-frontend:80}
           predicates:
-            - Path=/,/index.html,/assets/**,/favicon**,/static/**,/manifest.json,/robots.txt
+            - Path=/,/index.html,/assets/**,/favicon**,/static/**,/manifest.json,/robots.txt,/logo.jpg,/logos/**,/images/**,/*.png,/*.jpg,/*.ico,/*.svg,/*.webp,/login,/register,/dashboard/**,/volunteers/**,/volunteers,/committees/**,/committees,/settings,/donations,/stocks,/secourisme,/diffusion,/jeunesse,/sante,/social,/immigration,/vff,/catastrophes,/radar,/reporting/**,/volunteer/**,/validation-queue,/audit-logs
           filters:
             - SetResponseHeader=X-Frame-Options, SAMEORIGIN
 
