@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Button, Card, Table, Typography, Tag, notification } from 'antd';
-import { ReloadOutlined, RocketOutlined } from '@ant-design/icons';
+import { ReloadOutlined, RocketOutlined, SettingOutlined } from '@ant-design/icons';
 import { crisisApi } from '@/services/crisisApi';
+import { useUIStore } from '@/stores';
+import { makeRadarTheme, rp, rr, rfont } from '@/components/crisis/radarTheme';
 
 const { Text } = Typography;
 
@@ -23,6 +25,10 @@ export default function TeamDispatcher({ disasterLat = 36.8, disasterLon = 10.18
     const [loading, setLoading] = useState(true);
     const [deployingId, setDeployingId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    
+    const { themeMode } = useUIStore();
+    const isDark = themeMode === 'dark';
+    const t = makeRadarTheme(isDark);
 
     const loadTeams = useCallback(async () => {
         try {
@@ -47,11 +53,11 @@ export default function TeamDispatcher({ disasterLat = 36.8, disasterLon = 10.18
         try {
             setDeployingId(team.id);
             await crisisApi.dispatchTeam(team.id, disasterLat, disasterLon);
-            notification.success({ message: 'Team deployed', description: `${team.name} is en route.` });
+            notification.success({ message: 'Équipe déployée', description: `${team.name} est en route.` });
             setTeams((prev) => prev.filter((item) => item.id !== team.id));
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : 'Deployment request failed';
-            notification.error({ message: 'Deployment failed', description: message });
+            notification.error({ message: 'Déploiement échoué', description: message });
         } finally {
             setDeployingId(null);
         }
@@ -62,14 +68,23 @@ export default function TeamDispatcher({ disasterLat = 36.8, disasterLon = 10.18
             title: 'Team',
             dataIndex: 'name',
             key: 'name',
-            render: (text: string) => <Text strong style={{ color: '#e2e8f0' }}>{text}</Text>,
+            render: (text: string) => <Text strong style={{ color: t.text, fontFamily: rfont.body }}>{text}</Text>,
         },
         {
             title: 'Type',
             dataIndex: 'team_type',
             key: 'type',
             render: (type: string) => (
-                <Tag color={type === 'NDRT' ? 'red' : type === 'RDRT' ? 'orange' : 'blue'}>
+                <Tag
+                    style={{
+                        fontFamily: rfont.data,
+                        fontWeight: 700,
+                        borderRadius: rr.pill,
+                        padding: '1px 8px',
+                        fontSize: 10,
+                    }}
+                    color={type === 'NDRT' ? 'red' : type === 'RDRT' ? 'orange' : 'blue'}
+                >
                     {type}
                 </Tag>
             ),
@@ -78,7 +93,7 @@ export default function TeamDispatcher({ disasterLat = 36.8, disasterLon = 10.18
             title: 'Base',
             dataIndex: 'base_location_name',
             key: 'base',
-            render: (base: string) => <Text type="secondary">{base || 'Unknown'}</Text>,
+            render: (base: string) => <Text style={{ color: t.textSub, fontFamily: rfont.body, fontSize: 12 }}>{base || 'Base inconnue'}</Text>,
         },
         {
             title: 'Action',
@@ -86,42 +101,102 @@ export default function TeamDispatcher({ disasterLat = 36.8, disasterLon = 10.18
             render: (_: unknown, record: TeamRecord) => (
                 <Button
                     type="primary"
-                    danger
                     icon={<RocketOutlined />}
                     onClick={() => void handleDeploy(record)}
                     loading={deployingId === record.id}
                     size="small"
+                    style={{
+                        background: `linear-gradient(90deg, ${rp.red600}, ${rp.red500})`,
+                        borderColor: rp.red600,
+                        borderRadius: rr.sm,
+                        fontFamily: rfont.body,
+                        fontWeight: 700,
+                        boxShadow: '0 2px 6px rgba(220,38,38,0.2)',
+                    }}
                 >
-                    Deploy
+                    Déployer
                 </Button>
             ),
         },
     ];
 
     return (
-        <Card
-            title={<Text style={{ color: '#fff' }}>Team Dispatch Matrix</Text>}
-            extra={<Button icon={<ReloadOutlined />} onClick={() => void loadTeams()} loading={loading} />}
-            style={{ background: '#1e293b', borderColor: '#334155', height: '100%' }}
-            bodyStyle={{ padding: 0 }}
-        >
-            {error && (
-                <Alert
-                    type="warning"
-                    showIcon
-                    message="Responder feed unavailable"
-                    description={error}
-                    style={{ margin: 12 }}
+        <>
+            <style>{`
+                .dispatcher-table .ant-table {
+                    background: transparent !important;
+                    color: ${t.text} !important;
+                }
+                .dispatcher-table .ant-table-thead > tr > th {
+                    background: ${isDark ? 'rgba(15,23,42,0.6)' : '#F8FAFC'} !important;
+                    color: ${isDark ? rp.dMuted : rp.slate} !important;
+                    border-bottom: 1px solid ${t.divider} !important;
+                    font-family: ${rfont.body};
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    font-size: 11px;
+                    letter-spacing: 0.05em;
+                }
+                .dispatcher-table .ant-table-tbody > tr > td {
+                    background: transparent !important;
+                    border-bottom: 1px solid ${t.divider} !important;
+                    color: ${t.text} !important;
+                    font-family: ${rfont.body};
+                }
+                .dispatcher-table .ant-table-tbody > tr:hover > td {
+                    background: ${t.rowHoverBg} !important;
+                }
+                .dispatcher-table .ant-empty-description {
+                    color: ${t.textSub} !important;
+                }
+                .dispatcher-table .ant-table-placeholder {
+                    background: transparent !important;
+                    border-bottom: 1px solid ${t.divider} !important;
+                }
+            `}</style>
+            <Card
+                title={<Text style={{ color: t.text, fontFamily: rfont.display, fontWeight: 700, fontSize: 14 }}><SettingOutlined style={{ marginRight: 8 }} />Team Dispatch Matrix</Text>}
+                extra={
+                    <Button
+                        icon={<ReloadOutlined style={{ color: t.text }} />}
+                        onClick={() => void loadTeams()}
+                        loading={loading}
+                        style={{ background: t.cardBg, borderColor: t.cardBorder, borderRadius: rr.sm }}
+                    />
+                }
+                style={{
+                    background: t.cardBg,
+                    borderColor: t.cardBorder,
+                    borderRadius: rr.lg,
+                    boxShadow: t.cardShadow,
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    overflow: 'hidden',
+                    transition: 'all 0.3s ease',
+                }}
+                bodyStyle={{ padding: 0, flex: 1, display: 'flex', flexDirection: 'column' }}
+            >
+                {error && (
+                    <Alert
+                        type="warning"
+                        showIcon
+                        message="Responder feed unavailable"
+                        description={error}
+                        style={{ margin: 12 }}
+                    />
+                )}
+                <Table
+                    className="dispatcher-table"
+                    dataSource={teams.map((team) => ({ ...team, key: team.id }))}
+                    columns={columns}
+                    pagination={false}
+                    loading={loading}
+                    size="small"
+                    scroll={{ y: 220 }}
+                    style={{ flex: 1 }}
                 />
-            )}
-            <Table
-                dataSource={teams.map((team) => ({ ...team, key: team.id }))}
-                columns={columns}
-                pagination={false}
-                loading={loading}
-                size="small"
-                scroll={{ y: 250 }}
-            />
-        </Card>
+            </Card>
+        </>
     );
 }

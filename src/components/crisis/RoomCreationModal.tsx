@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Modal, Form, Input, Select, notification } from 'antd';
 import axios from 'axios';
+import { AlertOutlined } from '@ant-design/icons';
 import { crisisApi } from '@/services/crisisApi';
 
 interface RoomCreationModalProps {
@@ -62,7 +63,7 @@ export default function RoomCreationModal({ visible, disasterId, initialName, on
 
     return (
         <Modal
-            title="⚠️ Activate Crisis Command Center"
+            title={<span><AlertOutlined style={{ color: '#F59E0B', marginRight: 8 }} />Activate Crisis Command Center</span>}
             open={visible}
             onCancel={onCancel}
             onOk={handleCreate}

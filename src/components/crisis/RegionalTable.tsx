@@ -1,6 +1,9 @@
 import { useMemo } from 'react';
-import { Card, Typography, Table, Tag, Tooltip } from 'antd';
+import { Typography, Tag, Tooltip } from 'antd';
 import { UnorderedListOutlined } from '@ant-design/icons';
+import { motion } from 'framer-motion';
+import { useUIStore } from '@/stores';
+import { makeRadarTheme, rp, rr, rfont, riskColor } from './radarTheme';
 import type { RadarResponse } from '@/types';
 
 const { Text } = Typography;
@@ -11,120 +14,159 @@ interface RegionalTableProps {
 }
 
 export default function RegionalTable({ data, onSelect }: RegionalTableProps) {
-    const dataSource = useMemo(() => {
+    const { themeMode } = useUIStore();
+    const isDark = themeMode === 'dark';
+    const t = makeRadarTheme(isDark);
+
+    const rows = useMemo(() => {
         if (!data?.wilayats) return [];
         return Object.entries(data.wilayats)
             .map(([name, info]) => ({
                 key: name,
                 name,
                 risk_score: info.risk_score,
-                confidence_pct: info.confidence_pct,
                 is_high_risk: info.is_high_risk,
                 disaster_type: info.disaster_type,
                 temperature: info.weather?.temperature ?? 0,
-                wind_speed: info.weather?.wind_speed ?? 0,
                 fire_count: info.satellite?.fire_count ?? 0,
-                flood_km2: info.satellite?.flood_area_km2 ?? 0,
-                magnitude: info.seismic?.max_magnitude ?? 0,
                 rain_mm: info.weather?.precipitation ?? 0,
                 is_raining: info.weather?.is_raining ?? false,
-                condition: info.weather?.condition ?? 'Clear',
-                sources: info.data_sources?.join('+') ?? '',
+                condition: info.weather?.condition ?? 'Dégagé',
+                confidence: info.confidence_pct ?? 0,
             }))
             .sort((a, b) => b.risk_score - a.risk_score);
     }, [data]);
 
-    const columns = [
-        {
-            title: 'Wilaya',
-            dataIndex: 'name',
-            key: 'name',
-            width: 100,
-            render: (name: string) => (
-                <Text strong style={{ color: '#e2e8f0', cursor: 'pointer', fontSize: 12 }} onClick={() => onSelect(name)}>{name}</Text>
-            ),
-        },
-        {
-            title: 'Risk',
-            dataIndex: 'risk_score',
-            key: 'risk_score',
-            width: 60,
-            render: (score: number, record: { confidence_pct: number }) => (
-                <Tooltip title={`Confidence: ${record.confidence_pct}%`}>
-                    <Text style={{ color: score > 0.85 ? '#ef4444' : score > 0.7 ? '#f59e0b' : '#22c55e', fontFamily: 'monospace', fontWeight: 700, fontSize: 12 }}>
-                        {score.toFixed(2)}
-                    </Text>
-                </Tooltip>
-            ),
-        },
-        {
-            title: 'Status',
-            dataIndex: 'is_high_risk',
-            key: 'status',
-            width: 80,
-            render: (isHigh: boolean, record: { disaster_type: string }) => (
-                isHigh
-                    ? <Tag color="error" style={{ fontSize: 10 }}>{record.disaster_type}</Tag>
-                    : <Tag color="success" style={{ fontSize: 10 }}>CLEAR</Tag>
-            ),
-        },
-        {
-            title: '°C',
-            dataIndex: 'temperature',
-            key: 'temperature',
-            width: 45,
-            render: (v: number) => <Text style={{ color: '#94a3b8', fontSize: 11 }}>{v}</Text>,
-        },
-        {
-            title: '🔥',
-            dataIndex: 'fire_count',
-            key: 'fire_count',
-            width: 35,
-            render: (v: number) => <Text style={{ color: v > 0 ? '#ef4444' : '#334155', fontSize: 11, fontWeight: v > 0 ? 700 : 400 }}>{v}</Text>,
-        },
-        {
-            title: '🌧️',
-            dataIndex: 'rain_mm',
-            key: 'rain_mm',
-            width: 45,
-            render: (v: number, record: { is_raining: boolean, condition: string }) => (
-                <Tooltip title={record.condition}>
-                    <Text style={{ color: record.is_raining ? '#3b82f6' : '#334155', fontSize: 11, fontWeight: record.is_raining ? 700 : 400 }}>
-                        {v > 0 ? `${v.toFixed(1)}` : '-'}
-                    </Text>
-                </Tooltip>
-            ),
-        },
-    ];
-
     return (
-        <Card
-            title={
-                <span style={{ color: '#e2e8f0', fontSize: 14, fontWeight: 600 }}>
-                    <UnorderedListOutlined style={{ color: '#06b6d4', marginRight: 8 }} />
-                    All Regions ({dataSource.length})
-                </span>
-            }
-            style={{
-                background: 'rgba(30,41,59,0.85)',
-                border: '1px solid #334155',
-                borderRadius: 10,
-                height: '100%',
-            }}
-            styles={{ body: { padding: 0 } }}
-        >
-            <Table
-                dataSource={dataSource}
-                columns={columns}
-                pagination={false}
-                size="small"
-                scroll={{ y: 280 }}
-                style={{ background: 'transparent' }}
-                onRow={(record) => ({
-                    onClick: () => onSelect(record.name),
-                    style: { cursor: 'pointer' },
+        <div style={{
+            background: t.cardBg,
+            border: `1px solid ${t.cardBorder}`,
+            borderRadius: rr.md,
+            boxShadow: t.cardShadow,
+            overflow: 'hidden',
+            height: '100%',
+            display: 'flex', flexDirection: 'column',
+            position: 'relative',
+        }}>
+            {/* Top accent */}
+            <div style={{
+                position: 'absolute', top: 0, left: 0, right: 0, height: 2,
+                background: `linear-gradient(90deg, ${rp.cyan500}, transparent)`,
+            }} />
+
+            {/* Header */}
+            <div style={{
+                padding: '14px 16px',
+                borderBottom: `1px solid ${t.divider}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                flexShrink: 0,
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{
+                        width: 30, height: 30, borderRadius: rr.sm,
+                        background: isDark ? `${rp.cyan500}18` : `${rp.cyan500}0E`,
+                        border: `1px solid ${rp.cyan500}25`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 14, color: rp.cyan500,
+                    }}>
+                        <UnorderedListOutlined />
+                    </div>
+                    <Text style={{ fontFamily: rfont.body, fontSize: 13, fontWeight: 700, color: t.text }}>
+                        Toutes les Régions ({rows.length})
+                    </Text>
+                </div>
+            </div>
+
+            {/* Column headers */}
+            <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 52px 80px 36px 36px 30px',
+                padding: '7px 14px',
+                borderBottom: `1px solid ${t.divider}`,
+                background: isDark ? 'rgba(15,23,42,0.5)' : '#F8FAFC',
+                flexShrink: 0,
+            }}>
+                {['Wilaya', 'Risque', 'Statut', '°C', '🔥', '🌧️'].map(h => (
+                    <Text key={h} style={{
+                        fontFamily: rfont.body, fontSize: 10, fontWeight: 700,
+                        textTransform: 'uppercase', letterSpacing: '0.06em',
+                        color: t.textFaint,
+                    }}>{h}</Text>
+                ))}
+            </div>
+
+            {/* Rows */}
+            <div style={{ flex: 1, overflowY: 'auto' }} className="rd-scroll">
+                {rows.map((row, i) => {
+                    const color = riskColor(row.risk_score);
+                    return (
+                        <motion.div
+                            key={row.key}
+                            initial={{ opacity: 0, x: 8 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: i * 0.03 }}
+                            className="rd-row-hover"
+                            onClick={() => onSelect(row.name)}
+                            style={{
+                                display: 'grid',
+                                gridTemplateColumns: '1fr 52px 80px 36px 36px 30px',
+                                padding: '8px 14px',
+                                borderBottom: `1px solid ${t.divider}`,
+                                alignItems: 'center',
+                            }}
+                        >
+                            {/* Name */}
+                            <Text style={{
+                                fontFamily: rfont.body, fontSize: 12, fontWeight: 600,
+                                color: t.text, cursor: 'pointer',
+                                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                            }}>
+                                {row.name}
+                            </Text>
+
+                            {/* Risk score */}
+                            <Tooltip title={`Confiance: ${row.confidence}%`}>
+                                <Text style={{ fontFamily: rfont.data, fontSize: 12, fontWeight: 700, color }}>
+                                    {row.risk_score.toFixed(2)}
+                                </Text>
+                            </Tooltip>
+
+                            {/* Status */}
+                            {row.is_high_risk
+                                ? <Tag color="error" style={{ fontSize: 10, fontFamily: rfont.body, margin: 0, maxWidth: 72 }}>
+                                    {row.disaster_type}
+                                </Tag>
+                                : <Tag color="success" style={{ fontSize: 10, fontFamily: rfont.body, margin: 0 }}>
+                                    DÉGAGÉ
+                                </Tag>
+                            }
+
+                            {/* Temp */}
+                            <Text style={{ fontFamily: rfont.data, fontSize: 11, color: t.textSub }}>
+                                {row.temperature}
+                            </Text>
+
+                            {/* Fire */}
+                            <Text style={{
+                                fontFamily: rfont.data, fontSize: 11, fontWeight: row.fire_count > 0 ? 700 : 400,
+                                color: row.fire_count > 0 ? rp.red500 : t.divider,
+                            }}>
+                                {row.fire_count}
+                            </Text>
+
+                            {/* Rain */}
+                            <Tooltip title={row.condition}>
+                                <Text style={{
+                                    fontFamily: rfont.data, fontSize: 11, fontWeight: row.is_raining ? 700 : 400,
+                                    color: row.is_raining ? rp.blu500 : t.textFaint,
+                                }}>
+                                    {row.rain_mm > 0 ? row.rain_mm.toFixed(0) : '-'}
+                                </Text>
+                            </Tooltip>
+                        </motion.div>
+                    );
                 })}
-            />
-        </Card>
+            </div>
+        </div>
     );
 }

@@ -1,9 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Layout, Typography, Row, Col, Button, Spin, Result, Card, Tag } from 'antd';
-import { ArrowLeftOutlined, VideoCameraOutlined, FullscreenExitOutlined, FullscreenOutlined } from '@ant-design/icons';
-import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
+import {
+    ArrowLeftOutlined, VideoCameraOutlined, FullscreenExitOutlined,
+    FullscreenOutlined, TeamOutlined, HeartOutlined, AlertOutlined,
+    CompassOutlined, EnvironmentOutlined
+} from '@ant-design/icons';
+import { MapContainer, TileLayer, Popup, Marker, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
 import { crisisApi } from '@/services/crisisApi';
 import SituationBoard from '@/components/crisis/SituationBoard';
 import TeamDispatcher from '@/components/crisis/TeamDispatcher';
@@ -11,6 +17,8 @@ import LogisticsProcurement from '@/components/crisis/LogisticsProcurement';
 import CrisisMessagingPanel from '@/components/crisis/CrisisMessagingPanel';
 import ParticipantInviteModal from '@/components/crisis/ParticipantInviteModal';
 import { useRadar } from '@/hooks/useRadar';
+import { useUIStore } from '@/stores';
+import { makeRadarTheme, rp, rr, rfont } from '@/components/crisis/radarTheme';
 
 const { Content, Header } = Layout;
 const { Title, Text } = Typography;
@@ -35,11 +43,144 @@ interface CrisisTarget {
 
 const DEFAULT_COORDS = { lat: 36.8065, lon: 10.1815, label: 'Tunis' };
 
+// ── Vue Satellite Hybride ─────────────────────────────────────────
+const TILE_SATELLITE = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+const TILE_BOUNDARIES = 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}';
+
+// ── Fly-to controller for Crisis Room ───────────────────────────
+function MapController({ target }: { target: CrisisTarget }) {
+    const map = useMap();
+    useEffect(() => {
+        if (target && typeof target.lat === 'number' && typeof target.lon === 'number') {
+            map.flyTo([target.lat, target.lon], 9, { duration: 1.2 });
+        }
+    }, [target, map]);
+    return null;
+}
+
+// ── Injected Map CSS Styles ───────────────────────────────────
+const injectCrisisMapStyles = () => {
+    if (document.getElementById('nexus-crisis-map-styles')) return;
+    const el = document.createElement('style');
+    el.id = 'nexus-crisis-map-styles';
+    el.textContent = `
+        @keyframes heatPulse {
+            0% { transform: scale(0.92); opacity: 0.75; }
+            50% { transform: scale(1.08); opacity: 0.95; }
+            100% { transform: scale(0.92); opacity: 0.75; }
+        }
+
+        .heatmap-glow-high {
+            width: 140px;
+            height: 140px;
+            margin-left: -70px;
+            margin-top: -70px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(220,38,38,0.85) 0%, rgba(245,158,11,0.55) 30%, rgba(34,197,94,0.18) 55%, rgba(59,130,246,0) 100%);
+            animation: heatPulse 2.5s infinite ease-in-out;
+            pointer-events: none;
+        }
+
+        .heatmap-glow-med {
+            width: 100px;
+            height: 100px;
+            margin-left: -50px;
+            margin-top: -50px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(245,158,11,0.8) 0%, rgba(251,191,36,0.45) 30%, rgba(34,197,94,0.18) 55%, rgba(59,130,246,0) 100%);
+            animation: heatPulse 3s infinite ease-in-out;
+            pointer-events: none;
+        }
+
+        .fire-marker-icon {
+            width: 32px;
+            height: 32px;
+            margin-left: -16px;
+            margin-top: -16px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #EF4444 0%, #991B1B 100%);
+            border: 2px solid #FFFFFF;
+            box-shadow: 0 0 14px rgba(239, 68, 68, 0.85);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.2s ease-in-out;
+        }
+        .fire-marker-icon:hover {
+            transform: scale(1.18);
+        }
+
+        .responder-marker-icon {
+            width: 30px;
+            height: 30px;
+            margin-left: -15px;
+            margin-top: -15px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #1F2937 0%, #111827 100%);
+            border: 2px solid #FFFFFF;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.2s ease-in-out;
+        }
+        .responder-marker-icon:hover {
+            transform: scale(1.18);
+        }
+
+        .custom-leaflet-marker {
+            background: transparent !important;
+            border: none !important;
+        }
+    `;
+    document.head.appendChild(el);
+};
+
+// ── Mock Responders deployed near the active crisis target ──────
+interface DeployedResponder {
+    id: string;
+    name: string;
+    type: string;
+    memberCount: number;
+    lat: number;
+    lon: number;
+    status: string;
+}
+
+const getMockRespondersForWilaya = (name: string, lat: number, lon: number): DeployedResponder[] => {
+    const seed = name.charCodeAt(0) + name.charCodeAt(name.length - 1);
+    return [
+        {
+            id: `team-${name}-c2-1`,
+            name: `NDRT Sector ${name} Alpha`,
+            type: 'Nationale (NDRT)',
+            memberCount: 9,
+            lat: lat + 0.025 + (seed % 2) * 0.008,
+            lon: lon - 0.03 - (seed % 3) * 0.008,
+            status: 'Déploiement C2'
+        },
+        {
+            id: `team-${name}-c2-2`,
+            name: `Secouristes ${name} Delta`,
+            type: 'Secourisme Local',
+            memberCount: 14,
+            lat: lat - 0.035 - (seed % 3) * 0.006,
+            lon: lon + 0.04 + (seed % 2) * 0.006,
+            status: 'Reconnaissance active'
+        }
+    ];
+};
+
 export default function CrisisRoomPage() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const location = useLocation();
     const { data: radarData } = useRadar();
+    const { themeMode } = useUIStore();
+    const isDark = themeMode === 'dark';
+    const t = makeRadarTheme(isDark);
 
     const [summary, setSummary] = useState<RoomSummary | null>(null);
     const [loading, setLoading] = useState(true);
@@ -48,6 +189,11 @@ export default function CrisisRoomPage() {
 
     const isFullscreen = location.pathname.endsWith('/fullscreen');
     const radarPath = isFullscreen ? '/radar/fullscreen' : '/radar';
+
+    // Inject custom tactical C2 styles
+    useEffect(() => {
+        injectCrisisMapStyles();
+    }, []);
 
     useEffect(() => {
         if (!id) return;
@@ -93,9 +239,57 @@ export default function CrisisRoomPage() {
         return DEFAULT_COORDS;
     }, [radarData, summary?.room?.disaster_name]);
 
+    // Deployed responders list based on target location
+    const responders = useMemo(() => {
+        return getMockRespondersForWilaya(target.label, target.lat, target.lon);
+    }, [target]);
+
+    // Leaflet marker generators
+    const getHeatmapIcon = (score: number) => {
+        const className = score > 0.85 ? 'heatmap-glow-high' : 'heatmap-glow-med';
+        return L.divIcon({
+            className: `custom-leaflet-marker ${className}`,
+            html: '',
+            iconSize: [0, 0],
+            iconAnchor: [0, 0],
+        });
+    };
+
+    const getFireIcon = () => {
+        return L.divIcon({
+            className: 'custom-leaflet-marker',
+            html: `
+                <div class="fire-marker-icon">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="white">
+                        <path d="M12 2C11.5 2 10 4 10 6C10 8.5 12 10.5 12 12C12 13 11 13.5 10 13.5C8 13.5 6.5 12 6.5 10C6.5 9 7 8 7.5 7.5C5 9.5 4 13 5.5 16.5C7 19.5 10 21 12 21C15 21 18 19 18.5 15C19 11 16 8.5 16 6C16 4 14.5 2 12 2Z" />
+                    </svg>
+                </div>
+            `,
+            iconSize: [32, 32],
+            iconAnchor: [16, 16],
+            popupAnchor: [0, -16],
+        });
+    };
+
+    const getResponderIcon = () => {
+        return L.divIcon({
+            className: 'custom-leaflet-marker',
+            html: `
+                <div class="responder-marker-icon">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="white">
+                        <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />
+                    </svg>
+                </div>
+            `,
+            iconSize: [30, 30],
+            iconAnchor: [15, 15],
+            popupAnchor: [0, -15],
+        });
+    };
+
     if (loading) {
         return (
-            <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#0a0f1c' }}>
+            <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: t.pageBg }}>
                 <Spin size="large" />
             </div>
         );
@@ -103,14 +297,14 @@ export default function CrisisRoomPage() {
 
     if (error || !summary) {
         return (
-            <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#0a0f1c' }}>
+            <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: t.pageBg }}>
                 <Result
                     status="error"
-                    title={<Text style={{ color: '#fff' }}>Connection Failed</Text>}
-                    subTitle={<Text style={{ color: '#94a3b8' }}>{error || 'Unknown error'}</Text>}
+                    title={<Text style={{ color: t.text }}>Connexion échouée</Text>}
+                    subTitle={<Text style={{ color: t.textSub }}>{error || 'Erreur inconnue'}</Text>}
                     extra={[
                         <Button key="return-btn" type="primary" onClick={() => navigate(radarPath)}>
-                            Return to Radar
+                            Retour au Radar
                         </Button>,
                     ]}
                 />
@@ -119,85 +313,199 @@ export default function CrisisRoomPage() {
     }
 
     return (
-        <Layout style={{ height: '100vh', background: '#0a0f1c', overflow: 'hidden' }}>
+        <Layout style={{ height: '100vh', background: t.pageBg, overflow: 'hidden', transition: 'background 0.3s ease' }}>
             <Header
                 style={{
-                    background: '#0f172a',
-                    borderBottom: '1px solid #1e293b',
+                    background: t.topbarBg,
+                    borderBottom: `1px solid ${t.topbarBorder}`,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     padding: '0 24px',
+                    height: '64px',
+                    transition: 'all 0.3s ease',
+                    boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
                 }}
             >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                    <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate(radarPath)} style={{ color: '#94a3b8' }} />
-                    <Title level={4} style={{ color: '#fff', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Button
+                        type="text"
+                        icon={<ArrowLeftOutlined />}
+                        onClick={() => navigate(radarPath)}
+                        style={{ color: t.textSub, transition: 'color 0.2s' }}
+                    />
+                    <Title level={4} style={{ color: t.text, margin: 0, display: 'flex', alignItems: 'center', gap: 8, fontFamily: rfont.display, fontWeight: 700 }}>
                         <span
                             style={{
                                 height: 12,
                                 width: 12,
                                 borderRadius: '50%',
-                                background: '#ef4444',
-                                border: '2px solid #7f1d1d',
+                                background: rp.red500,
+                                border: `2px solid ${isDark ? rp.red600 : '#FFFFFF'}`,
                                 animation: 'pulse 2s infinite',
+                                boxShadow: `0 0 10px ${rp.red500}`,
                             }}
                         />
-                        CRISIS COMMAND CENTER: {summary.room.disaster_name.toUpperCase()}
+                        SALLE DE CRISE VIRTUELLLE : {summary.room.disaster_name.toUpperCase()}
                     </Title>
                 </div>
-                <div style={{ display: 'flex', gap: 12 }}>
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                     <Button
                         icon={isFullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
                         onClick={() => navigate(`/crisis-room/${id}${isFullscreen ? '' : '/fullscreen'}`)}
+                        style={{ fontFamily: rfont.body, borderRadius: rr.sm, fontWeight: 600, borderColor: t.cardBorder, background: t.cardBg, color: t.text }}
                     >
-                        {isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+                        {isFullscreen ? 'Quitter Plein Écran' : 'Plein Écran'}
                     </Button>
-                    <Button type="primary" onClick={() => setInviteModalVisible(true)} style={{ background: '#f59e0b', color: '#fff', border: 'none' }}>
+                    <Button
+                        type="primary"
+                        onClick={() => setInviteModalVisible(true)}
+                        style={{
+                            background: `linear-gradient(135deg, ${rp.amb600}, ${rp.amb500})`,
+                            color: '#fff',
+                            border: 'none',
+                            fontFamily: rfont.body,
+                            borderRadius: rr.sm,
+                            fontWeight: 700,
+                            boxShadow: '0 2px 8px rgba(245,158,11,0.25)',
+                        }}
+                    >
                         + Sync Officer
                     </Button>
-                    <Button type="primary" style={{ background: '#3b82f6' }} icon={<VideoCameraOutlined />} href={summary.room.video_call_url} target="_blank">
-                        Join C2 Video Conf
+                    <Button
+                        type="primary"
+                        icon={<VideoCameraOutlined />}
+                        href={summary.room.video_call_url}
+                        target="_blank"
+                        style={{
+                            background: `linear-gradient(135deg, ${rp.blu600}, ${rp.blu500})`,
+                            border: 'none',
+                            fontFamily: rfont.body,
+                            borderRadius: rr.sm,
+                            fontWeight: 700,
+                            boxShadow: '0 2px 8px rgba(59,130,246,0.25)',
+                        }}
+                    >
+                        Rejoindre Conférence Vidéo
                     </Button>
                 </div>
             </Header>
 
-            <Content style={{ padding: '16px', overflowY: 'auto' }}>
-                <Row gutter={[16, 16]} style={{ height: 'calc(100vh - 96px)' }}>
-                    <Col span={6} style={{ display: 'flex', flexDirection: 'column' }}>
+            <Content style={{ padding: '16px', overflowY: 'auto' }} className="rd-scroll">
+                <Row gutter={[16, 16]} style={{ minHeight: 'calc(100vh - 96px)' }}>
+                    <Col xs={24} xl={6} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                         <SituationBoard data={summary.situation_board} />
                         <Card
-                            title="Live Crisis Map Anchor"
-                            style={{ flex: 1, background: '#1e293b', borderColor: '#334155' }}
-                            bodyStyle={{ height: '100%', minHeight: 260, padding: 8 }}
+                            title={<Text style={{ color: t.text, fontFamily: rfont.display, fontWeight: 700, fontSize: 14 }}><CompassOutlined style={{ marginRight: 8 }} />Ancre Cartographique C2</Text>}
+                            style={{
+                                flex: 1,
+                                background: t.cardBg,
+                                borderColor: t.cardBorder,
+                                borderRadius: rr.lg,
+                                boxShadow: t.cardShadow,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                overflow: 'hidden',
+                                transition: 'all 0.3s ease',
+                            }}
+                            bodyStyle={{ flex: 1, minHeight: 280, padding: 8, display: 'flex', flexDirection: 'column' }}
                             extra={
-                                <Tag color={target.risk != null && target.risk >= 0.7 ? 'error' : 'processing'}>
-                                    {target.label}
+                                <Tag
+                                    style={{
+                                        fontFamily: rfont.data,
+                                        fontWeight: 700,
+                                        borderRadius: rr.pill,
+                                        padding: '2px 10px',
+                                        fontSize: 11,
+                                        border: `1px solid ${target.risk != null && target.risk >= 0.7 ? rp.red500 : rp.blu500}30`,
+                                        background: `${target.risk != null && target.risk >= 0.7 ? rp.red500 : rp.blu500}12`,
+                                        color: target.risk != null && target.risk >= 0.7 ? rp.red500 : rp.blu500
+                                    }}
+                                >
+                                    <EnvironmentOutlined style={{ marginRight: 4 }} />{target.label}
                                 </Tag>
                             }
                         >
-                            <MapContainer center={[target.lat, target.lon]} zoom={8} style={{ height: '100%', borderRadius: 8 }}>
-                                <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
-                                <CircleMarker center={[target.lat, target.lon]} radius={10} pathOptions={{ color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.7 }}>
-                                    <Popup>
-                                        Target: {target.label}
-                                        {target.risk != null ? ` (risk ${target.risk.toFixed(2)})` : ''}
-                                    </Popup>
-                                </CircleMarker>
-                            </MapContainer>
+                            <div style={{ flex: 1, borderRadius: rr.md, overflow: 'hidden', border: `1px solid ${t.divider}`, position: 'relative', height: '100%', minHeight: '260px' }}>
+                                <MapContainer
+                                    center={[target.lat, target.lon]}
+                                    zoom={9}
+                                    zoomControl={false}
+                                    style={{
+                                        height: '100%',
+                                        width: '100%',
+                                        zIndex: 10,
+                                        filter: isDark ? 'brightness(0.85) contrast(1.15) saturate(1.05)' : 'none',
+                                    }}
+                                >
+                                    {/* Vue Satellite Hybride C2 */}
+                                    <TileLayer
+                                        url={TILE_SATELLITE}
+                                        attribution='Tiles &copy; Esri &mdash; Source: Esri'
+                                        maxZoom={19}
+                                    />
+                                    <TileLayer
+                                        url={TILE_BOUNDARIES}
+                                        attribution='&copy; Esri'
+                                        maxZoom={19}
+                                    />
+
+                                    {/* Fly-to controller for centering */}
+                                    <MapController target={target} />
+
+                                    {/* 1. Couche Thermique (Heatmap radial-gradient animée) */}
+                                    <Marker
+                                        position={[target.lat, target.lon]}
+                                        icon={getHeatmapIcon(target.risk ?? 0.85)}
+                                        interactive={false}
+                                    />
+
+                                    {/* 2. Couche d'Icône de Sinistre / Feu (Rouge/Blanc) */}
+                                    <Marker
+                                        position={[target.lat, target.lon]}
+                                        icon={getFireIcon()}
+                                    >
+                                        <Popup>
+                                            <div style={{ fontFamily: rfont.body, minWidth: 160 }}>
+                                                <strong style={{ display: 'block', borderBottom: '1px solid #eee', paddingBottom: 4, marginBottom: 4 }}>🚨 Zone de Crise Active</strong>
+                                                <span>Secteur d'intervention : <strong>{target.label}</strong></span>
+                                                {target.risk && <span style={{ display: 'block', marginTop: 3 }}>Score de Risque ML : <strong style={{ color: rp.red500 }}>{target.risk.toFixed(3)}</strong></span>}
+                                            </div>
+                                        </Popup>
+                                    </Marker>
+
+                                    {/* 3. Couche d'Icônes de Personnel / Secours (Noir/Blanc) */}
+                                    {responders.map(team => (
+                                        <Marker
+                                            key={team.id}
+                                            position={[team.lat, team.lon]}
+                                            icon={getResponderIcon()}
+                                        >
+                                            <Popup>
+                                                <div style={{ fontFamily: rfont.body, minWidth: 160 }}>
+                                                    <strong style={{ display: 'block', color: rp.blu500, borderBottom: '1px solid #eee', paddingBottom: 4, marginBottom: 4 }}>👥 {team.name}</strong>
+                                                    <span>Type : <strong>{team.type}</strong></span><br/>
+                                                    <span>Effectif : <strong>{team.memberCount} secouristes</strong></span><br/>
+                                                    <span>Statut : <strong style={{ color: rp.cyan600 }}>{team.status}</strong></span>
+                                                </div>
+                                            </Popup>
+                                        </Marker>
+                                    ))}
+                                </MapContainer>
+                            </div>
                         </Card>
                     </Col>
 
-                    <Col span={10} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                        <div style={{ flex: 1 }}>
+                    <Col xs={24} xl={10} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                        <div style={{ flex: 1, minHeight: 280 }}>
                             <TeamDispatcher disasterLat={target.lat} disasterLon={target.lon} />
                         </div>
-                        <div style={{ flex: 1 }}>
+                        <div style={{ flex: 1, minHeight: 280 }}>
                             <LogisticsProcurement disasterId={summary.room.disaster_id} />
                         </div>
                     </Col>
 
-                    <Col span={8}>
+                    <Col xs={24} xl={8} style={{ display: 'flex', flexDirection: 'column' }}>
                         <CrisisMessagingPanel roomId={summary.room.id} initialMessages={summary.recent_messages} />
                     </Col>
                 </Row>

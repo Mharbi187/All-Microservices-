@@ -1,6 +1,9 @@
 import { useMemo } from 'react';
-import { Card, Typography } from 'antd';
+import { Typography, Tooltip } from 'antd';
 import { BarChartOutlined } from '@ant-design/icons';
+import { motion } from 'framer-motion';
+import { useUIStore } from '@/stores';
+import { makeRadarTheme, rp, rr, rfont, riskColor } from './radarTheme';
 import type { RadarResponse } from '@/types';
 
 const { Text } = Typography;
@@ -10,6 +13,10 @@ interface RiskBarChartProps {
 }
 
 export default function RiskBarChart({ data }: RiskBarChartProps) {
+    const { themeMode } = useUIStore();
+    const isDark = themeMode === 'dark';
+    const t = makeRadarTheme(isDark);
+
     const regions = useMemo(() => {
         if (!data?.wilayats) return [];
         return Object.entries(data.wilayats)
@@ -26,50 +33,103 @@ export default function RiskBarChart({ data }: RiskBarChartProps) {
     const maxScore = Math.max(...regions.map(r => r.score), 0.5);
 
     return (
-        <Card
-            title={
-                <span style={{ color: '#e2e8f0', fontSize: 14, fontWeight: 600 }}>
-                    <BarChartOutlined style={{ color: '#3b82f6', marginRight: 8 }} />
-                    Regional Risk Comparison
-                </span>
-            }
-            style={{
-                background: 'rgba(30,41,59,0.85)',
-                border: '1px solid #334155',
-                borderRadius: 10,
-                height: '100%',
-            }}
-            styles={{ body: { padding: '8px 16px', maxHeight: 320, overflowY: 'auto' } }}
-        >
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                {regions.map((region) => {
-                    const width = (region.score / maxScore) * 100;
-                    const color = region.isCritical ? '#ef4444' : region.isHigh ? '#f59e0b' : '#3b82f6';
+        <div style={{
+            background: t.cardBg,
+            border: `1px solid ${t.cardBorder}`,
+            borderRadius: rr.md,
+            boxShadow: t.cardShadow,
+            overflow: 'hidden',
+            height: '100%',
+            display: 'flex', flexDirection: 'column',
+            position: 'relative',
+        }}>
+            {/* Top accent */}
+            <div style={{
+                position: 'absolute', top: 0, left: 0, right: 0, height: 2,
+                background: `linear-gradient(90deg, ${rp.blu500}, transparent)`,
+            }} />
 
-                    return (
-                        <div key={region.fullName} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <Text style={{ color: '#94a3b8', fontSize: 11, width: 75, textAlign: 'right', flexShrink: 0 }} title={region.fullName}>
-                                {region.name}
-                            </Text>
-                            <div style={{ flex: 1, background: '#1e293b', borderRadius: 4, height: 14, overflow: 'hidden' }}>
-                                <div
-                                    style={{
-                                        width: `${width}%`,
-                                        height: '100%',
-                                        background: `linear-gradient(90deg, ${color}88, ${color})`,
-                                        borderRadius: 4,
-                                        transition: 'width 0.6s ease',
-                                        minWidth: 2,
-                                    }}
-                                />
-                            </div>
-                            <Text style={{ color: '#e2e8f0', fontSize: 11, width: 40, textAlign: 'right', fontFamily: 'monospace', flexShrink: 0 }}>
-                                {region.score.toFixed(2)}
-                            </Text>
-                        </div>
-                    );
-                })}
+            {/* Header */}
+            <div style={{
+                padding: '14px 16px',
+                borderBottom: `1px solid ${t.divider}`,
+                display: 'flex', alignItems: 'center', gap: 8,
+                flexShrink: 0,
+            }}>
+                <div style={{
+                    width: 30, height: 30, borderRadius: rr.sm,
+                    background: isDark ? `${rp.blu500}18` : `${rp.blu500}0E`,
+                    border: `1px solid ${rp.blu500}25`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 14, color: rp.blu500,
+                }}>
+                    <BarChartOutlined />
+                </div>
+                <Text style={{ fontFamily: rfont.body, fontSize: 13, fontWeight: 700, color: t.text }}>
+                    Comparaison Régionale
+                </Text>
             </div>
-        </Card>
+
+            {/* Chart */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '10px 14px 12px' }} className="rd-scroll">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                    {regions.map((region, i) => {
+                        const width = (region.score / maxScore) * 100;
+                        const color = riskColor(region.score);
+
+                        return (
+                            <motion.div
+                                key={region.fullName}
+                                initial={{ opacity: 0, x: -8 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: i * 0.04, duration: 0.35 }}
+                                className="rd-row-hover"
+                                style={{
+                                    display: 'flex', alignItems: 'center', gap: 8,
+                                    padding: '3px 6px', borderRadius: rr.xs,
+                                }}
+                            >
+                                <Tooltip title={region.fullName}>
+                                    <Text style={{
+                                        fontFamily: rfont.body, fontSize: 11, fontWeight: 500,
+                                        color: t.textSub, width: 72, textAlign: 'right',
+                                        flexShrink: 0, overflow: 'hidden',
+                                        textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                    }}>
+                                        {region.name}
+                                    </Text>
+                                </Tooltip>
+
+                                <div style={{
+                                    flex: 1,
+                                    background: isDark ? 'rgba(255,255,255,0.05)' : '#EFF1F5',
+                                    borderRadius: rr.pill, height: 14, overflow: 'hidden',
+                                }}>
+                                    <motion.div
+                                        className="rd-bar-animate"
+                                        initial={{ width: 0 }}
+                                        animate={{ width: `${width}%` }}
+                                        transition={{ delay: i * 0.04 + 0.2, duration: 0.6, ease: 'easeOut' }}
+                                        style={{
+                                            height: '100%',
+                                            background: `linear-gradient(90deg, ${color}88, ${color})`,
+                                            borderRadius: rr.pill,
+                                            minWidth: 2,
+                                        }}
+                                    />
+                                </div>
+
+                                <Text style={{
+                                    fontFamily: rfont.data, fontSize: 11, fontWeight: 700,
+                                    color, width: 38, textAlign: 'right', flexShrink: 0,
+                                }}>
+                                    {region.score.toFixed(2)}
+                                </Text>
+                            </motion.div>
+                        );
+                    })}
+                </div>
+            </div>
+        </div>
     );
 }
