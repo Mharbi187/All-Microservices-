@@ -36,6 +36,16 @@ const SecourismePage: React.FC = () => {
     const [equipment, setEquipment] = useState<RescueEquipmentDTO[]>([]);
     const [devices, setDevices] = useState<RescueDeviceDTO[]>([]);
 
+    // Image state for Nouvel Equipement
+    const [equipmentImage, setEquipmentImage] = useState<string>('');
+
+    // Volunteers fields state
+    const [needsVolunteers, setNeedsVolunteers] = useState<boolean>(false);
+
+    // President approval modal states
+    const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
+    const [selectedDevice, setSelectedDevice] = useState<RescueDeviceDTO | null>(null);
+
     // Modal states
     const [isEqModalOpen, setIsEqModalOpen] = useState(false);
     const [isDvModalOpen, setIsDvModalOpen] = useState(false);
@@ -43,6 +53,13 @@ const SecourismePage: React.FC = () => {
 
     const [eqForm] = Form.useForm();
     const [dvForm] = Form.useForm();
+    const [approveForm] = Form.useForm();
+
+    // Check roles for President / Vice President
+    const roles = user?.roles || [];
+    const isPresident = roles.some(r => ['PRESIDENT', 'PRESIDENT_LOCAL', 'PRESIDENT_REGIONAL', 'PRESIDENT_NATIONAL'].includes(r));
+    const isVicePresident = roles.some(r => ['VICE_PRESIDENT', 'VICE_PRESIDENT_LOCAL', 'VICE_PRESIDENT_REGIONAL', 'VICE_PRESIDENT_NATIONAL'].includes(r));
+    const canApprove = isPresident || isVicePresident;
 
     const loadData = async () => {
         if (!user?.committeeId) {
@@ -68,6 +85,18 @@ const SecourismePage: React.FC = () => {
         loadData();
     }, [user?.committeeId]);
 
+    const handleEquipmentImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setEquipmentImage(reader.result as string);
+                eqForm.setFieldsValue({ imageUrl: reader.result as string });
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
     const handleCreateEquipment = async (values: any) => {
         if (!user?.committeeId) return;
         setSubmitLoading(true);
@@ -77,11 +106,13 @@ const SecourismePage: React.FC = () => {
                 type: values.type,
                 quantity: values.quantity,
                 status: values.status || 'OPERATIONAL',
-                lastInspectionDate: values.lastInspectionDate ? values.lastInspectionDate.format('YYYY-MM-DD') : undefined
+                lastInspectionDate: values.lastInspectionDate ? values.lastInspectionDate.format('YYYY-MM-DD') : undefined,
+                imageUrl: equipmentImage || undefined
             };
             await secourismeService.addEquipment(user.committeeId, payload);
             messageApi.success('Équipement ajouté avec succès !');
             setIsEqModalOpen(false);
+            setEquipmentImage('');
             eqForm.resetFields();
             loadData();
         } catch (error) {
@@ -95,20 +126,62 @@ const SecourismePage: React.FC = () => {
         if (!user?.committeeId) return;
         setSubmitLoading(true);
         try {
+            const isAutoApproved = canApprove;
             const payload: RescueDeviceDTO = {
                 eventName: values.eventName,
                 eventDate: values.eventDate ? values.eventDate.format('YYYY-MM-DD') : undefined,
                 location: values.location,
                 requiredRescuers: values.requiredRescuers,
-                status: values.status || 'PLANNED'
+                status: isAutoApproved ? 'ACTIVE' : 'PLANNED',
+                approvalStatus: isAutoApproved ? 'APPROVED' : 'PENDING',
+                volunteersNeeded: values.volunteersNeeded,
+                volunteersCount: values.volunteersNeeded ? values.volunteersCount : 0,
+                actionChiefName: values.actionChiefName || '',
+                eventTime: values.eventTime ? values.eventTime.format('HH:mm') : undefined
             };
             await secourismeService.createDevice(user.committeeId, payload);
-            messageApi.success('Dispositif planifié avec succès !');
+            messageApi.success(isAutoApproved ? 'Dispositif créé et activé immédiatement !' : 'Dispositif soumis pour validation au Président !');
             setIsDvModalOpen(false);
             dvForm.resetFields();
+            setNeedsVolunteers(false);
             loadData();
         } catch (error) {
             messageApi.error('Erreur lors de la planification du dispositif.');
+        } finally {
+            setSubmitLoading(false);
+        }
+    };
+
+    const openApprovalModal = (device: RescueDeviceDTO) => {
+        setSelectedDevice(device);
+        setIsApproveModalOpen(true);
+        approveForm.setFieldsValue({ actionChiefName: device.actionChiefName || '' });
+    };
+
+    const handleApproveDevice = async (values: any) => {
+        if (!selectedDevice?.id) return;
+        setSubmitLoading(true);
+        try {
+            await secourismeService.approveDevice(selectedDevice.id, values.actionChiefName, 'APPROVED');
+            messageApi.success('Dispositif approuvé et activé avec succès !');
+            setIsApproveModalOpen(false);
+            loadData();
+        } catch (error) {
+            messageApi.error('Erreur lors de l\'approbation du dispositif.');
+        } finally {
+            setSubmitLoading(false);
+        }
+    };
+
+    const handleRejectDevice = async (deviceId: string) => {
+        setSubmitLoading(true);
+        try {
+            await secourismeService.approveDevice(deviceId, '', 'REJECTED');
+            messageApi.success('Dispositif rejeté.');
+            setIsApproveModalOpen(false);
+            loadData();
+        } catch (error) {
+            messageApi.error('Erreur lors du rejet du dispositif.');
         } finally {
             setSubmitLoading(false);
         }
@@ -122,12 +195,17 @@ const SecourismePage: React.FC = () => {
             render: (n, record) => (
                 <Space size={16}>
                     <div style={{
-                        width: 44, height: 44, borderRadius: 14,
+                        width: 50, height: 50, borderRadius: 14,
                         background: isDark ? 'rgba(239,68,68,0.1)' : '#fef2f2',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        color: '#ef4444', border: `1px solid ${isDark ? 'rgba(239,68,68,0.2)' : '#fee2e2'}`
+                        color: '#ef4444', border: `1px solid ${isDark ? 'rgba(239,68,68,0.2)' : '#fee2e2'}`,
+                        overflow: 'hidden'
                     }}>
-                        <MedicineBoxOutlined style={{ fontSize: 20 }} />
+                        {record.imageUrl ? (
+                            <img src={record.imageUrl} alt={n} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                            <MedicineBoxOutlined style={{ fontSize: 20 }} />
+                        )}
                     </div>
                     <div>
                         <Text strong style={{ fontSize: 15, display: 'block' }}>{n}</Text>
@@ -145,7 +223,7 @@ const SecourismePage: React.FC = () => {
                     <Text strong style={{ fontSize: 15 }}>{q}</Text>
                     <div style={{ width: 80 }}>
                         <Progress
-                            percent={q > 10 ? 100 : (q / 10) * 100}
+                             percent={q > 10 ? 100 : (q / 10) * 100}
                             size="small"
                             showInfo={false}
                             strokeColor={q < 3 ? '#ef4444' : '#10b981'}
@@ -192,7 +270,7 @@ const SecourismePage: React.FC = () => {
                     </div>
                     <div>
                         <Text strong style={{ fontSize: 15, display: 'block' }}>{n}</Text>
-                        <Text type="secondary" style={{ fontSize: 12 }}>{record.location}</Text>
+                        <Text type="secondary" style={{ fontSize: 12 }}>{record.location} {record.eventTime ? `• ${record.eventTime}` : ''}</Text>
                     </div>
                 </Space>
             )
@@ -209,28 +287,97 @@ const SecourismePage: React.FC = () => {
             )
         },
         {
-            title: 'ÉQUIPE',
-            dataIndex: 'requiredRescuers',
-            key: 'requiredRescuers',
-            render: (n) => (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <Avatar.Group size="small" maxCount={3}>
-                        {[...Array(Math.min(n, 5))].map((_, i) => (
-                            <Avatar key={i} style={{ backgroundColor: '#ef4444' }} icon={<SafetyCertificateOutlined />} />
-                        ))}
-                    </Avatar.Group>
-                    <Text strong>{n} requis</Text>
+            title: 'CHEF D\'ACTION',
+            dataIndex: 'actionChiefName',
+            key: 'actionChiefName',
+            render: (c) => c ? <Text strong style={{ color: '#ef4444' }}>{c}</Text> : <Text type="secondary" italic>Non assigné</Text>
+        },
+        {
+            title: 'VOLONTAIRES',
+            key: 'volunteers',
+            render: (_, record) => record.volunteersNeeded ? (
+                <Tag color="orange">{record.volunteersCount} requis</Tag>
+            ) : (
+                <Tag color="default">Non requis</Tag>
+            )
+        },
+        {
+            title: 'STATUT DE VALIDATION',
+            dataIndex: 'approvalStatus',
+            key: 'approvalStatus',
+            render: (s, record) => {
+                const status = s || (record.status === 'ACTIVE' ? 'APPROVED' : 'PENDING');
+                if (status === 'PENDING') {
+                    return <Tag color="warning" style={{ borderRadius: 8, padding: '2px 10px', fontWeight: 600 }}>En attente</Tag>;
+                } else if (status === 'APPROVED') {
+                    return <Tag color="success" style={{ borderRadius: 8, padding: '2px 10px', fontWeight: 600 }}>Approuvé</Tag>;
+                } else if (status === 'REJECTED') {
+                    return <Tag color="error" style={{ borderRadius: 8, padding: '2px 10px', fontWeight: 600 }}>Refusé</Tag>;
+                }
+                return <Tag color="blue" style={{ borderRadius: 8, padding: '2px 10px', fontWeight: 600 }}>{status}</Tag>;
+            }
+        }
+    ];
+
+    const pendingColumns: ColumnsType<RescueDeviceDTO> = [
+        {
+            title: 'ÉVÉNEMENT',
+            dataIndex: 'eventName',
+            key: 'eventName',
+            render: (n, record) => (
+                <Space size={16}>
+                    <div style={{
+                        width: 44, height: 44, borderRadius: 14,
+                        background: 'linear-gradient(135deg, #ef4444, #991b1b)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: '#fff', boxShadow: '0 4px 12px rgba(239,68,68,0.1)'
+                    }}>
+                        <AlertOutlined style={{ fontSize: 20 }} />
+                    </div>
+                    <div>
+                        <Text strong style={{ fontSize: 15, display: 'block' }}>{n}</Text>
+                        <Text type="secondary" style={{ fontSize: 12 }}>{record.location}</Text>
+                    </div>
+                </Space>
+            )
+        },
+        {
+            title: 'DATE & HEURE',
+            key: 'dateTime',
+            render: (_, record) => (
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <Text strong>{record.eventDate ? new Date(record.eventDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : 'À définir'}</Text>
+                    <Text type="secondary" style={{ fontSize: 12 }}>{record.eventTime || 'Toute la journée'}</Text>
                 </div>
             )
         },
         {
-            title: 'STATUT',
-            dataIndex: 'status',
-            key: 'status',
-            render: (s) => (
-                <Tag color={s === 'ACTIVE' ? 'volcano' : 'blue'} style={{ borderRadius: 8, padding: '2px 10px', fontWeight: 600 }}>
-                    {s}
-                </Tag>
+            title: 'VOLONTAIRES',
+            key: 'volunteers',
+            render: (_, record) => record.volunteersNeeded ? (
+                <Tag color="orange">{record.volunteersCount} volontaires requis</Tag>
+            ) : (
+                <Tag color="default">Non requis</Tag>
+            )
+        },
+        {
+            title: 'CHEF PROPOSÉ',
+            dataIndex: 'actionChiefName',
+            key: 'actionChiefName',
+            render: (c) => c ? <Text strong style={{ color: '#ef4444' }}>{c}</Text> : <Text type="secondary" italic>Aucun</Text>
+        },
+        {
+            title: 'ACTION',
+            key: 'action',
+            render: (_, record) => (
+                <Button
+                    type="primary"
+                    size="small"
+                    onClick={() => openApprovalModal(record)}
+                    style={{ borderRadius: 8, background: '#ef4444', borderColor: '#ef4444', fontWeight: 600 }}
+                >
+                    Valider / Décider
+                </Button>
             )
         }
     ];
@@ -250,6 +397,19 @@ const SecourismePage: React.FC = () => {
         boxShadow: isDark ? '0 24px 80px rgba(0,0,0,0.4)' : '0 24px 80px rgba(0,0,0,0.06)',
         overflow: 'hidden'
     };
+
+    const tabsList = [
+        { key: 'inventory', label: 'Inventaire', icon: <ToolOutlined /> },
+        { key: 'devices', label: 'Dispositifs', icon: <CalendarOutlined /> }
+    ];
+    if (canApprove) {
+        const pendingCount = devices.filter(d => d.approvalStatus === 'PENDING' || !d.approvalStatus).length;
+        tabsList.push({
+            key: 'validations',
+            label: `Demandes (${pendingCount})`,
+            icon: <SafetyCertificateOutlined />
+        });
+    }
 
     return (
         <div style={{ padding: '0 40px 40px 40px', maxWidth: 1600, margin: '0 auto' }}>
@@ -329,13 +489,10 @@ const SecourismePage: React.FC = () => {
                         <Col xs={24} lg={17} style={{ padding: '40px 50px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 40 }}>
                                 <div style={{ display: 'flex', gap: 8, background: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9', padding: 6, borderRadius: 16 }}>
-                                    {[
-                                        { key: 'inventory', label: 'Inventaire', icon: <ToolOutlined /> },
-                                        { key: 'devices', label: 'Dispositifs', icon: <CalendarOutlined /> }
-                                    ].map(tab => (
+                                    {tabsList.map(tab => (
                                         <Button
                                             key={tab.key}
-                                            type={activeTab === tab.key ? 'text' : 'text'}
+                                            type="text"
                                             icon={tab.icon}
                                             onClick={() => setActiveTab(tab.key)}
                                             style={{
@@ -375,7 +532,7 @@ const SecourismePage: React.FC = () => {
                                             className="premium-table"
                                             locale={{ emptyText: <div style={{ padding: '60px 0' }}><Title level={5}>Aucun équipement</Title><Text type="secondary">Ajoutez du matériel pour commencer.</Text></div> }}
                                         />
-                                    ) : (
+                                    ) : activeTab === 'devices' ? (
                                         <Table
                                             columns={dvColumns}
                                             dataSource={devices}
@@ -383,6 +540,15 @@ const SecourismePage: React.FC = () => {
                                             pagination={{ pageSize: 8, hideOnSinglePage: true }}
                                             className="premium-table"
                                             locale={{ emptyText: <div style={{ padding: '60px 0' }}><Title level={5}>Aucun dispositif</Title><Text type="secondary">Planifiez un événement de secours.</Text></div> }}
+                                        />
+                                    ) : (
+                                        <Table
+                                            columns={pendingColumns}
+                                            dataSource={devices.filter(d => d.approvalStatus === 'PENDING' || !d.approvalStatus)}
+                                            rowKey="id"
+                                            pagination={{ pageSize: 8, hideOnSinglePage: true }}
+                                            className="premium-table"
+                                            locale={{ emptyText: <div style={{ padding: '60px 0' }}><Title level={5}>Aucune demande</Title><Text type="secondary">Toutes les demandes de dispositif ont été traitées.</Text></div> }}
                                         />
                                     )}
                                 </motion.div>
@@ -403,7 +569,10 @@ const SecourismePage: React.FC = () => {
                     </div>
                 }
                 open={isEqModalOpen}
-                onCancel={() => setIsEqModalOpen(false)}
+                onCancel={() => {
+                    setIsEqModalOpen(false);
+                    setEquipmentImage('');
+                }}
                 footer={null}
                 width={550}
                 centered
@@ -449,8 +618,60 @@ const SecourismePage: React.FC = () => {
                         </Col>
                     </Row>
 
+                    <Form.Item name="imageUrl" label="Photo de l'équipement">
+                        <div style={{
+                            border: `2px dashed ${isDark ? 'rgba(255,255,255,0.1)' : '#cbd5e1'}`,
+                            borderRadius: 16,
+                            padding: '24px 16px',
+                            textAlign: 'center',
+                            background: isDark ? 'rgba(255,255,255,0.01)' : 'rgba(0,0,0,0.01)',
+                            cursor: 'pointer',
+                            position: 'relative',
+                            transition: 'border-color 0.3s ease'
+                        }}
+                        onClick={() => document.getElementById('eq-image-upload')?.click()}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#ef4444'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = isDark ? 'rgba(255,255,255,0.1)' : '#cbd5e1'; }}
+                        >
+                            <input
+                                id="eq-image-upload"
+                                type="file"
+                                accept="image/*"
+                                style={{ display: 'none' }}
+                                onChange={handleEquipmentImageChange}
+                            />
+                            {equipmentImage ? (
+                                <div style={{ position: 'relative' }}>
+                                    <img src={equipmentImage} alt="Equipment preview" style={{ maxWidth: '100%', maxHeight: 120, borderRadius: 12, objectFit: 'cover' }} />
+                                    <Button
+                                        type="primary"
+                                        danger
+                                        shape="circle"
+                                        size="small"
+                                        icon={<PlusOutlined style={{ transform: 'rotate(45deg)' }} />}
+                                        style={{ position: 'absolute', top: -10, right: -10 }}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setEquipmentImage('');
+                                            eqForm.setFieldsValue({ imageUrl: '' });
+                                        }}
+                                    />
+                                </div>
+                            ) : (
+                                <div>
+                                    <PlusOutlined style={{ fontSize: 24, color: '#ef4444', marginBottom: 8 }} />
+                                    <div><Text strong>Glissez ou sélectionnez une photo</Text></div>
+                                    <div><Text type="secondary" style={{ fontSize: 12 }}>Format JPG, PNG (Max 5MB)</Text></div>
+                                </div>
+                            )}
+                        </div>
+                    </Form.Item>
+
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 40 }}>
-                        <Button onClick={() => setIsEqModalOpen(false)} style={{ height: 45, borderRadius: 12, padding: '0 25px' }}>Annuler</Button>
+                        <Button onClick={() => {
+                            setIsEqModalOpen(false);
+                            setEquipmentImage('');
+                        }} style={{ height: 45, borderRadius: 12, padding: '0 25px' }}>Annuler</Button>
                         <Button type="primary" htmlType="submit" loading={submitLoading} style={{ height: 45, borderRadius: 12, padding: '0 30px', background: '#ef4444', borderColor: '#ef4444' }}>
                             Enregistrer le matériel
                         </Button>
@@ -469,7 +690,10 @@ const SecourismePage: React.FC = () => {
                     </div>
                 }
                 open={isDvModalOpen}
-                onCancel={() => setIsDvModalOpen(false)}
+                onCancel={() => {
+                    setIsDvModalOpen(false);
+                    setNeedsVolunteers(false);
+                }}
                 footer={null}
                 width={550}
                 centered
@@ -487,8 +711,21 @@ const SecourismePage: React.FC = () => {
                             </Form.Item>
                         </Col>
                         <Col span={12}>
+                            <Form.Item name="eventTime" label="Heure prévue" rules={[{ required: true }]}>
+                                <DatePicker picker="time" format="HH:mm" size="large" style={{ width: '100%', borderRadius: 12 }} placeholder="Ex: 14:30" />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+
+                    <Row gutter={20}>
+                        <Col span={12}>
                             <Form.Item name="requiredRescuers" label="Effectif Secouriste" rules={[{ required: true }]}>
                                 <InputNumber size="large" min={1} style={{ width: '100%', borderRadius: 12 }} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item name="actionChiefName" label="Chef d'action proposé (Optionnel)">
+                                <Input size="large" placeholder="Nom du responsable" style={{ borderRadius: 12 }} />
                             </Form.Item>
                         </Col>
                     </Row>
@@ -497,20 +734,86 @@ const SecourismePage: React.FC = () => {
                         <Input size="large" prefix={<GlobalOutlined style={{ color: '#8b5cf6' }} />} placeholder="Ex: Palais de Carthage, Zone A" style={{ borderRadius: 12 }} />
                     </Form.Item>
 
-                    <Form.Item name="status" label="Niveau de préparation" initialValue="PLANNED">
-                        <Select size="large">
-                            <Option value="PLANNED">Planification</Option>
-                            <Option value="ACTIVE">Activation Immédiate</Option>
-                        </Select>
-                    </Form.Item>
+                    <Row gutter={20}>
+                        <Col span={12}>
+                            <Form.Item name="volunteersNeeded" label="Besoin de volontaires ?" initialValue={false}>
+                                <Select size="large" onChange={(val) => setNeedsVolunteers(val)}>
+                                    <Option value={false}>Non</Option>
+                                    <Option value={true}>Oui</Option>
+                                </Select>
+                            </Form.Item>
+                        </Col>
+                        {needsVolunteers && (
+                            <Col span={12}>
+                                <Form.Item name="volunteersCount" label="Nombre de volontaires requis" rules={[{ required: true, message: 'Champ requis' }]}>
+                                    <InputNumber size="large" min={1} style={{ width: '100%', borderRadius: 12 }} />
+                                </Form.Item>
+                            </Col>
+                        )}
+                    </Row>
 
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 40 }}>
-                        <Button onClick={() => setIsDvModalOpen(false)} style={{ height: 45, borderRadius: 12, padding: '0 25px' }}>Fermer</Button>
+                        <Button onClick={() => {
+                            setIsDvModalOpen(false);
+                            setNeedsVolunteers(false);
+                        }} style={{ height: 45, borderRadius: 12, padding: '0 25px' }}>Fermer</Button>
                         <Button type="primary" htmlType="submit" loading={submitLoading} style={{ height: 45, borderRadius: 12, padding: '0 30px', background: '#8b5cf6', borderColor: '#8b5cf6' }}>
                             Confirmer la planification
                         </Button>
                     </div>
                 </Form>
+            </Modal>
+
+            {/* MODAL: Validation / Approbation du Président */}
+            <Modal
+                title={
+                    <Space>
+                        <SafetyCertificateOutlined style={{ color: '#ef4444' }} />
+                        <Text strong style={{ fontSize: 18 }}>Validation du Dispositif (DPS)</Text>
+                    </Space>
+                }
+                open={isApproveModalOpen}
+                onCancel={() => setIsApproveModalOpen(false)}
+                footer={null}
+                width={500}
+                centered
+                styles={{ content: { borderRadius: 24, padding: 30 } }}
+            >
+                {selectedDevice && (
+                    <Form form={approveForm} layout="vertical" onFinish={handleApproveDevice}>
+                        <div style={{ marginBottom: 24, padding: 16, borderRadius: 16, background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)' }}>
+                            <div style={{ marginBottom: 8 }}><Text type="secondary">Événement :</Text> <Text strong>{selectedDevice.eventName}</Text></div>
+                            <div style={{ marginBottom: 8 }}><Text type="secondary">Date & Heure :</Text> <Text strong>{selectedDevice.eventDate ? new Date(selectedDevice.eventDate).toLocaleDateString('fr-FR') : ''} {selectedDevice.eventTime ? `à ${selectedDevice.eventTime}` : ''}</Text></div>
+                            <div style={{ marginBottom: 8 }}><Text type="secondary">Lieu :</Text> <Text strong>{selectedDevice.location}</Text></div>
+                            {selectedDevice.volunteersNeeded && (
+                                <div><Text type="secondary">Volontaires requis :</Text> <Text strong>{selectedDevice.volunteersCount}</Text></div>
+                            )}
+                        </div>
+
+                        <Form.Item name="actionChiefName" label="Chef d'action désigné" rules={[{ required: true, message: 'Veuillez désigner le chef d\'action' }]}>
+                            <Input size="large" style={{ borderRadius: 12 }} placeholder="Nom complet du chef d'action" />
+                        </Form.Item>
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 30 }}>
+                            <Button onClick={() => setIsApproveModalOpen(false)} style={{ height: 45, borderRadius: 12 }}>Annuler</Button>
+                            <Button
+                                onClick={() => handleRejectDevice(selectedDevice.id!)}
+                                danger
+                                style={{ height: 45, borderRadius: 12, fontWeight: 700 }}
+                            >
+                                Rejeter
+                            </Button>
+                            <Button
+                                type="primary"
+                                htmlType="submit"
+                                loading={submitLoading}
+                                style={{ height: 45, borderRadius: 12, background: '#10b981', borderColor: '#10b981', fontWeight: 700 }}
+                            >
+                                Approuver et Activer
+                            </Button>
+                        </div>
+                    </Form>
+                )}
             </Modal>
         </div>
     );

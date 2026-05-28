@@ -34,6 +34,9 @@ const RegisterPage: React.FC = () => {
 
     const [isLoading, setIsLoading] = useState(false);
     const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [acceptTerms, setAcceptTerms] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
@@ -45,6 +48,7 @@ const RegisterPage: React.FC = () => {
     const [cin, setCin] = useState('');
     const [email, setEmail] = useState('');
     const [phone, setPhone] = useState('');
+    const [birthDate, setBirthDate] = useState('');
     const [selectedCommittee, setSelectedCommittee] = useState('');
 
     // Fetch real committees on mount
@@ -60,6 +64,24 @@ const RegisterPage: React.FC = () => {
         e.preventDefault();
         setError('');
         setSuccess('');
+
+        if (password !== confirmPassword) {
+            setError('Les mots de passe ne correspondent pas.');
+            return;
+        }
+
+        // Validate minimum age (16 years)
+        if (birthDate) {
+            const birth = new Date(birthDate);
+            const today = new Date();
+            const age = today.getFullYear() - birth.getFullYear() -
+                (today < new Date(today.getFullYear(), birth.getMonth(), birth.getDate()) ? 1 : 0);
+            if (age < 16) {
+                setError('Vous devez avoir au moins 16 ans pour vous inscrire.');
+                return;
+            }
+        }
+
         setIsLoading(true);
 
         try {
@@ -69,6 +91,7 @@ const RegisterPage: React.FC = () => {
                 password,
                 cin,
                 phone,
+                birthDate: birthDate || undefined,
                 userType: 'VOLUNTEER' as UserType,
                 committeeId: selectedCommittee || undefined,
                 captchaToken: 'local-bypass',
@@ -266,7 +289,15 @@ const RegisterPage: React.FC = () => {
                             </div>
                             <div>
                                 <label style={labelStyle}>Date de naissance</label>
-                                <input type="date" style={inputStyle} required {...focusHandlers} />
+                                <input
+                                    type="date"
+                                    style={inputStyle}
+                                    required
+                                    max={new Date(new Date().setFullYear(new Date().getFullYear() - 16)).toISOString().split('T')[0]}
+                                    value={birthDate}
+                                    onChange={(e) => setBirthDate(e.target.value)}
+                                    {...focusHandlers}
+                                />
                             </div>
                         </div>
 
@@ -331,20 +362,66 @@ const RegisterPage: React.FC = () => {
                         <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
                             <div>
                                 <label style={labelStyle}>Mot de passe</label>
-                                <input
-                                    type="password"
-                                    placeholder="••••••••"
-                                    style={inputStyle}
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    required
-                                    {...focusHandlers}
-                                />
+                                <div style={{ position: 'relative' }}>
+                                    <input
+                                        type={showPassword ? 'text' : 'password'}
+                                        placeholder="••••••••"
+                                        style={{ ...inputStyle, paddingRight: 40 }}
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        required
+                                        {...focusHandlers}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                                    >
+                                        {showPassword ? (
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={dark ? '#A1A1AA' : '#6B7280'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                                                <line x1="1" y1="1" x2="23" y2="23"/>
+                                            </svg>
+                                        ) : (
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={dark ? '#A1A1AA' : '#6B7280'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                                <circle cx="12" cy="12" r="3"/>
+                                            </svg>
+                                        )}
+                                    </button>
+                                </div>
                                 <PasswordStrength password={password} />
                             </div>
                             <div>
                                 <label style={labelStyle}>Confirmer le mot de passe</label>
-                                <input type="password" placeholder="••••••••" style={inputStyle} required {...focusHandlers} />
+                                <div style={{ position: 'relative' }}>
+                                    <input
+                                        type={showConfirmPassword ? 'text' : 'password'}
+                                        placeholder="••••••••"
+                                        style={{ ...inputStyle, paddingRight: 40 }}
+                                        value={confirmPassword}
+                                        onChange={(e) => setConfirmPassword(e.target.value)}
+                                        required
+                                        {...focusHandlers}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                        style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                                    >
+                                        {showConfirmPassword ? (
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={dark ? '#A1A1AA' : '#6B7280'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                                                <line x1="1" y1="1" x2="23" y2="23"/>
+                                            </svg>
+                                        ) : (
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={dark ? '#A1A1AA' : '#6B7280'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                                <circle cx="12" cy="12" r="3"/>
+                                            </svg>
+                                        )}
+                                    </button>
+                                </div>
                             </div>
                         </div>
 

@@ -35,7 +35,7 @@ const YouthRecommendationView: React.FC<RecommendationViewProps> = ({ recommenda
         >
             {/* Header */}
             <div style={{ 
-                background: isAiGenerated ? 'linear-gradient(135deg, #4F46E5, #7C3AED)' : 'linear-gradient(135deg, #10B981, #059669)', 
+                background: isAiGenerated ? 'linear-gradient(135deg, #e01c2e, #c0152a)' : 'linear-gradient(135deg, #10B981, #059669)', 
                 padding: '32px 32px 40px',
                 position: 'relative'
             }}>
@@ -61,12 +61,12 @@ const YouthRecommendationView: React.FC<RecommendationViewProps> = ({ recommenda
                         </div>
                     </div>
                     
-                    <Badge count={isAiGenerated ? "IA ANALYSE" : "MANUEL"} style={{ backgroundColor: isAiGenerated ? '#fff' : '#fff', color: isAiGenerated ? '#4F46E5' : '#10B981', fontWeight: 800 }} />
+                    <Badge count={isAiGenerated ? "IA ANALYSE" : "MANUEL"} style={{ backgroundColor: isAiGenerated ? '#fff' : '#fff', color: isAiGenerated ? '#e01c2e' : '#10B981', fontWeight: 800 }} />
                 </div>
             </div>
 
             <div style={{ padding: '32px', marginTop: -20, background: '#fff', borderRadius: '32px 32px 0 0', position: 'relative' }}>
-                <Descriptions title={<Space><ThunderboltOutlined style={{ color: '#4F46E5' }} /> Résumé du Profil</Space>} bordered column={2}>
+                <Descriptions title={<Space><ThunderboltOutlined style={{ color: '#e01c2e' }} /> Résumé du Profil</Space>} bordered column={2}>
                     <Descriptions.Item label="Titre">{recommendation.title}</Descriptions.Item>
                     <Descriptions.Item label="Catégorie"><Tag color="geekblue">{recommendation.category}</Tag></Descriptions.Item>
                     <Descriptions.Item label="Priorité">
@@ -127,7 +127,7 @@ const YouthRecommendationView: React.FC<RecommendationViewProps> = ({ recommenda
                             height: 52, 
                             padding: '0 40px', 
                             fontWeight: 700,
-                            background: isAiGenerated ? 'linear-gradient(135deg, #4F46E5, #7C3AED)' : '#10B981',
+                             background: isAiGenerated ? 'linear-gradient(135deg, #e01c2e, #c0152a)' : '#10B981',
                             border: 'none',
                             boxShadow: '0 10px 20px rgba(0,0,0,0.1)'
                         }}

@@ -21,6 +21,7 @@ const SHARED_ROUTES = [
     '/volunteer/complaints',
     '/volunteer/resources',
     '/volunteer/quiz',
+    '/volunteer/reception',
 ];
 const SHARED_SIDEBAR = [
     '/dashboard',
@@ -30,6 +31,7 @@ const SHARED_SIDEBAR = [
     '/volunteer/complaints',
     '/volunteer/resources',
     '/volunteer/quiz',
+    '/volunteer/reception',
 ];
 
 // Full access routes (President, VP, Admin)
@@ -39,6 +41,7 @@ const ALL_ROUTES = [
     '/reports', '/admin-reports', '/templates',
     '/catastrophes', '/radar', '/crisis-room',
     '/secourisme', '/diffusion', '/jeunesse', '/sante', '/social', '/immigration', '/vff',
+    '/distribution-medicale',
     '/validation-queue', '/audit-logs'
 ];
 const ALL_SIDEBAR = [
@@ -48,6 +51,7 @@ const ALL_SIDEBAR = [
     '/reports', '/admin-reports', '/templates',
     '/catastrophes', '/radar', '/audit-logs',
     'domains', '/secourisme', '/diffusion', '/jeunesse', '/sante', '/social', '/immigration', '/vff',
+    '/distribution-medicale',
 ];
 
 // ---- Committee RoleTitle permissions ----
@@ -58,16 +62,70 @@ export const ROLE_PERMISSIONS: Record<RoleTitle, RolePermission> = {
         label: 'Président',
         dashboardType: 'volunteer',
     },
+    PRESIDENT_LOCAL: {
+        allowedRoutes: ALL_ROUTES,
+        sidebarKeys: ALL_SIDEBAR,
+        label: 'Président Local',
+        dashboardType: 'volunteer',
+    },
+    PRESIDENT_REGIONAL: {
+        allowedRoutes: ALL_ROUTES,
+        sidebarKeys: ALL_SIDEBAR,
+        label: 'Président Régional',
+        dashboardType: 'volunteer',
+    },
+    PRESIDENT_NATIONAL: {
+        allowedRoutes: ALL_ROUTES,
+        sidebarKeys: ALL_SIDEBAR,
+        label: 'Président National',
+        dashboardType: 'volunteer',
+    },
     VICE_PRESIDENT: {
         allowedRoutes: ALL_ROUTES,
         sidebarKeys: ALL_SIDEBAR,
         label: 'Vice-Président',
         dashboardType: 'volunteer',
     },
+    VICE_PRESIDENT_LOCAL: {
+        allowedRoutes: ALL_ROUTES,
+        sidebarKeys: ALL_SIDEBAR,
+        label: 'Vice-Président Local',
+        dashboardType: 'volunteer',
+    },
+    VICE_PRESIDENT_REGIONAL: {
+        allowedRoutes: ALL_ROUTES,
+        sidebarKeys: ALL_SIDEBAR,
+        label: 'Vice-Président Régional',
+        dashboardType: 'volunteer',
+    },
+    VICE_PRESIDENT_NATIONAL: {
+        allowedRoutes: ALL_ROUTES,
+        sidebarKeys: ALL_SIDEBAR,
+        label: 'Vice-Président National',
+        dashboardType: 'volunteer',
+    },
     SECRETAIRE_GENERAL: {
         allowedRoutes: [...SHARED_ROUTES, '/volunteers', '/committees', '/reports', '/admin-reports', '/templates', '/stocks'],
         sidebarKeys: [...SHARED_SIDEBAR, 'management', '/volunteers', '/committees', '/reports', '/admin-reports', '/templates', '/stocks'],
         label: 'Secrétaire Général',
+        dashboardType: 'volunteer',
+    },
+    SECRETAIRE_GENERAL_LOCAL: {
+        allowedRoutes: [...SHARED_ROUTES, '/volunteers', '/committees', '/reports', '/admin-reports', '/templates', '/stocks'],
+        sidebarKeys: [...SHARED_SIDEBAR, 'management', '/volunteers', '/committees', '/reports', '/admin-reports', '/templates', '/stocks'],
+        label: 'Secrétaire Général Local',
+        dashboardType: 'volunteer',
+    },
+    SECRETAIRE_GENERAL_REGIONAL: {
+        allowedRoutes: [...SHARED_ROUTES, '/volunteers', '/committees', '/reports', '/admin-reports', '/templates', '/stocks'],
+        sidebarKeys: [...SHARED_SIDEBAR, 'management', '/volunteers', '/committees', '/reports', '/admin-reports', '/templates', '/stocks'],
+        label: 'Secrétaire Général Régional',
+        dashboardType: 'volunteer',
+    },
+    SECRETAIRE_GENERAL_NATIONAL: {
+        allowedRoutes: [...SHARED_ROUTES, '/volunteers', '/committees', '/reports', '/admin-reports', '/templates', '/stocks'],
+        sidebarKeys: [...SHARED_SIDEBAR, 'management', '/volunteers', '/committees', '/reports', '/admin-reports', '/templates', '/stocks'],
+        label: 'Secrétaire Général National',
         dashboardType: 'volunteer',
     },
     RESP_SECOURISME: {
@@ -89,8 +147,8 @@ export const ROLE_PERMISSIONS: Record<RoleTitle, RolePermission> = {
         dashboardType: 'volunteer',
     },
     RESP_SANTE: {
-        allowedRoutes: [...SHARED_ROUTES, '/sante', '/stocks', '/reports', '/admin-reports'],
-        sidebarKeys: [...SHARED_SIDEBAR, '/sante', '/stocks', '/reports', '/admin-reports', 'domains'],
+        allowedRoutes: [...SHARED_ROUTES, '/sante', '/distribution-medicale', '/stocks', '/reports', '/admin-reports'],
+        sidebarKeys: [...SHARED_SIDEBAR, '/sante', '/distribution-medicale', '/stocks', '/reports', '/admin-reports', 'domains'],
         label: 'Resp. Santé',
         dashboardType: 'volunteer',
     },

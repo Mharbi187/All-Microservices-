@@ -121,17 +121,36 @@ export const ComplaintsDashboardPage: React.FC = () => {
   const [selectedComplaint, setSelectedComplaint] = useState<ComplaintDto | null>(null);
   const [committeesList, setCommitteesList] = useState<{ id: string; name: string }[]>([]);
 
+  const isNationalPresidentOrVP =
+    user?.roles?.some(r => ['PRESIDENT_NATIONAL', 'VICE_PRESIDENT_NATIONAL'].includes(r)) ||
+    user?.rawRoles?.some((r: any) => ['PRESIDENT', 'VICE_PRESIDENT'].includes(r.role) && r.committeeType === 'NATIONAL');
+
+  // Can manage (view & respond) complaints — but cannot submit new ones if national
+  const canManageComplaints =
+    user?.roles?.some(r => [
+      'PRESIDENT', 'VICE_PRESIDENT', 'SECRETAIRE_GENERAL',
+      'PRESIDENT_NATIONAL', 'VICE_PRESIDENT_NATIONAL',
+      'PRESIDENT_REGIONAL', 'VICE_PRESIDENT_REGIONAL',
+      'PRESIDENT_LOCAL', 'VICE_PRESIDENT_LOCAL'
+    ].includes(r)) ||
+    user?.type === 'ADMIN';
+
   const fetchComplaints = async () => {
     setLoading(true);
     try {
       let data: ComplaintDto[] = [];
-      if ((user?.roles as string[])?.includes('PRESIDENT_NATIONAL')) {
+      const primaryCommitteeId = user?.committeeId || (user as any)?.rawRoles?.[0]?.committeeId;
+      if (isNationalPresidentOrVP) {
         data = await complaintService.getAllComplaints();
       } else if (
-        user?.roles?.some(r => ['PRESIDENT', 'VICE_PRESIDENT', 'SECRETAIRE_GENERAL'].includes(r)) &&
-        user?.committeeId
+        user?.roles?.some(r => [
+          'PRESIDENT', 'VICE_PRESIDENT', 'SECRETAIRE_GENERAL',
+          'PRESIDENT_REGIONAL', 'VICE_PRESIDENT_REGIONAL',
+          'PRESIDENT_LOCAL', 'VICE_PRESIDENT_LOCAL'
+        ].includes(r)) &&
+        primaryCommitteeId
       ) {
-        data = await complaintService.getComplaintsByCommittee(user.committeeId);
+        data = await complaintService.getComplaintsByCommittee(primaryCommitteeId);
       } else {
         data = await complaintService.getMyComplaints();
       }
@@ -165,11 +184,6 @@ export const ComplaintsDashboardPage: React.FC = () => {
     rejete: complaints.filter(c => c.status === ComplaintStatus.REJETE).length,
   };
 
-  const hasOfficialRole =
-    user?.roles?.some(r => ['PRESIDENT', 'VICE_PRESIDENT', 'SECRETAIRE_GENERAL'].includes(r)) ||
-    user?.type === 'ADMIN';
-
-  /* ── Table columns ── */
   const columns = [
     {
       title: 'Date',
@@ -344,31 +358,33 @@ export const ComplaintsDashboardPage: React.FC = () => {
             </p>
           </div>
 
-          <button
-            onClick={() => setIsFormVisible(true)}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              background: C.white,
-              color: C.red,
-              border: 'none',
-              borderRadius: 12,
-              padding: '12px 24px',
-              fontSize: 14,
-              fontWeight: 700,
-              cursor: 'pointer',
-              boxShadow: '0 4px 14px rgba(0,0,0,0.15)',
-              transition: 'transform 0.15s',
-              position: 'relative',
-              zIndex: 1,
-              flexShrink: 0,
-            }}
-            onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.transform = 'scale(1.03)')}
-            onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)')}
-          >
-            <PlusOutlined /> Nouvelle Réclamation
-          </button>
+          {!isNationalPresidentOrVP && (
+            <button
+              onClick={() => setIsFormVisible(true)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                background: C.white,
+                color: C.red,
+                border: 'none',
+                borderRadius: 12,
+                padding: '12px 24px',
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: 'pointer',
+                boxShadow: '0 4px 14px rgba(0,0,0,0.15)',
+                transition: 'transform 0.15s',
+                position: 'relative',
+                zIndex: 1,
+                flexShrink: 0,
+              }}
+              onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.transform = 'scale(1.03)')}
+              onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)')}
+            >
+              <PlusOutlined /> Nouvelle Réclamation
+            </button>
+          )}
         </div>
 
         {/* ── Stats ── */}
@@ -463,7 +479,7 @@ export const ComplaintsDashboardPage: React.FC = () => {
           complaint={selectedComplaint}
           onClose={() => setIsDetailsVisible(false)}
           onUpdate={() => { fetchComplaints(); setIsDetailsVisible(false); }}
-          isOfficial={hasOfficialRole}
+          isOfficial={canManageComplaints}
         />
       </Content>
 

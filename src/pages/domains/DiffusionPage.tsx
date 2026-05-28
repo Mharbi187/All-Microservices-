@@ -19,8 +19,8 @@ import {
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { motion, AnimatePresence } from 'framer-motion';
-import { diffusionService } from '@/services/domainServices';
-import type { EducationalResourceDTO, AwarenessCampaignDTO } from '@/types';
+import { diffusionService, santeService } from '@/services/domainServices';
+import type { EducationalResourceDTO, AwarenessCampaignDTO, MedicalDistributionDTO } from '@/types';
 import { useUIStore, useAuthStore } from '@/stores';
 import NewsManagerTab from './components/NewsManagerTab';
 import EventManagerTab from './components/EventManagerTab';
@@ -41,11 +41,12 @@ const C = {
 
 // ── Tab config ────────────────────────────────────────────────
 const TABS = [
-  { key: 'resources',  label: 'Ressources',   icon: <BookOutlined /> },
-  { key: 'news',       label: 'Actualités',    icon: <ReadOutlined /> },
-  { key: 'events',     label: 'Événements',    icon: <CalendarOutlined /> },
-  { key: 'quiz',       label: 'Quiz & Form.',  icon: <TrophyOutlined /> },
-  { key: 'campaigns',  label: 'Campagnes',     icon: <NotificationOutlined /> },
+  { key: 'resources',     label: 'Ressources',          icon: <BookOutlined /> },
+  { key: 'news',          label: 'Actualités',           icon: <ReadOutlined /> },
+  { key: 'events',        label: 'Événements',           icon: <CalendarOutlined /> },
+  { key: 'quiz',          label: 'Quiz & Form.',         icon: <TrophyOutlined /> },
+  { key: 'campaigns',     label: 'Campagnes',            icon: <NotificationOutlined /> },
+  { key: 'distributions', label: 'Distribution Méd.',    icon: <SendOutlined /> },
 ] as const;
 
 type TabKey = typeof TABS[number]['key'];
@@ -61,23 +62,66 @@ const DiffusionPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabKey>('resources');
   const [resources, setResources] = useState<EducationalResourceDTO[]>([]);
   const [campaigns, setCampaigns] = useState<AwarenessCampaignDTO[]>([]);
+  const [distributions, setDistributions] = useState<MedicalDistributionDTO[]>([]);
   const [isResourceModalOpen, setIsResourceModalOpen] = useState(false);
   const [isCampaignModalOpen, setIsCampaignModalOpen] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [resourceForm] = Form.useForm();
   const [campaignForm] = Form.useForm();
 
-  const isRespDiffusion = user?.roles?.includes('RESP_DIFFUSION') || user?.type === 'ADMIN';
+  const isRespDiffusion = user?.roles?.some((r: string) =>
+    ['RESP_DIFFUSION', 'PRESIDENT', 'VICE_PRESIDENT', 'PRESIDENT_NATIONAL', 'VICE_PRESIDENT_NATIONAL', 'SECRETAIRE_GENERAL'].includes(r)
+  ) || user?.type === 'ADMIN';
+
+  const isPresident = user?.roles?.some((r: string) =>
+    ['PRESIDENT', 'VICE_PRESIDENT', 'PRESIDENT_LOCAL', 'PRESIDENT_REGIONAL', 'PRESIDENT_NATIONAL', 'VICE_PRESIDENT_LOCAL', 'VICE_PRESIDENT_REGIONAL', 'VICE_PRESIDENT_NATIONAL'].includes(r)
+  );
+
+  const [resourceFile, setResourceFile] = useState<{ name: string; size: string; base64: string } | null>(null);
+  const [campaignImage, setCampaignImage] = useState<string>('');
+
+  const handleResourceFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setResourceFile({
+          name: file.name,
+          size: (file.size / 1024 / 1024).toFixed(2) + ' MB',
+          base64: reader.result as string,
+        });
+        resourceForm.setFieldsValue({ contentUrl: reader.result as string });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleCampaignImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setCampaignImage(reader.result as string);
+        campaignForm.setFieldsValue({ imageUrl: reader.result as string });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const [res, cam] = await Promise.all([
+      const [res, cam, dists] = await Promise.all([
         diffusionService.getResources().catch(() => []),
         diffusionService.getCampaigns().catch(() => []),
+        user?.committeeId
+          ? santeService.getDistributionsByCommittee(user.committeeId).catch(() => [])
+          : Promise.resolve([]),
       ]);
       setResources(res || []);
       setCampaigns(cam || []);
+      // Show only APPROVED distributions in DiffusionPage
+      setDistributions((dists || []).filter((d: MedicalDistributionDTO) => d.status === 'APPROVED' || d.status === 'DISTRIBUTED'));
     } finally { setLoading(false); }
   };
 
@@ -94,6 +138,7 @@ const DiffusionPage: React.FC = () => {
       });
       messageApi.success('Ressource ajoutée !');
       setIsResourceModalOpen(false);
+      setResourceFile(null);
       resourceForm.resetFields();
       loadData();
     } catch { messageApi.error("Erreur lors de l'ajout."); }
@@ -106,13 +151,21 @@ const DiffusionPage: React.FC = () => {
       const startDate = values.dates?.[0]?.format('YYYY-MM-DD');
       const endDate = values.dates?.[1]?.format('YYYY-MM-DD');
       await diffusionService.createCampaign({
-        name: values.name, description: values.description, startDate, endDate,
+        name: values.name, 
+        description: values.description, 
+        startDate, 
+        endDate,
         targetAudience: values.targetAudience,
         channels: (values.channels || []).join(','),
         status: values.status || 'PLANNED',
-      });
+        location: values.location || '',
+        volunteersNeeded: values.volunteersNeeded ? Number(values.volunteersNeeded) : 0,
+        collaborationType: values.collaborationType || 'INTERNAL',
+        imageUrl: values.imageUrl || '',
+      } as any);
       messageApi.success('Campagne créée !');
       setIsCampaignModalOpen(false);
+      setCampaignImage('');
       campaignForm.resetFields();
       loadData();
     } catch { messageApi.error('Erreur lors de la création.'); }
@@ -145,6 +198,7 @@ const DiffusionPage: React.FC = () => {
           <div>
             <Text strong style={{ fontSize: 14, display: 'block' }}>{r.title}</Text>
             <Text type="secondary" style={{ fontSize: 12 }}>{r.category} · {r.language}</Text>
+            {r.description && <Text type="secondary" style={{ fontSize: 11, display: 'block', maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.description}</Text>}
           </div>
         </Space>
       ),
@@ -154,10 +208,26 @@ const DiffusionPage: React.FC = () => {
       render: ct => <Tag bordered={false} style={{ background: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9', borderRadius: 6, fontWeight: 600 }}>{ct}</Tag>,
     },
     {
-      title: 'ACTIONS', key: 'action', width: 90,
-      render: () => (
+      title: 'ACTIONS', key: 'action', width: 110,
+      render: (_, r) => (
         <Space>
-          <Button type="text" icon={<EyeOutlined />} size="small" />
+          {(r.contentUrl?.startsWith('data:') || r.fileUrl?.startsWith('data:')) ? (
+            <Button 
+              type="primary" size="small" style={{ background: '#10b981', borderColor: '#10b981', borderRadius: 6, fontSize: 11 }}
+              onClick={() => {
+                const link = document.createElement('a');
+                link.href = r.contentUrl || r.fileUrl || '';
+                link.download = `${r.title || 'ressource'}.bin`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+              }}
+            >
+              Télécharger
+            </Button>
+          ) : (
+            <Button type="text" icon={<EyeOutlined />} size="small" onClick={() => r.contentUrl && window.open(r.contentUrl, '_blank')} />
+          )}
           <Button type="text" icon={<ShareAltOutlined />} size="small" />
         </Space>
       ),
@@ -169,18 +239,41 @@ const DiffusionPage: React.FC = () => {
       title: 'DÉSIGNATION', key: 'name',
       render: (_, r) => (
         <Space size={14}>
-          <div style={{
-            width: 44, height: 44, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: isDark ? 'rgba(99,102,241,0.1)' : '#eef2ff', color: '#6366f1',
-          }}>
-            <NotificationOutlined style={{ fontSize: 20 }} />
-          </div>
+          {r.imageUrl ? (
+            <img src={r.imageUrl} alt={r.name || r.title}
+              style={{ width: 44, height: 44, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }}
+            />
+          ) : (
+            <div style={{
+              width: 44, height: 44, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: isDark ? 'rgba(99,102,241,0.1)' : '#eef2ff', color: '#6366f1',
+            }}>
+              <NotificationOutlined style={{ fontSize: 20 }} />
+            </div>
+          )}
           <div>
             <Text strong style={{ fontSize: 14, display: 'block' }}>{(r as any).name || r.title}</Text>
             <Text type="secondary" style={{ fontSize: 12 }}>Cible: {r.targetAudience || 'Public'}</Text>
           </div>
         </Space>
       ),
+    },
+    {
+      title: 'DÉTAILS', key: 'details',
+      render: (_, r) => (
+        <div>
+          <span style={{ fontSize: 13, fontWeight: 600, display: 'block' }}>📍 {r.location || 'Non spécifiée'}</span>
+          <span style={{ fontSize: 11, color: C.gray600 }}>👥 Besoin: {r.volunteersNeeded || 0} bénévoles</span>
+        </div>
+      )
+    },
+    {
+      title: 'COLLABORATION', key: 'collaboration',
+      render: (_, r) => (
+        <Tag color={r.collaborationType === 'COLLABORATION' ? 'purple' : 'blue'} style={{ borderRadius: 6 }}>
+          {r.collaborationType === 'COLLABORATION' ? '🤝 Multi-Comités' : '🏠 Interne Comité'}
+        </Tag>
+      )
     },
     {
       title: 'PLANIFICATION', key: 'period',
@@ -192,7 +285,7 @@ const DiffusionPage: React.FC = () => {
       ),
     },
     {
-      title: 'STATUT', dataIndex: 'status', key: 'status', width: 120,
+      title: 'STATUT', dataIndex: 'status', key: 'status', width: 100,
       render: s => <Tag color={s === 'ACTIVE' ? 'success' : 'processing'} style={{ borderRadius: 8, padding: '2px 12px', fontWeight: 700 }}>{s}</Tag>,
     },
   ];
@@ -349,6 +442,7 @@ const DiffusionPage: React.FC = () => {
                   {activeTab === 'events' && <EventManagerTab isDark={isDark} />}
                   {activeTab === 'quiz' && <QuizManagerTab isDark={isDark} />}
 
+
                   {activeTab === 'campaigns' && (
                     <Table
                       columns={camColumns}
@@ -358,8 +452,72 @@ const DiffusionPage: React.FC = () => {
                       locale={{ emptyText: <div style={{ padding: '40px 0', textAlign: 'center' }}><Title level={5}>Aucune campagne</Title><Text type="secondary">Créez votre première campagne.</Text></div> }}
                     />
                   )}
+
+                  {activeTab === 'distributions' && (
+                    <div>
+                      <div style={{ marginBottom: 20, padding: '14px 18px', borderRadius: 14, background: 'rgba(224,28,46,0.06)', border: '1px solid rgba(224,28,46,0.15)' }}>
+                        <Text style={{ color: '#c0152a', fontSize: 13 }}>
+                          📦 Ces ressources médicales ont été <Text strong style={{ color: '#c0152a' }}>approuvées par le Président</Text> et sont disponibles pour distribution.
+                        </Text>
+                      </div>
+                      <Table<MedicalDistributionDTO>
+                        dataSource={distributions}
+                        rowKey="id"
+                        pagination={{ pageSize: 8, hideOnSinglePage: true }}
+                        locale={{ emptyText: <div style={{ padding: '40px 0', textAlign: 'center' }}><Title level={5}>Aucune ressource médicale disponible</Title><Text type="secondary">Les ressources approuvées par le Président apparaîtront ici.</Text></div> }}
+                        columns={[
+                          {
+                            title: 'RESSOURCE',
+                            key: 'resource',
+                            render: (_: any, r: MedicalDistributionDTO) => (
+                              <div>
+                                <Text strong style={{ display: 'block', fontSize: 14 }}>{r.title}</Text>
+                                <Tag style={{ borderRadius: 6, background: 'rgba(224,28,46,0.08)', color: '#c0152a', border: '1px solid rgba(224,28,46,0.2)', fontSize: 11 }}>
+                                  {r.resourceType?.replace(/_/g, ' ')}
+                                </Tag>
+                              </div>
+                            )
+                          },
+                          {
+                            title: 'DESTINATION',
+                            key: 'dest',
+                            render: (_: any, r: MedicalDistributionDTO) => (
+                              <div>
+                                <Text style={{ fontSize: 13 }}>{r.destinationName || '-'}</Text>
+                                <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{r.destinationType}</Text>
+                              </div>
+                            )
+                          },
+                          {
+                            title: 'QUANTITÉ',
+                            key: 'qty',
+                            render: (_: any, r: MedicalDistributionDTO) => (
+                              <Text strong style={{ color: '#c0152a' }}>{r.quantity} {r.unit || 'unités'}</Text>
+                            )
+                          },
+                          {
+                            title: 'APPROUVÉ PAR',
+                            dataIndex: 'approvedByName',
+                            key: 'approvedBy',
+                            render: (n: string) => <Text style={{ fontSize: 12 }}>{n || '-'}</Text>
+                          },
+                          {
+                            title: 'STATUT',
+                            dataIndex: 'status',
+                            key: 'status',
+                            render: (s: string) => (
+                              <Tag color={s === 'APPROVED' ? 'success' : 'cyan'} style={{ borderRadius: 8, fontWeight: 600 }}>
+                                {s === 'APPROVED' ? '✅ Approuvé' : '📦 Distribué'}
+                              </Tag>
+                            )
+                          }
+                        ]}
+                      />
+                    </div>
+                  )}
                 </motion.div>
               </AnimatePresence>
+
             </Col>
           </Row>
         </div>
@@ -370,37 +528,107 @@ const DiffusionPage: React.FC = () => {
         title={<Space><BookOutlined style={{ color: '#10b981' }} /><Text strong style={{ fontSize: 17 }}>Ajouter une Ressource</Text></Space>}
         open={isResourceModalOpen}
         onCancel={() => setIsResourceModalOpen(false)}
-        footer={null} width={620} centered
+        footer={null} width={650} centered
         styles={{ content: { borderRadius: 24, padding: 30 } }}
       >
         <Form form={resourceForm} layout="vertical" onFinish={handleCreateResource} requiredMark={false}>
-          <Form.Item name="title" label="Intitulé" rules={[{ required: true }]}>
+          <Form.Item name="title" label={<span style={{ fontWeight: 600 }}>Intitulé / Titre du support</span>} rules={[{ required: true, message: 'Titre requis' }]}>
             <Input size="large" style={{ borderRadius: 12 }} placeholder="Ex: Guide des premiers secours" />
           </Form.Item>
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item name="category" label="Thématique" rules={[{ required: true }]}>
-                <Select size="large"><Option value="PREMIERS_SECOURS">Secourisme</Option><Option value="HYGIENE">Santé</Option><Option value="GOUVERNANCE">Gouvernance</Option></Select>
+          <Row gutter={[16, 0]}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="category" label={<span style={{ fontWeight: 600 }}>Thématique</span>} rules={[{ required: true }]}>
+                <Select size="large" style={{ borderRadius: 12 }}>
+                  <Option value="PREMIERS_SECOURS">Secourisme</Option>
+                  <Option value="HYGIENE">Santé & Hygiène</Option>
+                  <Option value="GOUVERNANCE">Gouvernance</Option>
+                </Select>
               </Form.Item>
             </Col>
-            <Col span={12}>
-              <Form.Item name="contentType" label="Format" rules={[{ required: true }]}>
-                <Select size="large"><Option value="DOCUMENT">Document (PDF)</Option><Option value="VIDEO">Vidéo</Option><Option value="AUDIO">Audio</Option></Select>
+            <Col xs={24} sm={12}>
+              <Form.Item name="contentType" label={<span style={{ fontWeight: 600 }}>Format du média</span>} rules={[{ required: true }]}>
+                <Select size="large" style={{ borderRadius: 12 }}>
+                  <Option value="DOCUMENT">Document (PDF, Word, PPT)</Option>
+                  <Option value="VIDEO">Vidéo</Option>
+                  <Option value="AUDIO">Audio / Podcast</Option>
+                </Select>
               </Form.Item>
             </Col>
           </Row>
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item name="language" label="Langue" rules={[{ required: true }]}>
-                <Select size="large"><Option value="ARABIC">Arabe</Option><Option value="FRENCH">Français</Option></Select>
+          <Row gutter={[16, 0]}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="language" label={<span style={{ fontWeight: 600 }}>Langue du support</span>} rules={[{ required: true }]}>
+                <Select size="large" style={{ borderRadius: 12 }}>
+                  <Option value="ARABIC">Arabe</Option>
+                  <Option value="FRENCH">Français</Option>
+                </Select>
               </Form.Item>
             </Col>
-            <Col span={12}>
-              <Form.Item name="contentUrl" label="Lien"><Input size="large" style={{ borderRadius: 12 }} placeholder="https://" /></Form.Item>
+            <Col xs={24} sm={12}>
+              <Form.Item name="contentUrl" label={<span style={{ fontWeight: 600 }}>Lien externe (Optionnel)</span>}>
+                <Input size="large" style={{ borderRadius: 12 }} placeholder="https://..." />
+              </Form.Item>
             </Col>
           </Row>
-          <Form.Item name="description" label="Description" rules={[{ required: true }]}>
-            <TextArea rows={3} style={{ borderRadius: 12 }} />
+
+          {/* DRAG & DROP FILE UPLOAD AREA FOR RESOURCES */}
+          <div style={{ marginBottom: 20 }}>
+            <span style={{ fontWeight: 600, fontSize: 13, display: 'block', marginBottom: 8 }}>
+              📁 Importer un document / fichier (PDF, Word, PPT, TXT, Image)
+            </span>
+            <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+              <div 
+                onClick={() => document.getElementById('resource-file-input')?.click()}
+                style={{
+                  flex: 1, minWidth: 200, height: 95, border: '2px dashed rgba(16,185,129,0.3)', borderRadius: 12,
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', background: 'rgba(16,185,129,0.02)', transition: 'all 0.2s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.borderColor = '#10b981'}
+                onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(16,185,129,0.3)'}
+              >
+                <PlusOutlined style={{ fontSize: 20, color: '#10b981', marginBottom: 4 }} />
+                <span style={{ fontSize: 12, color: C.gray800, fontWeight: 600 }}>Importer le fichier</span>
+                <span style={{ fontSize: 10, color: C.gray400 }}>PDF, Word, PowerPoint, TXT, Image (Max 10Mo)</span>
+                <input 
+                  type="file" id="resource-file-input" 
+                  accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,image/*" 
+                  onChange={handleResourceFileChange} style={{ display: 'none' }} 
+                />
+              </div>
+              {resourceFile && (
+                <div style={{ 
+                  padding: '12px 16px', background: 'rgba(16,185,129,0.08)', borderRadius: 12, 
+                  display: 'flex', alignItems: 'center', gap: 10, border: '1px solid rgba(16,185,129,0.2)',
+                  flexShrink: 0, minWidth: 180,
+                }}>
+                  <div style={{ fontSize: 24 }}>📄</div>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 12, color: C.gray800, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {resourceFile.name}
+                    </div>
+                    <div style={{ fontSize: 10, color: C.gray400 }}>{resourceFile.size}</div>
+                  </div>
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      setResourceFile(null);
+                      resourceForm.setFieldsValue({ contentUrl: '' });
+                    }}
+                    style={{
+                      background: 'transparent', border: 'none', color: '#ef4444', 
+                      cursor: 'pointer', fontWeight: 800, fontSize: 14, marginLeft: 'auto'
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <Form.Item name="description" label={<span style={{ fontWeight: 600 }}>Description de la ressource</span>} rules={[{ required: true }]}>
+            <TextArea rows={3} style={{ borderRadius: 12 }} placeholder="Décrivez succinctement les objectifs de ce document ou contenu..." />
           </Form.Item>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
             <Button onClick={() => setIsResourceModalOpen(false)} style={{ borderRadius: 12 }}>Annuler</Button>
@@ -411,37 +639,129 @@ const DiffusionPage: React.FC = () => {
 
       {/* ── Modal: Campagne ── */}
       <Modal
-        title={<Space><NotificationOutlined style={{ color: '#6366f1' }} /><Text strong style={{ fontSize: 17 }}>Lancer une Campagne</Text></Space>}
+        title={<Space><NotificationOutlined style={{ color: '#6366f1' }} /><Text strong style={{ fontSize: 17 }}>Lancer une Campagne de Sensibilisation</Text></Space>}
         open={isCampaignModalOpen}
         onCancel={() => setIsCampaignModalOpen(false)}
-        footer={null} width={620} centered
+        footer={null} width={700} centered
         styles={{ content: { borderRadius: 24, padding: 30 } }}
       >
         <Form form={campaignForm} layout="vertical" onFinish={handleCreateCampaign} requiredMark={false}>
-          <Form.Item name="name" label="Nom de la campagne" rules={[{ required: true }]}>
-            <Input size="large" style={{ borderRadius: 12 }} placeholder="Ex: Sensibilisation 2026" />
-          </Form.Item>
-          <Form.Item name="dates" label="Période" rules={[{ required: true }]}>
-            <RangePicker size="large" style={{ width: '100%', borderRadius: 12 }} format="DD/MM/YYYY" />
-          </Form.Item>
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item name="targetAudience" label="Cible"><Input size="large" style={{ borderRadius: 12 }} placeholder="Ex: Écoles, Lycées" /></Form.Item>
+          <Row gutter={[16, 0]}>
+            <Col xs={24} md={12}>
+              <Form.Item name="name" label={<span style={{ fontWeight: 600 }}>Nom de la campagne</span>} rules={[{ required: true }]}>
+                <Input size="large" style={{ borderRadius: 12 }} placeholder="Ex: Sensibilisation Gestes Qui Sauvent" />
+              </Form.Item>
             </Col>
-            <Col span={12}>
-              <Form.Item name="status" label="État initial">
-                <Select size="large"><Option value="PLANNED">Planifiée</Option><Option value="ACTIVE">En cours</Option></Select>
+            <Col xs={24} md={12}>
+              <Form.Item name="dates" label={<span style={{ fontWeight: 600 }}>Période (Début et Fin)</span>} rules={[{ required: true }]}>
+                <RangePicker size="large" style={{ width: '100%', borderRadius: 12 }} format="DD/MM/YYYY" />
               </Form.Item>
             </Col>
           </Row>
-          <Form.Item name="channels" label="Canaux">
-            <Select mode="tags" size="large" placeholder="Réseaux sociaux, Radio...">
-              <Option value="Radio">Radio</Option><Option value="Social Media">Social Media</Option><Option value="Print">Affichage</Option>
-            </Select>
+
+          <Row gutter={[16, 0]}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="targetAudience" label={<span style={{ fontWeight: 600 }}>Public cible</span>}>
+                <Input size="large" style={{ borderRadius: 12 }} placeholder="Ex: Écoles, Lycées, Grand Public" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="location" label={<span style={{ fontWeight: 600 }}>Localisation ou adresse précise</span>} rules={[{ required: true }]}>
+                <Input size="large" style={{ borderRadius: 12 }} placeholder="Ex: Grand Tunis, Place du Gouvernement" />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={[16, 0]}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="volunteersNeeded" label={<span style={{ fontWeight: 600 }}>Nombre de bénévoles nécessaires</span>} initialValue={5}>
+                <Input type="number" min={1} size="large" style={{ borderRadius: 12 }} placeholder="Ex: 10" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="collaborationType" label={<span style={{ fontWeight: 600 }}>Type de collaboration comités</span>} rules={[{ required: true }]} initialValue="INTERNAL">
+                <Select size="large" style={{ borderRadius: 12 }}>
+                  <Option value="INTERNAL">🏠 Comité local uniquement</Option>
+                  <Option value="COLLABORATION">🤝 En collaboration avec d'autres comités locaux/régionaux</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={[16, 0]}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="status" label={<span style={{ fontWeight: 600 }}>État de la campagne</span>} initialValue="PLANNED">
+                <Select size="large" style={{ borderRadius: 12 }}>
+                  <Option value="PLANNED">📅 Planifiée</Option>
+                  <Option value="ACTIVE">⚡ En cours</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="channels" label={<span style={{ fontWeight: 600 }}>Canaux de diffusion</span>}>
+                <Select mode="tags" size="large" style={{ borderRadius: 12 }} placeholder="Presse, Réseaux sociaux...">
+                  <Option value="Radio">Radio</Option>
+                  <Option value="Social Media">Réseaux Sociaux</Option>
+                  <Option value="Print">Affichage public / Affiches</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+
+          {/* PHOTO UPLOAD DRAG & DROP ZONE FOR CAMPAIGNS */}
+          <div style={{ marginBottom: 20 }}>
+            <span style={{ fontWeight: 600, fontSize: 13, display: 'block', marginBottom: 8 }}>
+              📸 Photo / Affiche de la campagne (Fichier image)
+            </span>
+            <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+              <div 
+                onClick={() => document.getElementById('campaign-image-input')?.click()}
+                style={{
+                  flex: 1, minWidth: 200, height: 95, border: '2px dashed rgba(99,102,241,0.3)', borderRadius: 12,
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', background: 'rgba(99,102,241,0.02)', transition: 'all 0.2s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.borderColor = '#6366f1'}
+                onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(99,102,241,0.3)'}
+              >
+                <PlusOutlined style={{ fontSize: 20, color: '#6366f1', marginBottom: 4 }} />
+                <span style={{ fontSize: 12, color: C.gray800, fontWeight: 600 }}>Importer une photo</span>
+                <span style={{ fontSize: 10, color: C.gray400 }}>PNG, JPG, JPEG (Max 5Mo)</span>
+                <input 
+                  type="file" id="campaign-image-input" accept="image/*" 
+                  onChange={handleCampaignImageChange} style={{ display: 'none' }} 
+                />
+              </div>
+              {campaignImage && (
+                <div style={{ position: 'relative', width: 95, height: 95, borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(0,0,0,0.1)', flexShrink: 0 }}>
+                  <img src={campaignImage} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      setCampaignImage('');
+                      campaignForm.setFieldsValue({ imageUrl: '' });
+                    }}
+                    style={{
+                      position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,0.6)', 
+                      color: 'white', border: 'none', borderRadius: '50%', width: 20, height: 20,
+                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <Form.Item name="imageUrl" noStyle>
+            <Input type="hidden" />
           </Form.Item>
-          <Form.Item name="description" label="Objectifs" rules={[{ required: true }]}>
-            <TextArea rows={3} style={{ borderRadius: 12 }} />
+
+          <Form.Item name="description" label={<span style={{ fontWeight: 600 }}>Objectifs & Description complète</span>} rules={[{ required: true }]}>
+            <TextArea rows={3} style={{ borderRadius: 12 }} placeholder="Détaillez les buts de la campagne, les résultats attendus..." />
           </Form.Item>
+          
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
             <Button onClick={() => setIsCampaignModalOpen(false)} style={{ borderRadius: 12 }}>Annuler</Button>
             <Button type="primary" htmlType="submit" loading={submitLoading} style={{ background: '#6366f1', borderColor: '#6366f1', borderRadius: 12 }}>Valider</Button>

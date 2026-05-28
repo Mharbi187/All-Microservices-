@@ -177,6 +177,8 @@ const MyProfilePage: React.FC = () => {
     const [editPhone, setEditPhone] = useState('');
     const [editFullName, setEditFullName] = useState('');
     const [editSkills, setEditSkills] = useState<string[]>([]);
+    const [editAddress, setEditAddress] = useState('');
+    const [editEducationLevel, setEditEducationLevel] = useState('');
 
     const isApproved = user?.status === 'APPROVED';
     const accountStatus = user?.status || 'PENDING';
@@ -197,6 +199,8 @@ const MyProfilePage: React.FC = () => {
         if (user) {
             setEditPhone(user.phone || '');
             setEditFullName(user.fullName || '');
+            setEditAddress(user.address || '');
+            setEditEducationLevel(user.educationLevel || '');
             const s = user.skills;
             if (Array.isArray(s)) setEditSkills(s);
             else if (typeof s === 'string' && s) {
@@ -227,7 +231,12 @@ const MyProfilePage: React.FC = () => {
     const handleSave = async () => {
         setSaving(true);
         try {
-            const updates: Record<string, unknown> = { phone: editPhone, fullName: editFullName };
+            const updates: Record<string, unknown> = {
+                phone: editPhone,
+                fullName: editFullName,
+                address: editAddress,
+                educationLevel: editEducationLevel,
+            };
             if (isApproved) updates.skills = editSkills;
             await authService.updateProfile(updates);
             await fetchProfile();
@@ -807,7 +816,28 @@ const MyProfilePage: React.FC = () => {
                                                                 label: 'CIN', icon: <IdcardOutlined />,
                                                                 value: user?.cin, editable: false,
                                                             },
-                                                        ].map(({ label, icon, value, onChange, editable }) => (
+                                                            {
+                                                                label: 'Adresse', icon: <EnvironmentOutlined />,
+                                                                value: editing ? editAddress : (user?.address || ''),
+                                                                onChange: (v: string) => setEditAddress(v),
+                                                                editable: true,
+                                                            },
+                                                            {
+                                                                label: 'Niveau', icon: <TrophyOutlined />,
+                                                                value: editing ? editEducationLevel : (user?.educationLevel || ''),
+                                                                onChange: (v: string) => setEditEducationLevel(v),
+                                                                editable: true,
+                                                                isSelect: true,
+                                                                options: [
+                                                                    { value: 'MOINS_BAC', label: 'Moins que BAC' },
+                                                                    { value: 'BAC', label: 'BAC' },
+                                                                    { value: 'BAC_PLUS_1_2', label: 'BAC +1/+2' },
+                                                                    { value: 'LICENCE', label: 'Licence' },
+                                                                    { value: 'MASTER', label: 'Master' },
+                                                                    { value: 'DOCTORAT', label: 'Doctorat' },
+                                                                ]
+                                                            },
+                                                        ].map(({ label, icon, value, onChange, editable, isSelect, options }) => (
                                                             <Col xs={24} md={12} key={label}>
                                                                 <div style={{ marginBottom: 6, fontSize: 11, fontWeight: 800, color: textSecondary, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
                                                                     {label}
@@ -824,22 +854,45 @@ const MyProfilePage: React.FC = () => {
                                                                         {icon}
                                                                     </span>
                                                                     {editing && editable && onChange ? (
-                                                                        <input
-                                                                            value={value as string}
-                                                                            onChange={e => onChange(e.target.value)}
-                                                                            style={{
-                                                                                flex: 1, border: 'none', outline: 'none',
-                                                                                background: 'transparent', fontSize: 14, fontWeight: 600,
-                                                                                color: textPrimary, fontFamily: 'inherit',
-                                                                            }}
-                                                                        />
+                                                                        isSelect && options ? (
+                                                                            <select
+                                                                                value={value as string}
+                                                                                onChange={e => onChange(e.target.value)}
+                                                                                style={{
+                                                                                    flex: 1, border: 'none', outline: 'none',
+                                                                                    background: 'transparent', fontSize: 14, fontWeight: 600,
+                                                                                    color: textPrimary, fontFamily: 'inherit',
+                                                                                }}
+                                                                            >
+                                                                                <option value="" disabled style={{ color: '#aaa' }}>Sélectionner...</option>
+                                                                                {options.map(opt => (
+                                                                                    <option key={opt.value} value={opt.value} style={{ background: cardBg, color: textPrimary }}>
+                                                                                        {opt.label}
+                                                                                    </option>
+                                                                                ))}
+                                                                            </select>
+                                                                        ) : (
+                                                                            <input
+                                                                                value={value as string}
+                                                                                onChange={e => onChange(e.target.value)}
+                                                                                style={{
+                                                                                    flex: 1, border: 'none', outline: 'none',
+                                                                                    background: 'transparent', fontSize: 14, fontWeight: 600,
+                                                                                    color: textPrimary, fontFamily: 'inherit',
+                                                                                }}
+                                                                            />
+                                                                        )
                                                                     ) : (
                                                                         <span style={{
                                                                             flex: 1, fontSize: 14, fontWeight: 600,
                                                                             color: editable ? textPrimary : textSecondary,
                                                                             opacity: editable ? 1 : 0.7,
                                                                         }}>
-                                                                            {value || <span style={{ color: '#D1D5DB' }}>—</span>}
+                                                                            {isSelect && options ? (
+                                                                                options.find(opt => opt.value === value)?.label || value || <span style={{ color: '#D1D5DB' }}>—</span>
+                                                                            ) : (
+                                                                                value || <span style={{ color: '#D1D5DB' }}>—</span>
+                                                                            )}
                                                                         </span>
                                                                     )}
                                                                     {!editable && <LockOutlined style={{ color: '#D1D5DB', fontSize: 13 }} />}

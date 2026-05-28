@@ -119,7 +119,7 @@ const ImmigrationPage: React.FC = () => {
                         shape="square"
                         size={44}
                         icon={<UserOutlined />}
-                        style={{ background: isDark ? 'rgba(59,130,246,0.1)' : '#eff6ff', color: '#3b82f6', border: `1px solid ${isDark ? 'rgba(59,130,246,0.2)' : '#dbeafe'}`, borderRadius: 12 }}
+                        style={{ background: isDark ? 'rgba(224,28,46,0.1)' : '#fef2f2', color: '#e01c2e', border: `1px solid ${isDark ? 'rgba(224,28,46,0.2)' : '#fee2e2'}`, borderRadius: 12 }}
                     />
                     <div>
                         <Text strong style={{ fontSize: 16, display: 'block' }}>{record.migrantName}</Text>
@@ -175,7 +175,7 @@ const ImmigrationPage: React.FC = () => {
                             <Text strong style={{ fontSize: 14 }}>{p1}</Text>
                             <Text type="secondary" style={{ fontSize: 10 }}>Source</Text>
                         </div>
-                        <div style={{ padding: '4px 12px', borderRadius: 20, background: 'rgba(139,92,246,0.1)', color: '#8b5cf6', fontSize: 12 }}>
+                        <div style={{ padding: '4px 12px', borderRadius: 20, background: 'rgba(224,28,46,0.1)', color: '#e01c2e', fontSize: 12 }}>
                             <SwapOutlined />
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
@@ -190,7 +190,7 @@ const ImmigrationPage: React.FC = () => {
             title: 'RELATION',
             dataIndex: 'relationshipType',
             key: 'relationshipType',
-            render: (t: string) => <Tag color="purple" style={{ borderRadius: 6 }}>{t}</Tag>
+            render: (t: string) => <Tag color="red" style={{ borderRadius: 6 }}>{t}</Tag>
         },
         {
             title: 'ÉTAT DE TRACING',
@@ -237,38 +237,39 @@ const ImmigrationPage: React.FC = () => {
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 40 }}>
                                     <div style={{
                                         width: 60, height: 60, borderRadius: 20,
-                                        background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+                                        background: 'linear-gradient(135deg, #e01c2e, #c0152a)',
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        fontSize: 28, boxShadow: '0 12px 24px rgba(59,130,246,0.25)'
+                                        fontSize: 24, boxShadow: '0 12px 24px rgba(224,28,46,0.25)',
+                                        color: '#fff'
                                     }}>
-                                        🌍
+                                        <GlobalOutlined />
                                     </div>
                                     <div>
                                         <Title level={3} style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>Immigration</Title>
-                                        <Tag color="blue" icon={<CompassOutlined />} style={{ borderRadius: 6, margin: '4px 0 0 0', fontWeight: 700, fontSize: 11 }}>
+                                        <Tag color="red" icon={<CompassOutlined />} style={{ borderRadius: 6, margin: '4px 0 0 0', fontWeight: 700, fontSize: 11 }}>
                                             NATIONAL
                                         </Tag>
                                     </div>
                                 </div>
 
                                 <Space direction="vertical" style={{ width: '100%' }} size={24}>
-                                    <div style={{ padding: 24, borderRadius: 24, background: isDark ? 'rgba(59,130,246,0.05)' : '#fff', border: `1px solid ${isDark ? 'rgba(59,130,246,0.1)' : 'rgba(0,0,0,0.05)'}` }}>
+                                    <div style={{ padding: 24, borderRadius: 24, background: isDark ? 'rgba(224,28,46,0.05)' : '#fff', border: `1px solid ${isDark ? 'rgba(224,28,46,0.1)' : 'rgba(0,0,0,0.05)'}` }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-                                            <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(59,130,246,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3b82f6' }}>
+                                            <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(224,28,46,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e01c2e' }}>
                                                 <UsergroupAddOutlined style={{ fontSize: 20 }} />
                                             </div>
-                                            <BarChartOutlined style={{ color: '#3b82f6', fontSize: 22 }} />
+                                            <BarChartOutlined style={{ color: '#e01c2e', fontSize: 22 }} />
                                         </div>
                                         <Text type="secondary" style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Dossiers Migrants</Text>
                                         <Title level={2} style={{ margin: '4px 0 0 0', fontWeight: 800 }}>{cases.length}</Title>
                                     </div>
 
-                                    <div style={{ padding: 24, borderRadius: 24, background: isDark ? 'rgba(139,92,246,0.05)' : '#fff', border: `1px solid ${isDark ? 'rgba(139,92,246,0.1)' : 'rgba(0,0,0,0.05)'}` }}>
+                                    <div style={{ padding: 24, borderRadius: 24, background: isDark ? 'rgba(224,28,46,0.05)' : '#fff', border: `1px solid ${isDark ? 'rgba(224,28,46,0.1)' : 'rgba(0,0,0,0.05)'}` }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-                                            <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(139,92,246,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8b5cf6' }}>
+                                            <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(224,28,46,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e01c2e' }}>
                                                 <NodeIndexOutlined style={{ fontSize: 20 }} />
                                             </div>
-                                            <Progress type="circle" percent={Math.floor((links.filter(l => l.status === 'RESOLVED').length / (links.length || 1)) * 100)} size={40} strokeColor="#8b5cf6" />
+                                            <Progress type="circle" percent={Math.floor((links.filter(l => l.status === 'RESOLVED').length / (links.length || 1)) * 100)} size={40} strokeColor="#e01c2e" />
                                         </div>
                                         <Text type="secondary" style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>RLF Résolus</Text>
                                         <Title level={2} style={{ margin: '4px 0 0 0', fontWeight: 800 }}>{links.filter(l => l.status === 'RESOLVED').length}</Title>
@@ -279,7 +280,7 @@ const ImmigrationPage: React.FC = () => {
                                         block
                                         icon={<PlusOutlined />}
                                         onClick={() => activeTab === 'cases' ? setIsCaseModalOpen(true) : setIsLinkModalOpen(true)}
-                                        style={{ height: 52, borderRadius: 16, background: '#3b82f6', borderColor: '#3b82f6', fontWeight: 700, marginTop: 12, boxShadow: '0 8px 20px rgba(59,130,246,0.2)' }}
+                                        style={{ height: 52, borderRadius: 16, background: 'linear-gradient(135deg, #e01c2e, #c0152a)', border: 'none', fontWeight: 700, marginTop: 12, boxShadow: '0 8px 20px rgba(224,28,46,0.2)' }}
                                     >
                                         {activeTab === 'cases' ? 'Nouveau Migrant' : 'Nouvel RLF'}
                                     </Button>
@@ -303,8 +304,8 @@ const ImmigrationPage: React.FC = () => {
                                             style={{
                                                 height: 42, padding: '0 24px', borderRadius: 12,
                                                 fontWeight: 800,
-                                                background: activeTab === tab.key ? (isDark ? 'rgba(59,130,246,0.2)' : '#fff') : 'transparent',
-                                                color: activeTab === tab.key ? '#3b82f6' : (isDark ? 'rgba(255,255,255,0.4)' : '#64748b'),
+                                                background: activeTab === tab.key ? (isDark ? 'rgba(224,28,46,0.2)' : '#fff') : 'transparent',
+                                                color: activeTab === tab.key ? '#e01c2e' : (isDark ? 'rgba(255,255,255,0.4)' : '#64748b'),
                                                 boxShadow: activeTab === tab.key && !isDark ? '0 4px 12px rgba(0,0,0,0.05)' : 'none',
                                                 transition: 'all 0.3s ease'
                                             }}
@@ -346,7 +347,7 @@ const ImmigrationPage: React.FC = () => {
 
             {/* MODAL: AJOUTER MIGRANT */}
             <Modal
-                title={<Space><UserOutlined style={{ color: '#3b82f6' }} /><Text strong style={{ fontSize: 18 }}>Enregistrer un Migrant</Text></Space>}
+                title={<Space><UserOutlined style={{ color: '#e01c2e' }} /><Text strong style={{ fontSize: 18 }}>Enregistrer un Migrant</Text></Space>}
                 open={isCaseModalOpen}
                 onCancel={() => setIsCaseModalOpen(false)}
                 footer={null}
@@ -399,7 +400,7 @@ const ImmigrationPage: React.FC = () => {
 
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 40 }}>
                         <Button onClick={() => setIsCaseModalOpen(false)} style={{ height: 45, borderRadius: 12 }}>Abandonner</Button>
-                        <Button type="primary" htmlType="submit" loading={submitLoading} style={{ height: 45, borderRadius: 12, background: '#3b82f6', borderColor: '#3b82f6', fontWeight: 700 }}>
+                        <Button type="primary" htmlType="submit" loading={submitLoading} style={{ height: 45, borderRadius: 12, background: 'linear-gradient(135deg, #e01c2e, #c0152a)', border: 'none', fontWeight: 700 }}>
                             Valider l'entrée
                         </Button>
                     </div>
@@ -408,7 +409,7 @@ const ImmigrationPage: React.FC = () => {
 
             {/* MODAL: ENREGISTRER RLF */}
             <Modal
-                title={<Space><NodeIndexOutlined style={{ color: '#8b5cf6' }} /><Text strong style={{ fontSize: 18 }}>Lien Familial (RLF)</Text></Space>}
+                title={<Space><NodeIndexOutlined style={{ color: '#e01c2e' }} /><Text strong style={{ fontSize: 18 }}>Lien Familial (RLF)</Text></Space>}
                 open={isLinkModalOpen}
                 onCancel={() => setIsLinkModalOpen(false)}
                 footer={null}
@@ -444,7 +445,7 @@ const ImmigrationPage: React.FC = () => {
 
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 40 }}>
                         <Button onClick={() => setIsLinkModalOpen(false)} style={{ height: 45, borderRadius: 12 }}>Annuler</Button>
-                        <Button type="primary" htmlType="submit" loading={submitLoading} style={{ height: 45, borderRadius: 12, background: '#8b5cf6', borderColor: '#8b5cf6', fontWeight: 700 }}>
+                        <Button type="primary" htmlType="submit" loading={submitLoading} style={{ height: 45, borderRadius: 12, background: 'linear-gradient(135deg, #e01c2e, #c0152a)', border: 'none', fontWeight: 700 }}>
                             Établir le lien
                         </Button>
                     </div>

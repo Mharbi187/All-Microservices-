@@ -5,7 +5,7 @@
 
 import { Suspense, useMemo, useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Layout, Menu, Spin, Avatar, Dropdown, Button, Space, Typography, Badge, Breadcrumb, Tooltip, Tag } from 'antd';
+import { Layout, Menu, Spin, Avatar, Dropdown, Button, Space, Typography, Badge, Breadcrumb, Tooltip, Tag, Popover, List } from 'antd';
 import {
     DashboardOutlined,
     TeamOutlined,
@@ -34,6 +34,8 @@ import {
     RadarChartOutlined,
     TrophyOutlined,
     AppstoreOutlined,
+    MessageOutlined,
+    InfoCircleOutlined,
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import { useTranslation } from 'react-i18next';
@@ -52,26 +54,226 @@ const MainLayout: React.FC = () => {
 
     const { sidebarCollapsed, toggleSidebar, themeMode, toggleTheme } = useUIStore();
     const { user, logout } = useAuthStore();
-    const { unreadCount } = useReportingStore();
+    const { unreadCount, notifications, markRead, markAllRead } = useReportingStore();
     const [globalNotifCount, setGlobalNotifCount] = useState(0);
+    const [dbNotifications, setDbNotifications] = useState<any[]>([]);
+    const [popoverVisible, setPopoverVisible] = useState(false);
 
-    // Poll for notifications
+    const fetchDbNotifications = async () => {
+        if (!user) return;
+        try {
+            const data = await notificationService.getMyNotifications();
+            setDbNotifications(data || []);
+        } catch (e) {
+            // ignore
+        }
+    };
+
+    // Poll for notifications — stops gracefully if endpoint returns 404
     useEffect(() => {
         if (!user) return;
+        let stopped = false;
         const fetchNotifications = async () => {
+            if (stopped) return;
             try {
                 const res = await notificationService.getUnreadCount();
                 setGlobalNotifCount(res.count || 0);
-            } catch (e) {
-                console.error('Failed to fetch notification count', e);
+                await fetchDbNotifications();
+            } catch (e: any) {
+                // If the endpoint doesn't exist yet (404), stop polling silently
+                const status = e?.response?.status;
+                if (status === 404 || status === 501) {
+                    stopped = true;
+                    return;
+                }
+                // Other errors (network, 500…) — log but keep retrying
+                console.warn('Failed to fetch notification count', e);
             }
         };
         fetchNotifications();
-        const interval = setInterval(fetchNotifications, 1000 * 30);
-        return () => clearInterval(interval);
+        const interval = setInterval(fetchNotifications, 1000 * 60); // every 60s
+        return () => { stopped = true; clearInterval(interval); };
     }, [user]);
 
     const actualNotifCount = unreadCount + globalNotifCount;
+
+    const formatTimeLabel = (date: Date) => {
+        const diffMs = new Date().getTime() - date.getTime();
+        const diffMins = Math.floor(diffMs / 60000);
+        if (diffMins < 1) return "À l'instant";
+        if (diffMins < 60) return `${diffMins} min`;
+        const diffHours = Math.floor(diffMins / 60);
+        if (diffHours < 24) return `${diffHours} ${diffHours === 1 ? 'heure' : 'heures'}`;
+        const diffDays = Math.floor(diffHours / 24);
+        return `${diffDays} ${diffDays === 1 ? 'jour' : 'jours'}`;
+    };
+
+    const getNotificationIcon = (iconType: string) => {
+        const style = { fontSize: 16 };
+        switch (iconType) {
+            case 'chat':
+            case 'REPORT_SUBMITTED':
+                return <MessageOutlined style={{ ...style, color: '#4F46E5' }} />;
+            case 'file':
+            case 'REPORT_ASSIGNED':
+                return <FileTextOutlined style={{ ...style, color: '#2563EB' }} />;
+            case 'calendar':
+            case 'REPORT_FINALIZED':
+                return <CalendarOutlined style={{ ...style, color: '#10B981' }} />;
+            case 'info':
+            case 'REPORT_VALIDATED':
+            default:
+                return <InfoCircleOutlined style={{ ...style, color: '#F59E0B' }} />;
+        }
+    };
+
+    const iconBgColor = (iconType: string) => {
+        switch (iconType) {
+            case 'chat': return '#EEF2FF';
+            case 'file': return '#EFF6FF';
+            case 'calendar': return '#ECFDF5';
+            case 'info':
+            default: return '#FFFBEB';
+        }
+    };
+
+    const combinedNotifications = useMemo(() => {
+        const list: any[] = [];
+
+        // 1. Add real report notifications from store
+        notifications.forEach((n) => {
+            list.push({
+                id: n.id,
+                title: n.reportTitle || "Alerte Rapport",
+                message: n.message,
+                time: new Date(n.timestamp),
+                read: n.read,
+                iconType: n.type || 'info',
+                onClick: () => {
+                    markRead(n.id);
+                    navigate(`/reporting/reports/${n.reportId}`);
+                }
+            });
+        });
+
+        // 2. Add database notifications
+        dbNotifications.forEach((n) => {
+            list.push({
+                id: n.id,
+                title: n.title,
+                message: n.message,
+                time: new Date(n.createdAt),
+                read: n.read,
+                iconType: n.type,
+                onClick: async () => {
+                    try {
+                        await notificationService.markAsRead(n.id);
+                        fetchDbNotifications();
+                        setGlobalNotifCount(prev => Math.max(0, prev - 1));
+                    } catch {}
+                    if (n.link) navigate(n.link);
+                    else navigate('/reporting/notifications');
+                }
+            });
+        });
+
+        // Sort by time descending
+        list.sort((a, b) => b.time.getTime() - a.time.getTime());
+
+        return list;
+    }, [notifications, dbNotifications, navigate, markRead]);
+
+    const popoverContent = (
+        <div style={{ width: 360, margin: '-12px -16px' }}>
+            {/* Header */}
+            <div style={{
+                padding: '16px 20px',
+                borderBottom: '1px solid #F0F0F0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+            }}>
+                <Text strong style={{ fontSize: 15, color: '#111827' }}>
+                    Liste des Notifications
+                </Text>
+                {actualNotifCount > 0 && (
+                    <Badge count={actualNotifCount} style={{ backgroundColor: '#DC2626' }} />
+                )}
+            </div>
+
+            {/* List */}
+            <div style={{ maxHeight: 380, overflowY: 'auto' }}>
+                <List
+                    dataSource={combinedNotifications}
+                    renderItem={(item) => (
+                        <div
+                            key={item.id}
+                            onClick={async () => {
+                                setPopoverVisible(false);
+                                if (item.onClick) await item.onClick();
+                            }}
+                            style={{
+                                display: 'flex',
+                                gap: 14,
+                                padding: '12px 20px',
+                                borderBottom: '1px solid #F3F4F6',
+                                cursor: 'pointer',
+                                transition: 'background-color 0.2s',
+                                background: item.read ? 'transparent' : 'rgba(220, 38, 38, 0.03)',
+                                borderLeft: item.read ? '3px solid transparent' : '3px solid #DC2626'
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.backgroundColor = '#F9FAFB'}
+                            onMouseLeave={e => e.currentTarget.style.backgroundColor = item.read ? 'transparent' : 'rgba(220, 38, 38, 0.03)'}
+                        >
+                            {/* Icon circle */}
+                            <div style={{
+                                width: 36, height: 36, borderRadius: '50%',
+                                background: iconBgColor(item.iconType),
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                flexShrink: 0
+                            }}>
+                                {getNotificationIcon(item.iconType)}
+                            </div>
+
+                            {/* Content */}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                                    <Text strong style={{ fontSize: 13.5, color: '#111827', display: 'block', lineHeight: 1.3 }}>
+                                        {item.title}
+                                    </Text>
+                                    <Text type="secondary" style={{ fontSize: 11, whiteSpace: 'nowrap', flexShrink: 0, marginTop: 2 }}>
+                                        {item.timeLabel || formatTimeLabel(item.time)}
+                                    </Text>
+                                </div>
+                                <Text type="secondary" style={{ fontSize: 12.5, marginTop: 4, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                                    {item.message}
+                                </Text>
+                            </div>
+                        </div>
+                    )}
+                />
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding: '12px 16px', borderTop: '1px solid #F0F0F0', textAlign: 'center' }}>
+                <Button 
+                    type="text" 
+                    block 
+                    onClick={async () => {
+                        try {
+                            markAllRead();
+                            await notificationService.markAllAsRead();
+                            fetchDbNotifications();
+                            setGlobalNotifCount(0);
+                        } catch {}
+                    }}
+                    style={{ fontSize: 13, fontWeight: 600, color: '#4b5563' }}
+                >
+                    Tout marquer comme lu
+                </Button>
+            </div>
+        </div>
+    );
 
     // Get permissions based on user type + committee roles
     const permissions = useMemo(() => {
@@ -94,13 +296,6 @@ const MainLayout: React.FC = () => {
 
         // Volunteer Space
         const volunteerChildren: MenuProps['items'] = [];
-        if (isAllowed('/volunteer/profile')) {
-            volunteerChildren.push({
-                key: '/volunteer/profile',
-                icon: <UserOutlined />,
-                label: 'Mon Profil',
-            });
-        }
         if (isAllowed('/volunteer/committee')) {
             volunteerChildren.push({
                 key: '/volunteer/committee',
@@ -142,6 +337,13 @@ const MainLayout: React.FC = () => {
                 key: '/volunteer/youth',
                 icon: <SmileOutlined />,
                 label: 'Intégration Jeunes',
+            });
+        }
+        if (isAllowed('/volunteer/reception')) {
+            volunteerChildren.push({
+                key: '/volunteer/reception',
+                icon: <GiftOutlined />,
+                label: 'Réception Dons',
             });
         }
         // Quiz — visible to all volunteers
@@ -282,6 +484,18 @@ const MainLayout: React.FC = () => {
                 label: 'Santé',
             });
         }
+        if (isAllowed('/distribution-medicale')) {
+            domainChildren.push({
+                key: '/distribution-medicale',
+                icon: <MedicineBoxOutlined />,
+                label: (
+                    <Space>
+                        Distribution Méd.
+                        {/* Badge shown dynamically via state if needed */}
+                    </Space>
+                ),
+            });
+        }
         if (isAllowed('/social')) {
             domainChildren.push({
                 key: '/social',
@@ -327,12 +541,12 @@ const MainLayout: React.FC = () => {
             });
         }
 
-        // Divider + Settings
+        // Divider + Profil (replacing settings to avoid duplication)
         items.push({ type: 'divider' });
         items.push({
-            key: '/settings',
-            icon: <SettingOutlined />,
-            label: t('nav.settings'),
+            key: '/volunteer/profile',
+            icon: <UserOutlined />,
+            label: 'Mon Profil',
         });
 
         return items;
@@ -363,7 +577,7 @@ const MainLayout: React.FC = () => {
             logout();
             navigate('/login');
         } else if (key === 'profile') {
-            navigate('/settings');
+            navigate('/volunteer/profile');
         }
     };
 
@@ -384,6 +598,7 @@ const MainLayout: React.FC = () => {
         immigration: 'Immigration',
         vff: 'VFF',
         catastrophes: 'Moniteur Météo',
+        'distribution-medicale': '📦 Distribution Médicale',
         reporting: 'Système Reporting',
         'admin-reports': 'Rapports Admin',
         templates: 'Modèles',
@@ -473,11 +688,18 @@ const MainLayout: React.FC = () => {
                         </Tooltip>
 
                         {/* Notifications */}
-                        <Tooltip title="Notifications">
-                            <Badge count={actualNotifCount} size="small">
-                                <Button type="text" icon={<BellOutlined />} onClick={() => navigate('/reporting/notifications')} />
+                        <Popover
+                            content={popoverContent}
+                            trigger="click"
+                            open={popoverVisible}
+                            onOpenChange={setPopoverVisible}
+                            placement="bottomRight"
+                            arrow={{ pointAtCenter: true }}
+                        >
+                            <Badge count={actualNotifCount} size="small" style={{ cursor: 'pointer' }}>
+                                <Button type="text" icon={<BellOutlined />} />
                             </Badge>
-                        </Tooltip>
+                        </Popover>
 
                         {/* User Avatar & Dropdown */}
                         <Dropdown

@@ -77,11 +77,6 @@ const buildDonorMenu = (): MenuProps['items'] => [
         icon: <SoundOutlined />,
         label: 'Réclamations',
     },
-    {
-        key: '/settings',
-        icon: <SettingOutlined />,
-        label: 'Paramètres',
-    },
 ];
 
 const DonorLayout: React.FC = () => {
@@ -91,20 +86,27 @@ const DonorLayout: React.FC = () => {
     const { user, logout } = useAuthStore();
     const [notifCount, setNotifCount] = useState(0);
 
-    // Fetch realtime notification count
+    // Fetch realtime notification count — stops gracefully on 404
     useEffect(() => {
         if (!user) return;
+        let stopped = false;
         const fetchNotifications = async () => {
+            if (stopped) return;
             try {
                 const res = await notificationService.getUnreadCount();
                 setNotifCount(res.count || 0);
-            } catch (e) {
-                console.error('Failed to fetch donor notifications', e);
+            } catch (e: any) {
+                const status = e?.response?.status;
+                if (status === 404 || status === 501) {
+                    stopped = true; // endpoint not implemented yet, stop polling
+                    return;
+                }
+                console.warn('Failed to fetch donor notifications', e);
             }
         };
         fetchNotifications();
-        const interval = setInterval(fetchNotifications, 1000 * 30);
-        return () => clearInterval(interval);
+        const interval = setInterval(fetchNotifications, 1000 * 60);
+        return () => { stopped = true; clearInterval(interval); };
     }, [user]);
 
     const menuItems = buildDonorMenu();

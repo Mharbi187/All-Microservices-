@@ -7,12 +7,13 @@
 import React, { useState, useEffect } from 'react';
 import {
   Table, Tag, Button, Modal, Form, Input, Select, Space, message,
-  Tooltip, Empty, Avatar, Spin,
+  Tooltip, Empty, Avatar, Spin, Alert, Popconfirm,
 } from 'antd';
 import {
   PlusOutlined, EyeOutlined, DeleteOutlined, CheckCircleOutlined,
   ClockCircleOutlined, CloseCircleOutlined, SendOutlined,
   GlobalOutlined, ApartmentOutlined, TeamOutlined,
+  CheckOutlined, StopOutlined, PictureOutlined,
 } from '@ant-design/icons';
 import { motion } from 'framer-motion';
 import type { ColumnsType } from 'antd/es/table';
@@ -50,7 +51,27 @@ const NewsManagerTab: React.FC<Props> = ({ isDark = false }) => {
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [form] = Form.useForm();
+
+  const [base64Image, setBase64Image] = useState<string>('');
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setBase64Image(reader.result as string);
+        form.setFieldsValue({ imageUrl: reader.result as string });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Detect if user can validate news (president/VP/admin)
+  const isPresident = user?.roles?.some((r: string) =>
+    ['PRESIDENT', 'VICE_PRESIDENT', 'PRESIDENT_NATIONAL', 'VICE_PRESIDENT_NATIONAL', 'SECRETAIRE_GENERAL'].includes(r)
+  ) || user?.type === 'ADMIN';
 
   const glassCard: React.CSSProperties = {
     background: isDark ? 'rgba(255,255,255,0.03)' : C.white,
@@ -61,8 +82,7 @@ const NewsManagerTab: React.FC<Props> = ({ isDark = false }) => {
   const load = async () => {
     setLoading(true);
     try {
-      // Récupère toutes les actualités visibles pour l'utilisateur courant
-      const data = await newsService.getAll({ committeeId: user?.committeeId });
+      const data = await newsService.getAll({ committeeId: (user as any)?.committeeId });
       setItems(data);
     } catch {
       message.error('Erreur de chargement des actualités');
@@ -81,17 +101,24 @@ const NewsManagerTab: React.FC<Props> = ({ isDark = false }) => {
         summary: values.summary,
         content: values.content,
         category: values.category,
-        committeeId: user?.committeeId,
-        targetScope: values.targetScope,  // LOCAL | REGIONAL | NATIONAL
+        committeeId: (user as any)?.committeeId,
+        targetScope: values.targetScope,
+        imageUrl: values.imageUrl || undefined,
+        isPublic: values.isPublic !== undefined ? values.isPublic : true,
       };
       const created = await newsService.createNews(payload);
       setItems(prev => [created, ...prev]);
+      const hasDirectPublish = user?.roles?.some((r: string) =>
+        ['PRESIDENT', 'VICE_PRESIDENT', 'PRESIDENT_NATIONAL', 'VICE_PRESIDENT_NATIONAL', 'SECRETAIRE_GENERAL'].includes(r)
+      ) || user?.type === 'ADMIN';
+
       message.success(
-        values.targetScope === 'NATIONAL'
-          ? 'Actualité publiée (portée nationale)'
+        (values.targetScope === 'NATIONAL' || hasDirectPublish)
+          ? 'Actualité publiée directement !'
           : 'Actualité soumise — en attente de validation du Président'
       );
       setCreateOpen(false);
+      setBase64Image('');
       form.resetFields();
     } catch {
       message.error("Erreur lors de la soumission");
@@ -110,15 +137,39 @@ const NewsManagerTab: React.FC<Props> = ({ isDark = false }) => {
     }
   };
 
+  /** Président: approuver ou rejeter une actualité */
+  const handleValidation = async (id: string, action: 'PUBLIE' | 'REJETE') => {
+    setActionLoading(id);
+    try {
+      const updated = await newsService.updateStatus(id, action);
+      setItems(prev => prev.map(item => item.id === id ? updated : item));
+      message.success(action === 'PUBLIE' ? '✅ Actualité approuvée et publiée' : '🚫 Actualité rejetée');
+    } catch {
+      message.error("Erreur lors de la validation");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Pending news for president validation panel
+  const pendingItems = items.filter(i => i.status === 'EN_ATTENTE');
+
   const columns: ColumnsType<NewsItemDTO> = [
     {
       title: 'Actualité',
       key: 'title',
       render: (_, r) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Avatar size={36} style={{ background: C.redFade, color: C.red, fontSize: 12, fontWeight: 800, flexShrink: 0 }}>
-            {r.category?.charAt(0)}
-          </Avatar>
+          {r.imageUrl ? (
+            <img src={r.imageUrl} alt={r.title}
+              style={{ width: 44, height: 44, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }}
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            />
+          ) : (
+            <Avatar size={44} style={{ background: C.redFade, color: C.red, fontSize: 12, fontWeight: 800, flexShrink: 0 }}>
+              {r.category?.charAt(0)}
+            </Avatar>
+          )}
           <div>
             <div style={{ fontWeight: 700, color: isDark ? '#F3F4F6' : C.gray800, fontSize: 14 }}>{r.title}</div>
             <div style={{ color: C.gray400, fontSize: 12 }}>{r.summary?.slice(0, 60)}{r.summary && r.summary.length > 60 ? '…' : ''}</div>
@@ -180,13 +231,42 @@ const NewsManagerTab: React.FC<Props> = ({ isDark = false }) => {
       },
     },
     {
-      title: '',
+      title: 'Actions',
       key: 'actions',
-      width: 60,
+      width: isPresident ? 160 : 60,
       render: (_, r) => (
-        <Tooltip title="Supprimer">
-          <Button type="text" danger size="small" icon={<DeleteOutlined />} onClick={() => handleDelete(r.id)} />
-        </Tooltip>
+        <Space size={4}>
+          {/* President validation buttons — only for EN_ATTENTE items */}
+          {isPresident && r.status === 'EN_ATTENTE' && (
+            <>
+              <Tooltip title="Approuver & Publier">
+                <Button
+                  type="primary" size="small" icon={<CheckOutlined />}
+                  loading={actionLoading === r.id}
+                  onClick={() => handleValidation(r.id, 'PUBLIE')}
+                  style={{ background: '#15803D', borderColor: '#15803D', borderRadius: 6 }}
+                />
+              </Tooltip>
+              <Tooltip title="Rejeter">
+                <Button
+                  danger size="small" icon={<StopOutlined />}
+                  loading={actionLoading === r.id}
+                  onClick={() => handleValidation(r.id, 'REJETE')}
+                  style={{ borderRadius: 6 }}
+                />
+              </Tooltip>
+            </>
+          )}
+          <Tooltip title="Supprimer">
+            <Popconfirm
+              title="Supprimer cette actualité ?"
+              onConfirm={() => handleDelete(r.id)}
+              okText="Oui" cancelText="Non"
+            >
+              <Button type="text" danger size="small" icon={<DeleteOutlined />} />
+            </Popconfirm>
+          </Tooltip>
+        </Space>
       ),
     },
   ];
@@ -212,6 +292,53 @@ const NewsManagerTab: React.FC<Props> = ({ isDark = false }) => {
         ))}
       </div>
 
+      {/* ── Panneau de validation Président ── */}
+      {isPresident && pendingItems.length > 0 && (
+        <Alert
+          type="warning"
+          showIcon
+          icon={<ClockCircleOutlined />}
+          style={{ marginBottom: 16, borderRadius: 12 }}
+          message={
+            <span style={{ fontWeight: 700 }}>
+              {pendingItems.length} actualité{pendingItems.length > 1 ? 's' : ''} en attente de votre validation
+            </span>
+          }
+          description={
+            <div style={{ marginTop: 8 }}>
+              {pendingItems.map(item => (
+                <div key={item.id} style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '8px 0', borderBottom: '1px solid rgba(0,0,0,0.06)',
+                  flexWrap: 'wrap', gap: 8,
+                }}>
+                  <div>
+                    <span style={{ fontWeight: 600, fontSize: 13 }}>{item.title}</span>
+                    <span style={{ color: '#92400E', fontSize: 11, marginLeft: 8 }}>
+                      par {item.authorName} · {item.committeeName || 'Mon comité'}
+                    </span>
+                  </div>
+                  <Space>
+                    <Button size="small" icon={<StopOutlined />} danger
+                      loading={actionLoading === item.id}
+                      onClick={() => handleValidation(item.id, 'REJETE')}
+                      style={{ borderRadius: 6 }}>
+                      Rejeter
+                    </Button>
+                    <Button size="small" icon={<CheckOutlined />} type="primary"
+                      loading={actionLoading === item.id}
+                      onClick={() => handleValidation(item.id, 'PUBLIE')}
+                      style={{ background: '#15803D', borderColor: '#15803D', borderRadius: 6 }}>
+                      Approuver
+                    </Button>
+                  </Space>
+                </div>
+              ))}
+            </div>
+          }
+        />
+      )}
+
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
         <span style={{ fontWeight: 700, color: isDark ? '#F3F4F6' : C.gray800, fontSize: 15 }}>
@@ -233,13 +360,13 @@ const NewsManagerTab: React.FC<Props> = ({ isDark = false }) => {
           <Table
             columns={columns} dataSource={items} rowKey="id"
             pagination={{ pageSize: 8, showSizeChanger: false }}
-            scroll={{ x: 700 }}
+            scroll={{ x: 720 }}
             locale={{ emptyText: <Empty description="Aucune actualité" /> }}
           />
         )}
       </div>
 
-      {/* Modal Création */}
+      {/* ── Modal Création ── */}
       <Modal
         title={<div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><SendOutlined style={{ color: C.red }} /><span style={{ fontWeight: 800 }}>Publier une Actualité</span></div>}
         open={createOpen}
@@ -283,12 +410,69 @@ const NewsManagerTab: React.FC<Props> = ({ isDark = false }) => {
               </Form.Item>
             </div>
 
-            <Form.Item name="summary" label={<span style={{ fontWeight: 600, fontSize: 13 }}>Résumé court</span>} rules={[{ required: true }]}>
-              <Input size="large" style={{ borderRadius: 10 }} placeholder="1-2 phrases d'accroche..." />
+            <Form.Item name="isPublic" label={<span style={{ fontWeight: 600, fontSize: 13 }}>Visibilité de l'actualité</span>} rules={[{ required: true }]} initialValue={true}>
+              <Select size="large" style={{ borderRadius: 10 }}>
+                <Option value={true}>🌐 Public — Visible sur la page d'accueil par tout le monde</Option>
+                <Option value={false}>🔒 Interne — Réservé aux membres connectés sur le portail</Option>
+              </Select>
             </Form.Item>
 
-            <Form.Item name="content" label={<span style={{ fontWeight: 600, fontSize: 13 }}>Contenu complet</span>} rules={[{ required: true }]}>
+            <Form.Item name="summary" label={<span style={{ fontWeight: 600, fontSize: 13 }}>Description / Résumé court (Affiché en accroche)</span>} rules={[{ required: true }]}>
+              <Input size="large" style={{ borderRadius: 10 }} placeholder="1-2 phrases d'accroche qui décrivent l'actualité..." />
+            </Form.Item>
+
+            <Form.Item name="content" label={<span style={{ fontWeight: 600, fontSize: 13 }}>Contenu complet de l'article</span>} rules={[{ required: true }]}>
               <TextArea rows={5} style={{ borderRadius: 10, resize: 'vertical' }} placeholder="Détaillez l'actualité..." />
+            </Form.Item>
+
+            {/* Photo upload zone */}
+            <div style={{ marginBottom: 20 }}>
+              <span style={{ fontWeight: 600, fontSize: 13, display: 'block', marginBottom: 8 }}>
+                <PictureOutlined /> Photo de l'actualité (Importer un fichier)
+              </span>
+              <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                <div 
+                  onClick={() => document.getElementById('file-upload-input')?.click()}
+                  style={{
+                    flex: 1, height: 100, border: '2px dashed rgba(204,0,0,0.3)', borderRadius: 12,
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer', background: 'rgba(204,0,0,0.02)', transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = C.red}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(204,0,0,0.3)'}
+                >
+                  <PlusOutlined style={{ fontSize: 20, color: C.red, marginBottom: 4 }} />
+                  <span style={{ fontSize: 12, color: C.gray800, fontWeight: 600 }}>Importer une photo</span>
+                  <span style={{ fontSize: 10, color: C.gray400 }}>PNG, JPG jusqu'à 5Mo</span>
+                  <input 
+                    type="file" id="file-upload-input" accept="image/*" 
+                    onChange={handleFileChange} style={{ display: 'none' }} 
+                  />
+                </div>
+                {base64Image && (
+                  <div style={{ position: 'relative', width: 100, height: 100, borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(0,0,0,0.1)', flexShrink: 0 }}>
+                    <img src={base64Image} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        setBase64Image('');
+                        form.setFieldsValue({ imageUrl: '' });
+                      }}
+                      style={{
+                        position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,0.6)', 
+                        color: 'white', border: 'none', borderRadius: '50%', width: 20, height: 20,
+                        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <Form.Item name="imageUrl" noStyle>
+              <Input type="hidden" />
             </Form.Item>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>

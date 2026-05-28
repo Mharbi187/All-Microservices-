@@ -27,8 +27,8 @@ const { RangePicker } = DatePicker;
 // ─── Color Palette (Croissant Rouge compatible) ─────────────
 const PALETTE = {
     primary: '#C8102E',    // Red Crescent primary
-    indigo: '#4F46E5',
-    violet: '#7C3AED',
+    indigo: '#e01c2e',
+    violet: '#c0152a',
     emerald: '#059669',
     amber: '#D97706',
     sky: '#0284C7',
@@ -38,7 +38,7 @@ const PALETTE = {
 // ─── Static Simulation Data (aggregated from real DB structure) ──
 const NATIONAL_DATA = {
     kpis: [
-        { key: 'volunteers', label: 'Volontaires Jeunes', value: 1247, trend: '+14.2%', icon: <TeamOutlined />, gradient: ['#4F46E5', '#7C3AED'], suffix: '' },
+        { key: 'volunteers', label: 'Volontaires Jeunes', value: 1247, trend: '+14.2%', icon: <TeamOutlined />, gradient: ['#e01c2e', '#c0152a'], suffix: '' },
         { key: 'certified', label: 'Certifiés Secourisme', value: 384, trend: '+8.5%', icon: <SafetyCertificateOutlined />, gradient: ['#059669', '#10B981'], suffix: '' },
         { key: 'hours', label: 'Heures Bénévolat', value: 18640, trend: '+22.1%', icon: <ClockCircleOutlined />, gradient: ['#D97706', '#F59E0B'], suffix: 'h' },
         { key: 'projects', label: 'Projets Actifs', value: 47, trend: '+5.3%', icon: <BarsOutlined />, gradient: ['#0284C7', '#38BDF8'], suffix: '' },
@@ -74,7 +74,7 @@ const NATIONAL_DATA = {
         { month: 'Juin', inscriptions: 97, certifications: 48 },
     ],
     goals: [
-        { label: 'Formation des Jeunes', value: 85, color: '#4F46E5' },
+        { label: 'Formation des Jeunes', value: 85, color: '#e01c2e' },
         { label: 'Recrutement Volontaires', value: 62, color: '#059669' },
         { label: 'Budget Micro-projets', value: 44, color: '#D97706' },
         { label: 'Couverture Régionale', value: 78, color: '#0284C7' },
@@ -92,7 +92,7 @@ const REGIONAL_DATA: Record<string, typeof NATIONAL_DATA> = {
     'Grand Tunis': {
         ...NATIONAL_DATA,
         kpis: [
-            { key: 'volunteers', label: 'Volontaires (Région)', value: 312, trend: '+11.3%', icon: <TeamOutlined />, gradient: ['#4F46E5', '#7C3AED'], suffix: '' },
+            { key: 'volunteers', label: 'Volontaires (Région)', value: 312, trend: '+11.3%', icon: <TeamOutlined />, gradient: ['#e01c2e', '#c0152a'], suffix: '' },
             { key: 'certified', label: 'Certifiés', value: 98, trend: '+6.2%', icon: <SafetyCertificateOutlined />, gradient: ['#059669', '#10B981'], suffix: '' },
             { key: 'hours', label: 'Heures Bénévolat', value: 5420, trend: '+18.4%', icon: <ClockCircleOutlined />, gradient: ['#D97706', '#F59E0B'], suffix: 'h' },
             { key: 'projects', label: 'Projets Actifs', value: 18, trend: '+2.1%', icon: <BarsOutlined />, gradient: ['#0284C7', '#38BDF8'], suffix: '' },
@@ -107,7 +107,7 @@ const REGIONAL_DATA: Record<string, typeof NATIONAL_DATA> = {
     'Sfax': {
         ...NATIONAL_DATA,
         kpis: [
-            { key: 'volunteers', label: 'Volontaires (Région)', value: 198, trend: '+9.7%', icon: <TeamOutlined />, gradient: ['#4F46E5', '#7C3AED'], suffix: '' },
+            { key: 'volunteers', label: 'Volontaires (Région)', value: 198, trend: '+9.7%', icon: <TeamOutlined />, gradient: ['#e01c2e', '#c0152a'], suffix: '' },
             { key: 'certified', label: 'Certifiés', value: 67, trend: '+5.1%', icon: <SafetyCertificateOutlined />, gradient: ['#059669', '#10B981'], suffix: '' },
             { key: 'hours', label: 'Heures Bénévolat', value: 3810, trend: '+15.2%', icon: <ClockCircleOutlined />, gradient: ['#D97706', '#F59E0B'], suffix: 'h' },
             { key: 'projects', label: 'Projets Actifs', value: 12, trend: '+3.0%', icon: <BarsOutlined />, gradient: ['#0284C7', '#38BDF8'], suffix: '' },
@@ -232,7 +232,7 @@ const YouthStatsDashboard: React.FC<StatsProps> = ({ onExport, data: apiData, lo
             title: 'Volontaire', key: 'name',
             render: (_: any, rec: any) => (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <Avatar style={{ background: `linear-gradient(135deg, #4F46E5, #7C3AED)`, fontWeight: 700 }}>{rec.avatar}</Avatar>
+                    <Avatar style={{ background: `linear-gradient(135deg, #e01c2e, #c0152a)`, fontWeight: 700 }}>{rec.avatar}</Avatar>
                     <div>
                         <div style={{ fontWeight: 700, fontSize: 14, color: '#111827' }}>{rec.name}</div>
                         <div style={{ fontSize: 12, color: '#9ca3af' }}><EnvironmentOutlined style={{ marginRight: 4 }} />{rec.region}</div>
@@ -242,7 +242,7 @@ const YouthStatsDashboard: React.FC<StatsProps> = ({ onExport, data: apiData, lo
         },
         {
             title: 'Points', dataIndex: 'points', key: 'points',
-            render: (p: number) => <Statistic value={p} valueStyle={{ fontSize: 16, fontWeight: 800, color: '#4F46E5' }} suffix="pts" />
+            render: (p: number) => <Statistic value={p} valueStyle={{ fontSize: 16, fontWeight: 800, color: '#e01c2e' }} suffix="pts" />
         },
         {
             title: 'Badge', dataIndex: 'badge', key: 'badge',
@@ -255,7 +255,7 @@ const YouthStatsDashboard: React.FC<StatsProps> = ({ onExport, data: apiData, lo
     if (loading) return (
         <div style={{ padding: '80px 0', textAlign: 'center' }}>
             <motion.div animate={{ scale: [1, 1.15, 1] }} transition={{ repeat: Infinity, duration: 1.8, ease: 'easeInOut' }}>
-                <div style={{ width: 72, height: 72, borderRadius: 24, background: 'linear-gradient(135deg, #4F46E5, #7C3AED)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', boxShadow: '0 20px 40px rgba(79,70,229,0.3)' }}>
+                <div style={{ width: 72, height: 72, borderRadius: 24, background: 'linear-gradient(135deg, #e01c2e, #c0152a)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', boxShadow: '0 20px 40px rgba(224,28,46,0.3)' }}>
                     <RobotOutlined style={{ fontSize: 32, color: '#fff' }} />
                 </div>
             </motion.div>
@@ -268,9 +268,9 @@ const YouthStatsDashboard: React.FC<StatsProps> = ({ onExport, data: apiData, lo
 
             {/* ── Level Selector Bar ─────────────────────────── */}
             <motion.div variants={fadeUp} style={{
-                background: 'linear-gradient(135deg, rgba(79,70,229,0.06), rgba(124,58,237,0.03))',
+                background: 'linear-gradient(135deg, rgba(224,28,46,0.06), rgba(192,21,42,0.03))',
                 borderRadius: 20, padding: '20px 28px', marginBottom: 28,
-                border: '1px solid rgba(79,70,229,0.1)',
+                border: '1px solid rgba(224,28,46,0.1)',
                 display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center', justifyContent: 'space-between'
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
@@ -286,7 +286,7 @@ const YouthStatsDashboard: React.FC<StatsProps> = ({ onExport, data: apiData, lo
                                 { label: <><EnvironmentOutlined /> Régional</>, value: 'REGIONAL' },
                                 { label: <><HomeOutlined /> Local</>, value: 'LOCAL' },
                             ]}
-                            style={{ background: 'rgba(79,70,229,0.08)', borderRadius: 12 }}
+                            style={{ background: 'rgba(224,28,46,0.08)', borderRadius: 12 }}
                         />
                     </div>
 
@@ -340,7 +340,7 @@ const YouthStatsDashboard: React.FC<StatsProps> = ({ onExport, data: apiData, lo
                     <RangePicker picker={period === 'monthly' ? 'month' : period === 'quarterly' ? 'quarter' : 'year'} style={{ borderRadius: 10 }} />
                     <Button
                         type="primary" icon={<DownloadOutlined />} onClick={onExport}
-                        style={{ height: 40, borderRadius: 12, fontWeight: 700, background: 'linear-gradient(135deg, #4F46E5, #7C3AED)', boxShadow: '0 6px 16px rgba(79,70,229,0.3)' }}
+                        style={{ height: 40, borderRadius: 12, fontWeight: 700, background: 'linear-gradient(135deg, #e01c2e, #c0152a)', boxShadow: '0 6px 16px rgba(224,28,46,0.3)' }}
                     >
                         Exporter PDF
                     </Button>
@@ -351,8 +351,8 @@ const YouthStatsDashboard: React.FC<StatsProps> = ({ onExport, data: apiData, lo
             <motion.div variants={fadeUp} style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{
                     display: 'inline-flex', alignItems: 'center', gap: 10, padding: '10px 20px',
-                    background: level === 'NATIONAL' ? 'linear-gradient(135deg, rgba(79,70,229,0.1), rgba(124,58,237,0.06))' : level === 'REGIONAL' ? 'linear-gradient(135deg, rgba(5,150,105,0.1), rgba(16,185,129,0.06))' : 'linear-gradient(135deg, rgba(217,119,6,0.1), rgba(245,158,11,0.06))',
-                    borderRadius: 14, border: `1px solid ${level === 'NATIONAL' ? 'rgba(79,70,229,0.2)' : level === 'REGIONAL' ? 'rgba(5,150,105,0.2)' : 'rgba(217,119,6,0.2)'}`
+                    background: level === 'NATIONAL' ? 'linear-gradient(135deg, rgba(224,28,46,0.1), rgba(192,21,42,0.06))' : level === 'REGIONAL' ? 'linear-gradient(135deg, rgba(5,150,105,0.1), rgba(16,185,129,0.06))' : 'linear-gradient(135deg, rgba(217,119,6,0.1), rgba(245,158,11,0.06))',
+                    borderRadius: 14, border: `1px solid ${level === 'NATIONAL' ? 'rgba(224,28,46,0.2)' : level === 'REGIONAL' ? 'rgba(5,150,105,0.2)' : 'rgba(217,119,6,0.2)'}`
                 }}>
                     <div style={{ fontSize: 20 }}>{level === 'NATIONAL' ? '🇹🇳' : level === 'REGIONAL' ? '🗺' : '🏛'}</div>
                     <div>
@@ -396,7 +396,7 @@ const YouthStatsDashboard: React.FC<StatsProps> = ({ onExport, data: apiData, lo
                             title={
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                        <div style={{ width: 8, height: 24, borderRadius: 4, background: '#4F46E5' }} />
+                                        <div style={{ width: 8, height: 24, borderRadius: 4, background: '#e01c2e' }} />
                                         <span style={{ fontWeight: 800, fontSize: 17 }}>Engagement par {level === 'NATIONAL' ? 'Région' : 'Comité Local'}</span>
                                     </div>
                                     <Segmented
@@ -612,7 +612,7 @@ const YouthStatsDashboard: React.FC<StatsProps> = ({ onExport, data: apiData, lo
                                             <motion.div key={l.rank} variants={fadeUp} transition={{ delay: i * 0.1 }}
                                                 style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 0', borderBottom: i < 2 ? '1px solid rgba(0,0,0,0.04)' : 'none' }}
                                             >
-                                                <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg, #4F46E5, #7C3AED)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700 }}>{l.avatar}</div>
+                                                <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg, #e01c2e, #c0152a)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700 }}>{l.avatar}</div>
                                                 <div style={{ flex: 1 }}>
                                                     <div style={{ fontWeight: 700, fontSize: 14 }}>{l.region || l.name}</div>
                                                     <div style={{ fontSize: 12, color: '#9ca3af' }}>{l.points.toLocaleString('fr-FR')} pts cumulés</div>
@@ -636,7 +636,7 @@ const YouthStatsDashboard: React.FC<StatsProps> = ({ onExport, data: apiData, lo
                     <Card variant="borderless" style={{ borderRadius: 24, border: '1px solid rgba(0,0,0,0.04)', marginBottom: 28 }}
                         title={
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                <BarChartOutlined style={{ color: '#4F46E5', fontSize: 18 }} />
+                                <BarChartOutlined style={{ color: '#e01c2e', fontSize: 18 }} />
                                 <span style={{ fontWeight: 800, fontSize: 17 }}>Traçabilité — Rapports d'Activités (SitReps)</span>
                             </div>
                         }
@@ -664,7 +664,7 @@ const YouthStatsDashboard: React.FC<StatsProps> = ({ onExport, data: apiData, lo
             <style dangerouslySetInnerHTML={{ __html: `
                 .leader-gold td { background: linear-gradient(90deg, rgba(245,158,11,0.08), transparent) !important; }
                 .leader-silver td { background: linear-gradient(90deg, rgba(156,163,175,0.08), transparent) !important; }
-                .ant-segmented-item-selected { background: linear-gradient(135deg, #4F46E5, #7C3AED) !important; color: #fff !important; }
+                .ant-segmented-item-selected { background: linear-gradient(135deg, #e01c2e, #c0152a) !important; color: #fff !important; }
                 @media (max-width: 768px) {
                     #stats-report-content .ant-card-body { padding: 16px !important; }
                 }
