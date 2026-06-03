@@ -96,12 +96,12 @@ function RootNavigator() {
                     <Stack.Screen
                         name="Chat"
                         component={ChatAssistantScreen}
-                        options={{ title: '🤖 Assistant IA', headerBackTitle: 'Retour' }}
+                        options={{ title: 'Assistant IA', headerBackTitle: 'Retour' }}
                     />
                     <Stack.Screen
                         name="Study"
                         component={StudyScreen}
-                        options={{ title: '📚 Formation', headerBackTitle: 'Retour' }}
+                        options={{ title: 'Formations', headerBackTitle: 'Retour' }}
                     />
                     <Stack.Screen
                         name="Profile"
@@ -111,17 +111,17 @@ function RootNavigator() {
                     <Stack.Screen
                         name="Notifications"
                         component={NotificationsScreen}
-                        options={{ title: '🔔 Notifications', headerBackTitle: 'Retour' }}
+                        options={{ title: 'Notifications', headerBackTitle: 'Retour' }}
                     />
                     <Stack.Screen
                         name="Alert"
                         component={AlertScreen}
-                        options={{ title: '🚨 Envoyer une Alerte', headerBackTitle: 'Retour' }}
+                        options={{ title: 'Envoyer une Alerte', headerBackTitle: 'Retour' }}
                     />
                     <Stack.Screen
                         name="WeatherCalendar"
                         component={WeatherCalendarScreen}
-                        options={{ title: '⛅ Météo & Calendrier', headerBackTitle: 'Retour' }}
+                        options={{ title: 'Météo & Calendrier', headerBackTitle: 'Retour' }}
                     />
                     <Stack.Screen
                         name="Settings"

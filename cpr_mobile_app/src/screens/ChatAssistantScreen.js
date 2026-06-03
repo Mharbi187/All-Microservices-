@@ -16,20 +16,22 @@ import {
     Platform,
     ActivityIndicator,
     Dimensions,
+    ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 import { chatBotService } from '../services/ChatBotService';
 import { useAuth } from '../contexts/AuthContext';
 
 const { width } = Dimensions.get('window');
 
 const SUGGESTED_QUESTIONS = [
-    '🫀 Comment réaliser la RCP ?',
-    '🩸 Comment stopper une hémorragie ?',
-    '😮‍💨 Quels sont les signes d\'une crise cardiaque ?',
-    '🤕 Que faire en cas de fracture ?',
-    '🔥 Comment traiter une brûlure grave ?',
-    '🌡️ Que faire en cas de choc anaphylactique ?',
+    { text: 'Comment réaliser la RCP ?', icon: 'activity' },
+    { text: 'Comment stopper une hémorragie ?', icon: 'droplet' },
+    { text: 'Quels sont les signes d\'une crise cardiaque ?', icon: 'heart' },
+    { text: 'Que faire en cas de fracture ?', icon: 'plus-square' },
+    { text: 'Comment traiter une brûlure grave ?', icon: 'thermometer' },
+    { text: 'Que faire en cas de choc anaphylactique ?', icon: 'alert-circle' },
 ];
 
 const TypingIndicator = () => {
@@ -54,7 +56,7 @@ const TypingIndicator = () => {
     const { Animated } = require('react-native');
     return (
         <View style={typingStyles.wrap}>
-            <Text style={typingStyles.label}>Assistant tape...</Text>
+            <Text style={typingStyles.label}>L'assistant tape...</Text>
             <View style={typingStyles.dots}>
                 {[dot1, dot2, dot3].map((d, i) => (
                     <Animated.View
@@ -80,7 +82,7 @@ export default function ChatAssistantScreen({ navigation }) {
         {
             id: '0',
             role: 'assistant',
-            text: `Bonjour ${user?.prenom || ''} ! 👋\n\nJe suis votre assistant de secourisme CRT. Je peux vous aider avec :\n• Protocoles de premiers secours\n• Techniques RCP et DEA\n• Gestion des urgences\n• Questions de formation PSE\n\nQue puis-je faire pour vous ?`,
+            text: `Bonjour ${user?.prenom || ''} ! \n\nJe suis votre assistant de secourisme CRT. Je peux vous aider avec :\n• Protocoles de premiers secours\n• Techniques RCP et DEA\n• Gestion des urgences\n• Questions de formation PSE\n\nQue puis-je faire pour vous ?`,
             time: new Date(),
         },
     ]);
@@ -117,7 +119,8 @@ export default function ChatAssistantScreen({ navigation }) {
                 {
                     id: (Date.now() + 1).toString(),
                     role: 'assistant',
-                    text: '❌ Désolé, une erreur est survenue. Vérifiez votre connexion.',
+                    text: 'Désolé, une erreur est survenue. Vérifiez votre connexion.',
+                    isError: true,
                     time: new Date(),
                 },
             ]);
@@ -137,25 +140,31 @@ export default function ChatAssistantScreen({ navigation }) {
         return (
             <View style={[styles.msgRow, isUser && styles.msgRowUser]}>
                 {!isUser && (
-                    <View style={styles.avatar}>
-                        <Text style={styles.avatarText}>🤖</Text>
+                    <View style={[styles.avatar, item.isError && { backgroundColor: '#FEE2E2' }]}>
+                        {item.isError ? (
+                            <Feather name="alert-triangle" size={18} color="#DC2626" />
+                        ) : (
+                            <Feather name="cpu" size={20} color="#DC2626" />
+                        )}
                     </View>
                 )}
                 <View
                     style={[
                         styles.bubble,
                         isUser ? styles.bubbleUser : styles.bubbleAssistant,
+                        item.isError && { borderColor: '#FECACA', borderWidth: 1 }
                     ]}
                 >
                     <Text
                         style={[
                             styles.bubbleText,
                             isUser ? styles.bubbleTextUser : styles.bubbleTextAssistant,
+                            item.isError && { color: '#991B1B' }
                         ]}
                     >
                         {item.text}
                     </Text>
-                    <Text style={[styles.timeText, isUser && { color: '#FCA5A5' }]}>
+                    <Text style={[styles.timeText, isUser && { color: '#FCA5A5' }, item.isError && { color: '#F87171' }]}>
                         {item.time.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                     </Text>
                 </View>
@@ -185,17 +194,18 @@ export default function ChatAssistantScreen({ navigation }) {
                 {messages.length === 1 && (
                     <View style={styles.suggestions}>
                         <Text style={styles.suggestTitle}>Questions fréquentes :</Text>
-                        <View style={styles.suggestRow}>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.suggestRow}>
                             {SUGGESTED_QUESTIONS.map((q, i) => (
                                 <TouchableOpacity
                                     key={i}
                                     style={styles.suggestChip}
-                                    onPress={() => sendMessage(q.slice(2))}
+                                    onPress={() => sendMessage(q.text)}
                                 >
-                                    <Text style={styles.suggestText}>{q}</Text>
+                                    <Feather name={q.icon} size={14} color="#DC2626" style={{ marginRight: 6 }} />
+                                    <Text style={styles.suggestText}>{q.text}</Text>
                                 </TouchableOpacity>
                             ))}
-                        </View>
+                        </ScrollView>
                     </View>
                 )}
 
@@ -220,7 +230,7 @@ export default function ChatAssistantScreen({ navigation }) {
                         {isTyping ? (
                             <ActivityIndicator color="#FFFFFF" size="small" />
                         ) : (
-                            <Text style={styles.sendIcon}>➤</Text>
+                            <Feather name="send" size={18} color="#FFFFFF" />
                         )}
                     </TouchableOpacity>
                 </View>
@@ -240,28 +250,27 @@ const styles = StyleSheet.create({
     msgRow: {
         flexDirection: 'row',
         alignItems: 'flex-end',
-        gap: 8,
-        maxWidth: width * 0.85,
+        gap: 10,
+        maxWidth: width * 0.88,
     },
     msgRowUser: { alignSelf: 'flex-end', flexDirection: 'row-reverse' },
     avatar: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
+        width: 38,
+        height: 38,
+        borderRadius: 19,
         backgroundColor: '#FEE2E2',
         alignItems: 'center',
         justifyContent: 'center',
     },
-    avatarText: { fontSize: 18 },
     bubble: {
-        borderRadius: 18,
-        paddingHorizontal: 14,
-        paddingVertical: 10,
+        borderRadius: 20,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
         maxWidth: width * 0.72,
         elevation: 1,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.06,
+        shadowOpacity: 0.05,
         shadowRadius: 2,
     },
     bubbleUser: {
@@ -277,52 +286,53 @@ const styles = StyleSheet.create({
     bubbleText: { fontSize: 14, lineHeight: 22 },
     bubbleTextUser: { color: '#FFFFFF' },
     bubbleTextAssistant: { color: '#111827' },
-    timeText: { fontSize: 10, color: '#9CA3AF', marginTop: 4, alignSelf: 'flex-end' },
+    timeText: { fontSize: 10, color: '#9CA3AF', marginTop: 6, alignSelf: 'flex-end' },
 
     // Suggestions
     suggestions: {
-        paddingHorizontal: 16,
-        paddingBottom: 8,
+        paddingBottom: 12,
     },
-    suggestTitle: { fontSize: 12, color: '#6B7280', fontWeight: '600', marginBottom: 8 },
-    suggestRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    suggestTitle: { paddingHorizontal: 16, fontSize: 13, color: '#6B7280', fontWeight: '600', marginBottom: 8 },
+    suggestRow: { paddingHorizontal: 16, gap: 10 },
     suggestChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
         backgroundColor: '#FEE2E2',
         borderRadius: 20,
-        paddingVertical: 6,
-        paddingHorizontal: 12,
+        paddingVertical: 8,
+        paddingHorizontal: 16,
         borderWidth: 1,
         borderColor: '#FECACA',
     },
-    suggestText: { fontSize: 12, color: '#DC2626', fontWeight: '500' },
+    suggestText: { fontSize: 13, color: '#DC2626', fontWeight: '600' },
 
     // Input bar
     inputBar: {
         flexDirection: 'row',
         alignItems: 'flex-end',
         paddingHorizontal: 16,
-        paddingVertical: 10,
+        paddingVertical: 12,
         backgroundColor: '#FFFFFF',
         borderTopWidth: 1,
         borderTopColor: '#F3F4F6',
-        gap: 10,
+        gap: 12,
     },
     inputField: {
         flex: 1,
         borderWidth: 1.5,
         borderColor: '#E5E7EB',
-        borderRadius: 20,
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        fontSize: 14,
+        borderRadius: 22,
+        paddingHorizontal: 18,
+        paddingVertical: 12,
+        fontSize: 15,
         color: '#111827',
-        maxHeight: 100,
+        maxHeight: 120,
         backgroundColor: '#F9FAFB',
     },
     sendBtn: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
+        width: 46,
+        height: 46,
+        borderRadius: 23,
         backgroundColor: '#DC2626',
         alignItems: 'center',
         justifyContent: 'center',
@@ -333,5 +343,4 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
     },
     sendBtnDisabled: { backgroundColor: '#D1D5DB', elevation: 0 },
-    sendIcon: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
 });

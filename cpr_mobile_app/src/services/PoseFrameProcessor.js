@@ -137,7 +137,7 @@ class PoseFrameProcessor {
             // ── 2. Send to backend for ML processing ──
             let backendResponse;
             try {
-                backendResponse = await backendAPI.processFrame(photo.base64);
+                backendResponse = await backendAPI.processFrame(photo.uri, photo.base64);
             } catch (netErr) {
                 this._handleBackendError({ error: netErr.message });
                 this.isProcessing = false;

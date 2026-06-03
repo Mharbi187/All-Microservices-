@@ -22,6 +22,7 @@ import {
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Speech from 'expo-speech';
 import * as Haptics from 'expo-haptics';
+import { Feather } from '@expo/vector-icons';
 
 // Services
 import { backendAPI } from '../services/BackendAPIService';
@@ -41,6 +42,26 @@ const SEVERITY_COLORS = {
     HIGH: '#F97316',
     MEDIUM: '#EAB308',
     POSITIVE: '#22C55E',
+};
+
+const SEVERITY_ICONS = {
+    CRITICAL: 'alert-octagon',
+    HIGH: 'alert-triangle',
+    MEDIUM: 'info',
+};
+
+const VICTIM_ICONS = {
+    adult: 'user',
+    child: 'user-minus',
+    infant: 'smile', // using an available feather icon for baby
+    pregnant: 'user-plus'
+};
+
+const VICTIM_LABELS = {
+    adult: 'Adulte',
+    child: 'Enfant',
+    infant: 'Nourrisson',
+    pregnant: 'Enceinte'
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -79,14 +100,7 @@ export default function CPRScreen({ route, navigation }) {
     // ──────────────────────────────────────────────────────────────────────────
 
     useEffect(() => {
-        // Load saved server URL
-        backendAPI.loadServerUrl().then(url => {
-            if (url) {
-                const ip = url.replace('http://', '').replace(':5000', '');
-                setServerIP(ip);
-            }
-        });
-
+        connectToServer();
         return () => cleanup();
     }, []);
 
@@ -105,16 +119,9 @@ export default function CPRScreen({ route, navigation }) {
     // ──────────────────────────────────────────────────────────────────────────
 
     const connectToServer = async () => {
-        if (!serverIP.trim()) {
-            Alert.alert('Erreur', 'Entrez l\'adresse IP du serveur');
-            return;
-        }
-
         setPhase('CONNECTING');
-        const url = `http://${serverIP.trim()}:5000`;
-        await backendAPI.setServerUrl(url);
-
         try {
+            // Server URL is now automatically managed by BackendAPIService
             const health = await backendAPI.checkHealth();
             if (health.connected) {
                 setServerVersion(health.version || '');
@@ -122,7 +129,7 @@ export default function CPRScreen({ route, navigation }) {
                 setPhase('READY');
             } else {
                 Alert.alert('Connexion échouée',
-                    'Serveur non trouvé. Vérifiez:\n• Le serveur Python est lancé\n• Même réseau WiFi\n• IP correcte');
+                    'Serveur non trouvé. Assurez-vous que la commande Python uvicorn est bien lancée sur le port 8000.');
                 setPhase('SETUP');
             }
         } catch (error) {
@@ -240,8 +247,14 @@ export default function CPRScreen({ route, navigation }) {
         // Priority 1: Pick the first (most critical) command from the backend array
         const cmd = m.ui_commands[0];
 
+        // Ensure proper fallback hierarchy based on rule definitions
         const lang = rulesEngine.language || 'fr';
-        return cmd[`text_${lang}`] || cmd.text_fr || cmd.text_en;
+
+        if (lang === 'ar' && cmd.text_ar) return cmd.text_ar;
+        if (lang === 'fr' && cmd.text_fr) return cmd.text_fr;
+
+        // Final fallback logic
+        return cmd.text_fr || cmd.text_en;
     };
 
     const speak = (text) => {
@@ -273,7 +286,8 @@ export default function CPRScreen({ route, navigation }) {
     if (!permission.granted) {
         return (
             <View style={styles.center}>
-                <Text style={styles.title}>📷 Permission caméra requise</Text>
+                <Feather name="camera-off" size={48} color="#AAA" style={{ marginBottom: 16 }} />
+                <Text style={styles.title}>Permission caméra requise</Text>
                 <Text style={styles.subtitle}>Nécessaire pour la détection de pose CPR</Text>
                 <TouchableOpacity style={styles.btnPrimary} onPress={requestPermission}>
                     <Text style={styles.btnText}>Autoriser la caméra</Text>
@@ -286,36 +300,19 @@ export default function CPRScreen({ route, navigation }) {
     if (phase === 'SETUP' || phase === 'CONNECTING') {
         return (
             <View style={styles.center}>
-                <Text style={styles.title}>🖥️ Connexion au serveur</Text>
-                <Text style={styles.subtitle}>
-                    Lancez le serveur Python puis entrez son IP
-                </Text>
-                <Text style={styles.hint}>python api_server.py</Text>
+                <Feather name="server" size={48} color="#AAA" style={{ marginBottom: 16 }} />
+                <Text style={styles.title}>Connexion au serveur</Text>
 
-                <View style={styles.ipRow}>
-                    <Text style={styles.ipPrefix}>http://</Text>
-                    <TextInput
-                        style={styles.ipInput}
-                        value={serverIP}
-                        onChangeText={setServerIP}
-                        placeholder="192.168.1.X"
-                        placeholderTextColor="#666"
-                        keyboardType="numeric"
-                        autoCorrect={false}
-                    />
-                    <Text style={styles.ipSuffix}>:5000</Text>
-                </View>
+                <ActivityIndicator size="large" color="#DC2626" style={{ marginVertical: 20 }} />
 
-                <TouchableOpacity
-                    style={[styles.btnPrimary, phase === 'CONNECTING' && styles.btnDisabled]}
-                    onPress={connectToServer}
-                    disabled={phase === 'CONNECTING'}
-                >
-                    {phase === 'CONNECTING'
-                        ? <ActivityIndicator color="#FFF" />
-                        : <Text style={styles.btnText}>Connecter</Text>
-                    }
-                </TouchableOpacity>
+                {phase === 'SETUP' && (
+                    <TouchableOpacity
+                        style={styles.btnPrimary}
+                        onPress={connectToServer}
+                    >
+                        <Text style={styles.btnText}>Réessayer</Text>
+                    </TouchableOpacity>
+                )}
             </View>
         );
     }
@@ -347,11 +344,14 @@ export default function CPRScreen({ route, navigation }) {
                 {/* ── Top status bar ── */}
                 <View style={styles.statusBar}>
                     <View style={[styles.statusPill, { backgroundColor: connectionStatus?.connected ? 'rgba(34,197,94,0.8)' : 'rgba(239,68,68,0.8)' }]}>
-                        <Text style={styles.statusText}>
-                            {connectionStatus?.connected
-                                ? `● CONNECTÉ ${connectionStatus.latencyMs ? `${connectionStatus.latencyMs}ms` : ''}`
-                                : '● DÉCONNECTÉ'}
-                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <View style={[styles.dot, { backgroundColor: connectionStatus?.connected ? '#A7F3D0' : '#FECACA' }]} />
+                            <Text style={styles.statusText}>
+                                {connectionStatus?.connected
+                                    ? ` CONNECTÉ ${connectionStatus.latencyMs ? `${connectionStatus.latencyMs}ms` : ''}`
+                                    : ' DÉCONNECTÉ'}
+                            </Text>
+                        </View>
                     </View>
 
                     {isActive && (
@@ -363,9 +363,12 @@ export default function CPRScreen({ route, navigation }) {
                     {/* Show live Victim Classification */}
                     {isActive && metrics?.victim_type && (
                         <View style={[styles.statusPill, { backgroundColor: '#334155' }]}>
-                            <Text style={styles.statusText}>
-                                🔍 {metrics.victim_type.toUpperCase()} ({Math.round((metrics.victim_confidence || 0) * 100)}%)
-                            </Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                <Feather name="search" size={12} color="#FFFFFF" />
+                                <Text style={styles.statusText}>
+                                    {metrics.victim_type.toUpperCase()} ({Math.round((metrics.victim_confidence || 0) * 100)}%)
+                                </Text>
+                            </View>
                         </View>
                     )}
                 </View>
@@ -374,10 +377,15 @@ export default function CPRScreen({ route, navigation }) {
                 {isActive && metrics?.ui_commands?.length > 0 && (
                     <View style={styles.errorBanner}>
                         {metrics.ui_commands.slice(0, 2).map((cmd, i) => (
-                            <View key={i} style={[styles.errorRow, { backgroundColor: `${SEVERITY_COLORS[cmd.severity] || '#EAB308'}CC` }]}>
-                                <Text style={styles.errorSeverity}>
-                                    {cmd.severity === 'CRITICAL' ? '🔴' : cmd.severity === 'HIGH' ? '🟠' : '🟡'} {cmd.severity}
-                                </Text>
+                            <View key={i} style={[styles.errorRow, { backgroundColor: `${SEVERITY_COLORS[cmd.severity] || '#EAB308'}EE` }]}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                    <Feather
+                                        name={SEVERITY_ICONS[cmd.severity] || 'info'}
+                                        size={14}
+                                        color="#FFFFFF"
+                                    />
+                                    <Text style={styles.errorSeverity}>{cmd.severity}</Text>
+                                </View>
                                 <Text style={styles.errorText}>{cmd.text_fr || cmd.text_en}</Text>
                             </View>
                         ))}
@@ -387,8 +395,9 @@ export default function CPRScreen({ route, navigation }) {
                 {/* ── Positive feedback ── */}
                 {isActive && metrics && metrics.errors?.length === 0 && metrics.bpmStatus === 'GOOD' && (
                     <View style={styles.positiveBanner}>
+                        <Feather name="check-circle" size={16} color="#FFFFFF" style={{ marginRight: 8 }} />
                         <Text style={styles.positiveText}>
-                            ✅ {rulesEngine.getPositiveFeedback('good_compression')}
+                            {rulesEngine.getPositiveFeedback('good_compression')}
                         </Text>
                     </View>
                 )}
@@ -438,9 +447,16 @@ export default function CPRScreen({ route, navigation }) {
                                     setVictimType(type);
                                 }}
                             >
-                                <Text style={[styles.victimChipText, victimType === type && styles.victimChipTextActive]}>
-                                    {type === 'adult' ? '👨 Adulte' : type === 'child' ? '👦 Enfant' : type === 'infant' ? '👶 Nourrisson' : '🤰 Enceinte'}
-                                </Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                    <Feather
+                                        name={VICTIM_ICONS[type] || 'user'}
+                                        size={14}
+                                        color={victimType === type ? '#FFFFFF' : '#AAA'}
+                                    />
+                                    <Text style={[styles.victimChipText, victimType === type && styles.victimChipTextActive]}>
+                                        {VICTIM_LABELS[type]}
+                                    </Text>
+                                </View>
                             </TouchableOpacity>
                         ))}
                     </ScrollView>
@@ -451,9 +467,12 @@ export default function CPRScreen({ route, navigation }) {
                     style={[styles.mainBtn, isActive ? styles.stopBtn : styles.startBtn]}
                     onPress={isActive ? stopCPR : startCPR}
                 >
-                    <Text style={styles.mainBtnText}>
-                        {isActive ? '⏹ ARRÊTER' : '▶️ DÉMARRER CPR'}
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Feather name={isActive ? 'square' : 'play'} size={20} color="#FFFFFF" />
+                        <Text style={styles.mainBtnText}>
+                            {isActive ? 'ARRÊTER' : 'DÉMARRER CPR'}
+                        </Text>
+                    </View>
                 </TouchableOpacity>
             </View>
         </View>
@@ -481,7 +500,7 @@ const styles = StyleSheet.create({
     ipInput: { backgroundColor: '#222', color: '#FFF', fontSize: 18, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 8, minWidth: 160, textAlign: 'center', borderWidth: 1, borderColor: '#444', marginHorizontal: 4 },
 
     // Buttons
-    btnPrimary: { backgroundColor: '#DC2626', paddingVertical: 14, paddingHorizontal: 40, borderRadius: 12 },
+    btnPrimary: { backgroundColor: '#DC2626', paddingVertical: 14, paddingHorizontal: 40, borderRadius: 12, elevation: 2 },
     btnDisabled: { opacity: 0.5 },
     btnText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' },
 
@@ -490,16 +509,17 @@ const styles = StyleSheet.create({
     statusPill: { backgroundColor: 'rgba(0,0,0,0.7)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
     statusText: { color: '#FFF', fontSize: 11, fontWeight: 'bold' },
     timerText: { color: '#FFF', fontSize: 18, fontWeight: 'bold', fontFamily: 'monospace' },
+    dot: { width: 8, height: 8, borderRadius: 4, marginRight: 6 },
 
     // Error banners
     errorBanner: { position: 'absolute', top: 95, left: 10, right: 10 },
-    errorRow: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, marginBottom: 4 },
-    errorSeverity: { color: '#FFF', fontSize: 10, fontWeight: 'bold' },
-    errorText: { color: '#FFF', fontSize: 13, fontWeight: '600', marginTop: 2 },
+    errorRow: { paddingHorizontal: 12, paddingVertical: 10, borderRadius: 8, marginBottom: 4 },
+    errorSeverity: { color: '#FFF', fontSize: 11, fontWeight: 'bold', letterSpacing: 0.5 },
+    errorText: { color: '#FFF', fontSize: 14, fontWeight: '600', marginTop: 4 },
 
     // Positive banner
-    positiveBanner: { position: 'absolute', top: 95, left: 10, right: 10, backgroundColor: 'rgba(34,197,94,0.85)', paddingHorizontal: 12, paddingVertical: 10, borderRadius: 8 },
-    positiveText: { color: '#FFF', fontSize: 14, fontWeight: '600', textAlign: 'center' },
+    positiveBanner: { position: 'absolute', top: 95, left: 10, right: 10, backgroundColor: 'rgba(34,197,94,0.85)', paddingHorizontal: 12, paddingVertical: 12, borderRadius: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+    positiveText: { color: '#FFF', fontSize: 15, fontWeight: '700', textAlign: 'center' },
 
     // Metrics
     metricsOverlay: { position: 'absolute', bottom: 180, left: 10, right: 10, flexDirection: 'row', justifyContent: 'space-around' },
@@ -514,13 +534,13 @@ const styles = StyleSheet.create({
     cycleText: { color: '#AAA', fontSize: 11, textAlign: 'center', marginTop: 4 },
 
     // Controls
-    controls: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.9)', padding: 15, paddingBottom: 35 },
+    controls: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.85)', padding: 15, paddingBottom: 35 },
     victimScroll: { marginBottom: 12 },
-    victimChip: { backgroundColor: '#333', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, marginRight: 8 },
-    victimChipActive: { backgroundColor: '#DC2626' },
-    victimChipText: { color: '#AAA', fontSize: 13 },
+    victimChip: { backgroundColor: '#333', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20, marginRight: 8, borderWidth: 1, borderColor: '#444' },
+    victimChipActive: { backgroundColor: '#DC2626', borderColor: '#DC2626' },
+    victimChipText: { color: '#AAA', fontSize: 13, fontWeight: '500' },
     victimChipTextActive: { color: '#FFF', fontWeight: 'bold' },
-    mainBtn: { paddingVertical: 16, borderRadius: 14, alignItems: 'center' },
+    mainBtn: { paddingVertical: 16, borderRadius: 14, alignItems: 'center', elevation: 4 },
     startBtn: { backgroundColor: '#DC2626' },
     stopBtn: { backgroundColor: '#555' },
     mainBtnText: { color: '#FFF', fontSize: 18, fontWeight: 'bold' },

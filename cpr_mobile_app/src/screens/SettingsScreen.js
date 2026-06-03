@@ -1,6 +1,6 @@
 /**
- * Écran Paramètres
- * Configuration de l'application
+ * SettingsScreen - Configuration de l'application
+ * Croissant Rouge Tunisien
  */
 
 import React, { useState, useEffect } from 'react';
@@ -12,14 +12,15 @@ import {
     TouchableOpacity,
     Switch,
     Linking,
-    Alert
+    Alert,
+    Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { emergencyService } from '../services/EmergencyNumberService';
 
 export default function SettingsScreen() {
-    // États des paramètres
     const [voiceEnabled, setVoiceEnabled] = useState(true);
     const [hapticEnabled, setHapticEnabled] = useState(true);
     const [language, setLanguage] = useState('fr');
@@ -88,7 +89,10 @@ export default function SettingsScreen() {
 
                 {/* Section Localisation */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>📍 Localisation & Urgence</Text>
+                    <View style={styles.sectionTitleRow}>
+                        <Feather name="map-pin" size={15} color="#94A3B8" style={{ marginRight: 8 }} />
+                        <Text style={styles.sectionTitle}>Localisation & Urgence</Text>
+                    </View>
 
                     <View style={styles.settingCard}>
                         <View style={styles.settingRow}>
@@ -102,18 +106,21 @@ export default function SettingsScreen() {
                                 style={styles.refreshButton}
                                 onPress={refreshLocation}
                             >
-                                <Text style={styles.refreshButtonText}>🔄</Text>
+                                <Feather name="refresh-cw" size={18} color="#94A3B8" />
                             </TouchableOpacity>
                         </View>
 
                         <View style={styles.divider} />
 
                         <View style={styles.settingRow}>
-                            <View>
+                            <View style={{ flex: 1 }}>
                                 <Text style={styles.settingLabel}>Numéro d'urgence</Text>
-                                <Text style={styles.emergencyNumber}>
-                                    📞 {emergencyInfo?.primary || '190'} - {emergencyInfo?.primaryName || 'SAMU'}
-                                </Text>
+                                <View style={styles.emergencyRow}>
+                                    <Feather name="phone" size={16} color="#22C55E" style={{ marginRight: 6 }} />
+                                    <Text style={styles.emergencyNumber}>
+                                        {emergencyInfo?.primary || '190'} — {emergencyInfo?.primaryName || 'SAMU'}
+                                    </Text>
+                                </View>
                             </View>
                         </View>
                     </View>
@@ -121,7 +128,10 @@ export default function SettingsScreen() {
 
                 {/* Section Audio/Feedback */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>🔊 Audio & Feedback</Text>
+                    <View style={styles.sectionTitleRow}>
+                        <Feather name="volume-2" size={15} color="#94A3B8" style={{ marginRight: 8 }} />
+                        <Text style={styles.sectionTitle}>Audio & Feedback</Text>
+                    </View>
 
                     <View style={styles.settingCard}>
                         <View style={styles.settingRow}>
@@ -160,7 +170,10 @@ export default function SettingsScreen() {
 
                 {/* Section Langue */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>🌍 Langue / اللغة</Text>
+                    <View style={styles.sectionTitleRow}>
+                        <Feather name="globe" size={15} color="#94A3B8" style={{ marginRight: 8 }} />
+                        <Text style={styles.sectionTitle}>Langue / اللغة</Text>
+                    </View>
 
                     <View style={styles.settingCard}>
                         <View style={styles.languageOptions}>
@@ -175,7 +188,7 @@ export default function SettingsScreen() {
                                     styles.languageText,
                                     language === 'fr' && styles.languageTextActive
                                 ]}>
-                                    🇫🇷 Français
+                                    Français
                                 </Text>
                             </TouchableOpacity>
 
@@ -190,7 +203,7 @@ export default function SettingsScreen() {
                                     styles.languageText,
                                     language === 'ar' && styles.languageTextActive
                                 ]}>
-                                    🇹🇳 العربية
+                                    العربية
                                 </Text>
                             </TouchableOpacity>
                         </View>
@@ -199,7 +212,10 @@ export default function SettingsScreen() {
 
                 {/* Section À propos */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>ℹ️ À propos</Text>
+                    <View style={styles.sectionTitleRow}>
+                        <Feather name="info" size={15} color="#94A3B8" style={{ marginRight: 8 }} />
+                        <Text style={styles.sectionTitle}>À propos</Text>
+                    </View>
 
                     <View style={styles.settingCard}>
                         <View style={styles.aboutRow}>
@@ -211,9 +227,10 @@ export default function SettingsScreen() {
 
                         <View style={styles.aboutRow}>
                             <Text style={styles.aboutLabel}>Organisation</Text>
-                            <Text style={styles.aboutValue}>
-                                🌙 الهلال الأحمر التونسي
-                            </Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                <Image source={require('../../assets/logo_symbole.png')} style={{ width: 20, height: 20, marginRight: 8, resizeMode: 'contain' }} />
+                                <Text style={styles.aboutValue}>الهلال الأحمر التونسي</Text>
+                            </View>
                         </View>
 
                         <View style={styles.divider} />
@@ -229,16 +246,18 @@ export default function SettingsScreen() {
                             style={styles.linkRow}
                             onPress={() => Linking.openURL('https://www.ifrc.org')}
                         >
-                            <Text style={styles.linkText}>
-                                🔗 Site Croissant-Rouge International
-                            </Text>
+                            <Feather name="external-link" size={14} color="#3B82F6" style={{ marginRight: 8 }} />
+                            <Text style={styles.linkText}>Site Croissant-Rouge International</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
 
                 {/* Avertissement */}
                 <View style={styles.disclaimer}>
-                    <Text style={styles.disclaimerTitle}>⚠️ Avertissement</Text>
+                    <View style={styles.disclaimerTitleRow}>
+                        <Feather name="alert-triangle" size={14} color="#F59E0B" style={{ marginRight: 6 }} />
+                        <Text style={styles.disclaimerTitle}>Avertissement</Text>
+                    </View>
                     <Text style={styles.disclaimerText}>
                         Cette application est un outil d'assistance à la formation.
                         Elle ne remplace pas une formation certifiée en secourisme
@@ -267,12 +286,16 @@ const styles = StyleSheet.create({
         marginTop: 20,
         paddingHorizontal: 16,
     },
+    sectionTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 12,
+        marginLeft: 4,
+    },
     sectionTitle: {
         fontSize: 16,
         fontWeight: '600',
         color: '#94A3B8',
-        marginBottom: 12,
-        marginLeft: 4,
     },
     settingCard: {
         backgroundColor: '#1E293B',
@@ -299,11 +322,15 @@ const styles = StyleSheet.create({
         color: '#64748B',
         marginTop: 2,
     },
+    emergencyRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 4,
+    },
     emergencyNumber: {
         fontSize: 18,
         color: '#22C55E',
         fontWeight: 'bold',
-        marginTop: 4,
     },
     refreshButton: {
         width: 44,
@@ -312,9 +339,6 @@ const styles = StyleSheet.create({
         backgroundColor: '#334155',
         alignItems: 'center',
         justifyContent: 'center',
-    },
-    refreshButtonText: {
-        fontSize: 20,
     },
     divider: {
         height: 1,
@@ -358,6 +382,8 @@ const styles = StyleSheet.create({
     },
     linkRow: {
         paddingVertical: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
     },
     linkText: {
         fontSize: 14,
@@ -371,11 +397,15 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: 'rgba(245, 158, 11, 0.3)',
     },
+    disclaimerTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
     disclaimerTitle: {
         fontSize: 14,
         fontWeight: 'bold',
         color: '#F59E0B',
-        marginBottom: 8,
     },
     disclaimerText: {
         fontSize: 12,

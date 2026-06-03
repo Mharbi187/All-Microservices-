@@ -16,11 +16,12 @@ import {
     ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 import { mockDataService } from '../services/MockDataService';
 
 const TABS = [
-    { id: 'weather', label: 'Météo', icon: '⛅' },
-    { id: 'calendar', label: 'Calendrier', icon: '📅' },
+    { id: 'weather', label: 'Météo', icon: 'cloud' },
+    { id: 'calendar', label: 'Calendrier', icon: 'calendar' },
 ];
 
 const DAYS_SHORT = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
@@ -116,6 +117,14 @@ export default function WeatherCalendarScreen() {
 
     const CITIES = ['Tunis', 'Sfax', 'Sousse', 'Bizerte', 'Monastir', 'Nabeul'];
 
+    // Map emoji strings to feather icons for weather representation
+    const getWeatherIconName = (emoji) => {
+        if (emoji.includes('☀️') || emoji.includes('🌞')) return 'sun';
+        if (emoji.includes('🌥') || emoji.includes('⛅') || emoji.includes('🌤')) return 'cloud';
+        if (emoji.includes('🌧') || emoji.includes('🌦')) return 'cloud-rain';
+        return 'cloud'; // fallback
+    };
+
     if (loading) {
         return (
             <SafeAreaView style={styles.safe}>
@@ -137,7 +146,7 @@ export default function WeatherCalendarScreen() {
                         style={[styles.tab, activeTab === t.id && styles.tabActive]}
                         onPress={() => setActiveTab(t.id)}
                     >
-                        <Text style={styles.tabIcon}>{t.icon}</Text>
+                        <Feather name={t.icon} size={16} color={activeTab === t.id ? '#DC2626' : '#6B7280'} />
                         <Text style={[styles.tabLabel, activeTab === t.id && styles.tabLabelActive]}>
                             {t.label}
                         </Text>
@@ -175,15 +184,15 @@ export default function WeatherCalendarScreen() {
                                     <Text style={styles.weatherDate}>{weather.date}</Text>
                                 </View>
                                 <View style={styles.weatherTempBox}>
-                                    <Text style={styles.weatherIcon}>{weather.icon}</Text>
+                                    <Feather name={getWeatherIconName(weather.icon)} size={48} color="#FFFFFF" style={{ marginBottom: 4 }} />
                                     <Text style={styles.weatherTemp}>{weather.temp}°C</Text>
                                 </View>
                             </View>
                             <View style={styles.weatherDetails}>
-                                <WeatherStat icon="💧" label="Humidité" value={`${weather.humidity}%`} />
-                                <WeatherStat icon="🌬️" label="Vent" value={`${weather.wind} km/h`} />
-                                <WeatherStat icon="👁️" label="Visibilité" value={`${weather.visibility} km`} />
-                                <WeatherStat icon="🌡️" label="Ressenti" value={`${weather.feelsLike}°C`} />
+                                <WeatherStat icon="droplet" label="Humidité" value={`${weather.humidity}%`} />
+                                <WeatherStat icon="wind" label="Vent" value={`${weather.wind} km/h`} />
+                                <WeatherStat icon="eye" label="Visibilité" value={`${weather.visibility} km`} />
+                                <WeatherStat icon="thermometer" label="Ressenti" value={`${weather.feelsLike}°C`} />
                             </View>
                         </View>
                     )}
@@ -194,7 +203,7 @@ export default function WeatherCalendarScreen() {
                         {forecast.map((f, i) => (
                             <View key={i} style={styles.forecastCard}>
                                 <Text style={styles.forecastDay}>{f.day}</Text>
-                                <Text style={styles.forecastIcon}>{f.icon}</Text>
+                                <Feather name={getWeatherIconName(f.icon)} size={24} color="#4B5563" style={{ marginVertical: 4 }} />
                                 <Text style={styles.forecastMax}>{f.max}°</Text>
                                 <Text style={styles.forecastMin}>{f.min}°</Text>
                             </View>
@@ -204,7 +213,7 @@ export default function WeatherCalendarScreen() {
                     {/* Alerte météo */}
                     {weather?.alert && (
                         <View style={styles.weatherAlert}>
-                            <Text style={styles.weatherAlertIcon}>⚠️</Text>
+                            <Feather name="alert-triangle" size={20} color="#CA8A04" style={{ marginTop: 2 }} />
                             <View style={{ flex: 1 }}>
                                 <Text style={styles.weatherAlertTitle}>Alerte météo</Text>
                                 <Text style={styles.weatherAlertText}>{weather.alert}</Text>
@@ -223,13 +232,13 @@ export default function WeatherCalendarScreen() {
                     {/* Header navigation mois */}
                     <View style={styles.calHeader}>
                         <TouchableOpacity onPress={prevMonth} style={styles.calNavBtn}>
-                            <Text style={styles.calNavTxt}>‹</Text>
+                            <Feather name="chevron-left" size={24} color="#DC2626" />
                         </TouchableOpacity>
                         <Text style={styles.calMonthTitle}>
                             {MONTHS[calMonth]} {calYear}
                         </Text>
                         <TouchableOpacity onPress={nextMonth} style={styles.calNavBtn}>
-                            <Text style={styles.calNavTxt}>›</Text>
+                            <Feather name="chevron-right" size={24} color="#DC2626" />
                         </TouchableOpacity>
                     </View>
 
@@ -296,7 +305,7 @@ export default function WeatherCalendarScreen() {
                         </Text>
                         {selectedDayEvents.length === 0 ? (
                             <View style={styles.noEventBox}>
-                                <Text style={styles.noEventIcon}>📭</Text>
+                                <Feather name="inbox" size={32} color="#9CA3AF" style={{ marginBottom: 12 }} />
                                 <Text style={styles.noEventText}>Aucun événement ce jour</Text>
                             </View>
                         ) : (
@@ -315,11 +324,21 @@ export default function WeatherCalendarScreen() {
                                             </Text>
                                         </View>
                                         <Text style={styles.eventTitle}>{ev.title}</Text>
-                                        <Text style={styles.eventSub}>
-                                            🕐 {ev.time}  •  📍 {ev.location}
-                                        </Text>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 12 }}>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                                <Feather name="clock" size={12} color="#6B7280" />
+                                                <Text style={styles.eventSub}>{ev.time}</Text>
+                                            </View>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                                <Feather name="map-pin" size={12} color="#6B7280" />
+                                                <Text style={styles.eventSub}>{ev.location}</Text>
+                                            </View>
+                                        </View>
                                         {ev.organizer && (
-                                            <Text style={styles.eventOrg}>👤 {ev.organizer}</Text>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                                                <Feather name="user" size={12} color="#9CA3AF" />
+                                                <Text style={styles.eventOrg}>{ev.organizer}</Text>
+                                            </View>
                                         )}
                                     </TouchableOpacity>
                                 );
@@ -359,7 +378,7 @@ export default function WeatherCalendarScreen() {
                                                 {ev.time} • {ev.location}
                                             </Text>
                                         </View>
-                                        <View style={[styles.eventTypeTag, { backgroundColor: ts.bg, borderColor: ts.border }]}>
+                                        <View style={[styles.eventTypeTag, { backgroundColor: ts.bg, borderColor: ts.border, marginBottom: 0 }]}>
                                             <Text style={[styles.eventTypeText, { color: ts.text }]}>{ev.type}</Text>
                                         </View>
                                     </TouchableOpacity>
@@ -389,17 +408,17 @@ export default function WeatherCalendarScreen() {
                                             onPress={() => setEventModal(null)}
                                             style={styles.evModalClose}
                                         >
-                                            <Text style={{ color: '#6B7280', fontSize: 16 }}>✕</Text>
+                                            <Feather name="x" size={20} color="#6B7280" />
                                         </TouchableOpacity>
                                     </View>
                                     <ScrollView style={{ padding: 20 }}>
                                         <Text style={styles.evModalTitle}>{eventModal.title}</Text>
                                         <View style={styles.evModalDetails}>
-                                            <Detail icon="📅" label={new Date(eventModal.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} />
-                                            <Detail icon="🕐" label={eventModal.time} />
-                                            <Detail icon="📍" label={eventModal.location} />
-                                            {eventModal.organizer && <Detail icon="👤" label={`Organisé par ${eventModal.organizer}`} />}
-                                            {eventModal.participants && <Detail icon="👥" label={`${eventModal.participants} participants`} />}
+                                            <Detail icon="calendar" label={new Date(eventModal.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} />
+                                            <Detail icon="clock" label={eventModal.time} />
+                                            <Detail icon="map-pin" label={eventModal.location} />
+                                            {eventModal.organizer && <Detail icon="user" label={`Organisé par ${eventModal.organizer}`} />}
+                                            {eventModal.participants && <Detail icon="users" label={`${eventModal.participants} participants`} />}
                                         </View>
                                         {eventModal.description && (
                                             <>
@@ -427,7 +446,7 @@ export default function WeatherCalendarScreen() {
 function WeatherStat({ icon, label, value }) {
     return (
         <View style={styles.weatherStat}>
-            <Text style={styles.weatherStatIcon}>{icon}</Text>
+            <Feather name={icon} size={20} color="#93C5FD" style={{ marginBottom: 4 }} />
             <Text style={styles.weatherStatLabel}>{label}</Text>
             <Text style={styles.weatherStatValue}>{value}</Text>
         </View>
@@ -437,7 +456,7 @@ function WeatherStat({ icon, label, value }) {
 function Detail({ icon, label }) {
     return (
         <View style={styles.detailRow}>
-            <Text style={styles.detailIcon}>{icon}</Text>
+            <Feather name={icon} size={16} color="#4B5563" style={styles.detailIcon} />
             <Text style={styles.detailLabel}>{label}</Text>
         </View>
     );
@@ -459,13 +478,12 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 6,
+        gap: 8,
         paddingVertical: 14,
         borderBottomWidth: 2,
         borderBottomColor: 'transparent',
     },
     tabActive: { borderBottomColor: '#DC2626' },
-    tabIcon: { fontSize: 16 },
     tabLabel: { fontSize: 15, fontWeight: '600', color: '#6B7280' },
     tabLabelActive: { color: '#DC2626' },
 
@@ -505,11 +523,9 @@ const styles = StyleSheet.create({
     weatherDesc: { fontSize: 14, color: '#93C5FD', marginTop: 2 },
     weatherDate: { fontSize: 12, color: '#64748B', marginTop: 4 },
     weatherTempBox: { alignItems: 'center' },
-    weatherIcon: { fontSize: 48 },
-    weatherTemp: { fontSize: 32, fontWeight: '800', color: '#FFFFFF', marginTop: -4 },
+    weatherTemp: { fontSize: 32, fontWeight: '800', color: '#FFFFFF', marginTop: 2 },
     weatherDetails: { flexDirection: 'row', justifyContent: 'space-between' },
     weatherStat: { alignItems: 'center', flex: 1 },
-    weatherStatIcon: { fontSize: 20 },
     weatherStatLabel: { fontSize: 10, color: '#93C5FD', marginTop: 2 },
     weatherStatValue: { fontSize: 13, fontWeight: '700', color: '#FFFFFF', marginTop: 2 },
 
@@ -535,7 +551,6 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
     },
     forecastDay: { fontSize: 11, fontWeight: '600', color: '#6B7280' },
-    forecastIcon: { fontSize: 24 },
     forecastMax: { fontSize: 14, fontWeight: '700', color: '#111827' },
     forecastMin: { fontSize: 12, color: '#9CA3AF' },
 
@@ -550,9 +565,8 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#FDE68A',
     },
-    weatherAlertIcon: { fontSize: 20 },
-    weatherAlertTitle: { fontSize: 13, fontWeight: '700', color: '#92400E' },
-    weatherAlertText: { fontSize: 12, color: '#B45309', marginTop: 2, lineHeight: 18 },
+    weatherAlertTitle: { fontSize: 13, fontWeight: '700', color: '#92400E', marginBottom: 2 },
+    weatherAlertText: { fontSize: 12, color: '#B45309', lineHeight: 18 },
 
     // Calendar
     calHeader: {
@@ -566,7 +580,6 @@ const styles = StyleSheet.create({
         borderBottomColor: '#F3F4F6',
     },
     calNavBtn: { padding: 8 },
-    calNavTxt: { fontSize: 24, color: '#DC2626', fontWeight: '600' },
     calMonthTitle: { fontSize: 17, fontWeight: '800', color: '#111827' },
 
     calWeekRow: {
@@ -609,7 +622,6 @@ const styles = StyleSheet.create({
     dayEventsSection: { padding: 16 },
     dayEventsTitle: { fontSize: 15, fontWeight: '700', color: '#111827', marginBottom: 12 },
     noEventBox: { alignItems: 'center', paddingVertical: 24 },
-    noEventIcon: { fontSize: 32, marginBottom: 8 },
     noEventText: { color: '#9CA3AF', fontSize: 14 },
 
     eventCard: {
@@ -634,8 +646,8 @@ const styles = StyleSheet.create({
     },
     eventTypeText: { fontSize: 11, fontWeight: '700' },
     eventTitle: { fontSize: 14, fontWeight: '700', color: '#111827' },
-    eventSub: { fontSize: 12, color: '#6B7280', marginTop: 4 },
-    eventOrg: { fontSize: 12, color: '#9CA3AF', marginTop: 2 },
+    eventSub: { fontSize: 12, color: '#6B7280' },
+    eventOrg: { fontSize: 12, color: '#9CA3AF' },
 
     allEventsSection: { paddingHorizontal: 16 },
     allEventRow: {
@@ -688,9 +700,9 @@ const styles = StyleSheet.create({
     evModalTag: { borderRadius: 8, paddingHorizontal: 12, paddingVertical: 5 },
     evModalClose: { padding: 8 },
     evModalTitle: { fontSize: 18, fontWeight: '800', color: '#111827', marginBottom: 16 },
-    evModalDetails: { gap: 10, marginBottom: 12 },
-    detailRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    detailIcon: { fontSize: 18, width: 28 },
+    evModalDetails: { gap: 10, marginBottom: 16 },
+    detailRow: { flexDirection: 'row', alignItems: 'center' },
+    detailIcon: { width: 24, textAlign: 'center', marginRight: 8 },
     detailLabel: { fontSize: 14, color: '#374151', flex: 1 },
     evModalDescLabel: { fontSize: 13, fontWeight: '700', color: '#6B7280', marginBottom: 6 },
     evModalDesc: { fontSize: 14, color: '#374151', lineHeight: 22 },

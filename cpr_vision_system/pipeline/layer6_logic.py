@@ -194,10 +194,10 @@ class RuleEvaluator:
                 ui_commands.append(self._cmd("excessive_pause", signal.time_since_last))
 
         # ── Determine session status ──────────────────────────────────────
-        if signal.compression_count == 0:
-            status = "IDLE"
-        else:
-            status = "ACTIVE"
+        # ACTIVE as soon as pose is visible — enables TTS feedback for arm/hand
+        # corrections BEFORE compressions start (important for presentation demo).
+        # IDLE is reserved for when we have no pose at all (handled by pipeline __init__).
+        status = "ACTIVE"
 
         return {
             "status": status,

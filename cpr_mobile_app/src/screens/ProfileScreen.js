@@ -15,6 +15,7 @@ import {
     Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 import { useAuth, ROLE_LABELS, ROLE_COLORS } from '../contexts/AuthContext';
 
 const ROLE_DESCRIPTIONS = {
@@ -26,13 +27,14 @@ const ROLE_DESCRIPTIONS = {
     responsable: 'Responsable de délégation. Supervise l\'ensemble des activités opérationnelles et administratives.',
 };
 
+// Feather icon names per role
 const ROLE_ICONS = {
-    volunteer: '🤝',
-    secouriste: '🏥',
-    ndrt: '🌍',
-    rdrt: '🌐',
-    chef_equipe: '⭐',
-    responsable: '👑',
+    volunteer: 'heart',
+    secouriste: 'plus-circle',
+    ndrt: 'globe',
+    rdrt: 'map',
+    chef_equipe: 'star',
+    responsable: 'shield',
 };
 
 const NDRT_RDRT_BADGE = {
@@ -49,7 +51,7 @@ export default function ProfileScreen({ navigation }) {
 
     const roleColor = ROLE_COLORS[user?.role] || '#6B7280';
     const roleLabel = ROLE_LABELS[user?.role] || 'Membre';
-    const roleIcon = ROLE_ICONS[user?.role] || '👤';
+    const roleIconName = ROLE_ICONS[user?.role] || 'user';
     const roleDesc = ROLE_DESCRIPTIONS[user?.role] || '';
     const specialBadge = NDRT_RDRT_BADGE[user?.role];
 
@@ -66,6 +68,13 @@ export default function ProfileScreen({ navigation }) {
         return years === 0 ? 'Nouveau membre' : `${years} an${years > 1 ? 's' : ''}`;
     };
 
+    const INFO_ROWS = [
+        { label: 'Délégation', value: user?.delegation, icon: 'map-pin' },
+        { label: 'Téléphone', value: user?.phone, icon: 'phone' },
+        { label: 'Date d\'adhésion', value: user?.dateAdhesion || '—', icon: 'calendar' },
+        { label: 'Ancienneté', value: yearsActive(), icon: 'award' },
+    ];
+
     return (
         <SafeAreaView style={styles.safe} edges={['bottom']}>
             <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -73,8 +82,8 @@ export default function ProfileScreen({ navigation }) {
                 {/* Card profil principal */}
                 <View style={styles.profileCard}>
                     {/* Avatar */}
-                    <View style={[styles.avatarCircle, { borderColor: roleColor }]}>
-                        <Text style={styles.avatarEmoji}>{roleIcon}</Text>
+                    <View style={[styles.avatarCircle, { borderColor: roleColor, backgroundColor: roleColor + '12' }]}>
+                        <Feather name={roleIconName} size={40} color={roleColor} />
                     </View>
 
                     <Text style={styles.userName}>
@@ -105,15 +114,15 @@ export default function ProfileScreen({ navigation }) {
 
                 {/* Infos générales */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>ℹ️  Informations</Text>
-                    {[
-                        { label: 'Délégation', value: user?.delegation, icon: '📍' },
-                        { label: 'Téléphone', value: user?.phone, icon: '📞' },
-                        { label: 'Date d\'adhésion', value: user?.dateAdhesion || '—', icon: '📅' },
-                        { label: 'Ancienneté', value: yearsActive(), icon: '⭐' },
-                    ].map((info, i) => (
+                    <View style={styles.sectionHeader}>
+                        <Feather name="info" size={15} color="#DC2626" style={{ marginRight: 8 }} />
+                        <Text style={styles.sectionTitle}>Informations</Text>
+                    </View>
+                    {INFO_ROWS.map((info, i) => (
                         <View key={i} style={styles.infoRow}>
-                            <Text style={styles.infoIcon}>{info.icon}</Text>
+                            <View style={styles.infoIconWrap}>
+                                <Feather name={info.icon} size={15} color="#6B7280" />
+                            </View>
                             <Text style={styles.infoLabel}>{info.label}</Text>
                             <Text style={styles.infoValue}>{info.value}</Text>
                         </View>
@@ -122,12 +131,15 @@ export default function ProfileScreen({ navigation }) {
 
                 {/* Certifications */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>🏅  Certifications</Text>
+                    <View style={styles.sectionHeader}>
+                        <Feather name="award" size={15} color="#DC2626" style={{ marginRight: 8 }} />
+                        <Text style={styles.sectionTitle}>Certifications</Text>
+                    </View>
                     {(user?.certifications && user.certifications.length > 0) ? (
                         <View style={styles.certGrid}>
                             {user.certifications.map((cert, i) => (
                                 <View key={i} style={styles.certChip}>
-                                    <Text style={styles.certIcon}>✓</Text>
+                                    <Feather name="check-circle" size={13} color="#10B981" />
                                     <Text style={styles.certText}>{cert}</Text>
                                 </View>
                             ))}
@@ -144,7 +156,10 @@ export default function ProfileScreen({ navigation }) {
 
                 {/* Statistiques */}
                 <View style={styles.statsCard}>
-                    <Text style={styles.sectionTitle}>📊  Activité</Text>
+                    <View style={styles.sectionHeader}>
+                        <Feather name="bar-chart-2" size={15} color="#DC2626" style={{ marginRight: 8 }} />
+                        <Text style={styles.sectionTitle}>Activité</Text>
+                    </View>
                     <View style={styles.statsRow}>
                         <View style={styles.statBox}>
                             <Text style={styles.statNumber}>
@@ -169,22 +184,30 @@ export default function ProfileScreen({ navigation }) {
 
                 {/* Préférences */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>⚙️  Préférences</Text>
+                    <View style={styles.sectionHeader}>
+                        <Feather name="settings" size={15} color="#DC2626" style={{ marginRight: 8 }} />
+                        <Text style={styles.sectionTitle}>Préférences</Text>
+                    </View>
                     {[
                         {
                             label: 'Notifications',
                             sub: 'Alertes et interventions',
                             value: notifEnabled,
                             onToggle: setNotifEnabled,
+                            icon: 'bell',
                         },
                         {
                             label: 'Son et vibrations',
                             sub: 'Alertes sonores',
                             value: soundEnabled,
                             onToggle: setSoundEnabled,
+                            icon: 'volume-2',
                         },
                     ].map((pref, i) => (
                         <View key={i} style={styles.prefRow}>
+                            <View style={styles.prefIconWrap}>
+                                <Feather name={pref.icon} size={16} color="#6B7280" />
+                            </View>
                             <View style={{ flex: 1 }}>
                                 <Text style={styles.prefLabel}>{pref.label}</Text>
                                 <Text style={styles.prefSub}>{pref.sub}</Text>
@@ -201,7 +224,8 @@ export default function ProfileScreen({ navigation }) {
 
                 {/* Bouton déconnexion */}
                 <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-                    <Text style={styles.logoutText}>↪️  Se déconnecter</Text>
+                    <Feather name="log-out" size={18} color="#DC2626" style={{ marginRight: 8 }} />
+                    <Text style={styles.logoutText}>Se déconnecter</Text>
                 </TouchableOpacity>
 
                 <Text style={styles.version}>CRT Secours • Version 1.0.0</Text>
@@ -231,13 +255,11 @@ const styles = StyleSheet.create({
         width: 84,
         height: 84,
         borderRadius: 42,
-        backgroundColor: '#F9FAFB',
         borderWidth: 3,
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 12,
     },
-    avatarEmoji: { fontSize: 40 },
     userName: { fontSize: 22, fontWeight: '800', color: '#111827' },
     userMatricule: { fontSize: 13, color: '#9CA3AF', marginTop: 2, marginBottom: 10 },
     rolePill: {
@@ -278,11 +300,15 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.05,
         shadowRadius: 2,
     },
+    sectionHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
     sectionTitle: {
         fontSize: 14,
         fontWeight: '800',
         color: '#111827',
-        marginBottom: 12,
     },
 
     // Info rows
@@ -294,7 +320,7 @@ const styles = StyleSheet.create({
         borderBottomColor: '#F9FAFB',
         gap: 10,
     },
-    infoIcon: { fontSize: 16, width: 24 },
+    infoIconWrap: { width: 24, alignItems: 'center' },
     infoLabel: { flex: 1, fontSize: 13, color: '#6B7280' },
     infoValue: { fontSize: 13, fontWeight: '600', color: '#111827' },
 
@@ -307,11 +333,10 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         paddingVertical: 6,
         paddingHorizontal: 12,
-        gap: 4,
+        gap: 6,
         borderWidth: 1,
         borderColor: '#A7F3D0',
     },
-    certIcon: { color: '#10B981', fontSize: 12, fontWeight: '700' },
     certText: { fontSize: 12, color: '#065F46', fontWeight: '600' },
     emptyCerts: {
         backgroundColor: '#F9FAFB',
@@ -351,7 +376,9 @@ const styles = StyleSheet.create({
         paddingVertical: 10,
         borderBottomWidth: 1,
         borderBottomColor: '#F9FAFB',
+        gap: 12,
     },
+    prefIconWrap: { width: 24, alignItems: 'center' },
     prefLabel: { fontSize: 14, fontWeight: '600', color: '#111827' },
     prefSub: { fontSize: 12, color: '#9CA3AF', marginTop: 2 },
 
@@ -361,6 +388,8 @@ const styles = StyleSheet.create({
         borderRadius: 14,
         paddingVertical: 15,
         alignItems: 'center',
+        flexDirection: 'row',
+        justifyContent: 'center',
         borderWidth: 1,
         borderColor: '#FECACA',
         marginBottom: 12,

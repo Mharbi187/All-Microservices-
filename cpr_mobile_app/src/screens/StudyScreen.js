@@ -1,6 +1,5 @@
 /**
- * StudyScreen - Formations et apprentissage du secourisme
- * PSE1, PSE2, protocoles, quiz interactifs
+ * StudyScreen - Modules de formation et quiz
  * Croissant Rouge Tunisien
  */
 
@@ -8,532 +7,464 @@ import React, { useState } from 'react';
 import {
     View,
     Text,
-    TouchableOpacity,
     StyleSheet,
     ScrollView,
-    Dimensions,
+    TouchableOpacity,
     Modal,
+    Dimensions,
+    Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
+import { useAuth } from '../contexts/AuthContext';
 
 const { width } = Dimensions.get('window');
 
-const COURSES = [
+const MODULES = [
     {
-        id: 'pse1',
-        title: 'PSE 1 — Premiers Secours en Équipe',
-        level: 'Niveau 1',
-        levelColor: '#10B981',
-        icon: '🏥',
-        duration: '35h',
-        description: 'Formation de base : bilan, gestes d\'urgence, RCP, DEA, traumatismes.',
-        modules: [
-            { id: 'm1', title: 'Sécurité et protection', icon: '🦺', duration: '3h', done: true },
-            { id: 'm2', title: 'Bilan de la victime', icon: '🔍', duration: '5h', done: true },
-            { id: 'm3', title: 'Arrêt cardio-respiratoire', icon: '🫀', duration: '8h', done: false },
-            { id: 'm4', title: 'Obstruction des voies aériennes', icon: '😮‍💨', duration: '3h', done: false },
-            { id: 'm5', title: 'Hémorragies', icon: '🩸', duration: '4h', done: false },
-            { id: 'm6', title: 'Traumatismes', icon: '🦴', duration: '6h', done: false },
-            { id: 'm7', title: 'Malaises et maladies', icon: '🤒', duration: '4h', done: false },
-            { id: 'm8', title: 'Relevage et brancardage', icon: '🛻', duration: '4h', done: false },
-        ],
+        id: '1',
+        title: 'Principes de base',
+        desc: 'Protection, alerte et protection du secouriste.',
+        icon: 'shield',
+        color: '#DC2626',
+        progress: 100,
+        lessons: 4,
+        time: '2h',
     },
     {
-        id: 'pse2',
-        title: 'PSE 2 — Premiers Secours en Équipe',
-        level: 'Niveau 2',
-        levelColor: '#3B82F6',
-        icon: '⚕️',
-        duration: '70h',
-        description: 'Perfectionnement : bilans avancés, médications, gestion de scène.',
-        modules: [
-            { id: 'm1', title: 'Révision PSE 1', icon: '📖', duration: '4h', done: false },
-            { id: 'm2', title: 'Bilan complémentaire', icon: '📊', duration: '8h', done: false },
-            { id: 'm3', title: 'Bilans spécifiques', icon: '🏥', duration: '10h', done: false },
-            { id: 'm4', title: 'Urgences vitales', icon: '🚨', duration: '12h', done: false },
-            { id: 'm5', title: 'Gestion de scène', icon: '🗺️', duration: '8h', done: false },
-        ],
+        id: '2',
+        title: 'Urgences vitales',
+        desc: 'Arrêt cardiaque, RCP, utilisation du DEA.',
+        icon: 'activity',
+        color: '#EF4444',
+        progress: 60,
+        lessons: 6,
+        time: '3h',
     },
     {
-        id: 'dea',
-        title: 'Utilisation du DEA / DAE',
-        level: 'Pratique',
-        levelColor: '#F59E0B',
-        icon: '⚡',
-        duration: '4h',
-        description: 'Maîtriser l\'utilisation du défibrillateur automatisé externe.',
-        modules: [
-            { id: 'm1', title: 'Présentation du DEA', icon: '⚡', duration: '1h', done: false },
-            { id: 'm2', title: 'Séquence d\'utilisation', icon: '▶️', duration: '2h', done: false },
-            { id: 'm3', title: 'Cas pratiques', icon: '🧪', duration: '1h', done: false },
-        ],
+        id: '3',
+        title: 'Hémorragies',
+        desc: 'Gestes d\'urgence pour stopper les saignements.',
+        icon: 'droplet',
+        color: '#B91C1C',
+        progress: 0,
+        lessons: 3,
+        time: '1.5h',
     },
     {
-        id: 'ndrt_training',
-        title: 'Formation NDRT/RDRT',
-        level: 'Avancé',
-        levelColor: '#DC2626',
-        icon: '🌍',
-        duration: '120h',
-        description: 'Intervention en catastrophe, coordination, logistique humanitaire.',
-        modules: [
-            { id: 'm1', title: 'Gestion des catastrophes', icon: '🌪️', duration: '20h', done: false },
-            { id: 'm2', title: 'Coordination d\'équipe', icon: '👥', duration: '15h', done: false },
-            { id: 'm3', title: 'Logistique humanitaire', icon: '📦', duration: '20h', done: false },
-            { id: 'm4', title: 'Communication de crise', icon: '📡', duration: '10h', done: false },
-        ],
+        id: '4',
+        title: 'Traumatologie',
+        desc: 'Fractures, entorses, immobilisations.',
+        icon: 'link',
+        color: '#F59E0B',
+        progress: 0,
+        lessons: 5,
+        time: '2.5h',
+    },
+    {
+        id: '5',
+        title: 'Malaise',
+        desc: 'Signes, symptômes et conduite à tenir.',
+        icon: 'thermometer',
+        color: '#3B82F6',
+        progress: 0,
+        lessons: 4,
+        time: '2h',
+    },
+    {
+        id: '6',
+        title: 'Logistique CRT',
+        desc: 'Déploiement de poste de secours et matériel.',
+        icon: 'package',
+        color: '#7C3AED',
+        progress: 0,
+        lessons: 3,
+        time: '1h',
     },
 ];
 
-const QUIZ_QUESTIONS = [
-    {
-        q: 'Quelle est la fréquence recommandée des compressions thoraciques chez l\'adulte ?',
-        options: ['60-80/min', '100-120/min', '80-100/min', '120-140/min'],
-        correct: 1,
-        explanation: 'Les recommandations internationales (ERC 2021) préconisent 100 à 120 compressions par minute.',
-    },
-    {
-        q: 'Quelle est la profondeur des compressions pour un adulte ?',
-        options: ['2-3 cm', '3-4 cm', '5-6 cm', '7-8 cm'],
-        correct: 2,
-        explanation: 'La profondeur recommandée est de 5 à 6 cm pour garantir une efficacité optimale.',
-    },
-    {
-        q: 'Le ratio compressions/ventilations pour 1 secouriste est :',
-        options: ['15:2', '30:2', '30:1', '15:1'],
-        correct: 1,
-        explanation: '30 compressions suivies de 2 insufflations est le ratio standard pour 1 ou 2 secouristes chez l\'adulte.',
-    },
-    {
-        q: 'Quel est le signe d\'un arrêt cardiaque ?',
-        options: ['Pâleur cutanée', 'Absence de pouls + absence de respiration normale', 'Perte de conscience', 'Cyanose des lèvres'],
-        correct: 1,
-        explanation: 'L\'arrêt cardiaque se définit par l\'absence de pouls carotidien ET l\'absence de respiration normale (ou gasps).',
-    },
-    {
-        q: 'La position latérale de sécurité (PLS) est indiquée pour :',
-        options: ['Victime en arrêt cardiaque', 'Victime inconsciente qui respire', 'Victime qui saigne', 'Tout type de victime'],
-        correct: 1,
-        explanation: 'La PLS maintient les voies aériennes ouvertes chez une victime inconsciente qui respire encore normalement.',
-    },
+const RESSOURCES = [
+    { id: 'r1', title: 'Manuel PSE1 2024', type: 'PDF', size: '4.2 MB', icon: 'file-text', color: '#EF4444' },
+    { id: 'r2', title: 'Positions d\'attente', type: 'Fiche', size: '1.1 MB', icon: 'layers', color: '#F59E0B' },
+    { id: 'r3', title: 'Alerter les secours', type: 'Vidéo', size: '12 MB', icon: 'video', color: '#3B82F6' },
+    { id: 'r4', title: 'Bilans secouriste', type: 'Grille', size: '0.8 MB', icon: 'grid', color: '#10B981' },
 ];
 
 export default function StudyScreen({ navigation }) {
-    const [selectedCourse, setSelectedCourse] = useState(null);
-    const [quizMode, setQuizMode] = useState(false);
-    const [quizIndex, setQuizIndex] = useState(0);
-    const [selectedAnswer, setSelectedAnswer] = useState(null);
-    const [quizScore, setQuizScore] = useState(0);
-    const [quizDone, setQuizDone] = useState(false);
+    const { user } = useAuth();
+    const [selectedModule, setSelectedModule] = useState(null);
 
-    const handleAnswerSelect = (idx) => {
-        if (selectedAnswer !== null) return;
-        setSelectedAnswer(idx);
-        if (idx === QUIZ_QUESTIONS[quizIndex].correct) {
-            setQuizScore((s) => s + 1);
-        }
+    const getProgressColor = (progress) => {
+        if (progress === 100) return '#10B981';
+        if (progress > 0) return '#F59E0B';
+        return '#E5E7EB';
     };
-
-    const handleNextQuestion = () => {
-        if (quizIndex + 1 >= QUIZ_QUESTIONS.length) {
-            setQuizDone(true);
-        } else {
-            setQuizIndex((i) => i + 1);
-            setSelectedAnswer(null);
-        }
-    };
-
-    const resetQuiz = () => {
-        setQuizIndex(0);
-        setSelectedAnswer(null);
-        setQuizScore(0);
-        setQuizDone(false);
-    };
-
-    if (quizMode) {
-        const q = QUIZ_QUESTIONS[quizIndex];
-        return (
-            <SafeAreaView style={styles.safe} edges={['bottom']}>
-                <View style={styles.quizHeader}>
-                    <TouchableOpacity onPress={() => { setQuizMode(false); resetQuiz(); }}>
-                        <Text style={styles.quizBack}>← Retour</Text>
-                    </TouchableOpacity>
-                    <Text style={styles.quizProgress}>
-                        {quizDone ? 'Résultats' : `Question ${quizIndex + 1}/${QUIZ_QUESTIONS.length}`}
-                    </Text>
-                    <Text style={styles.quizScore}>🏅 {quizScore}</Text>
-                </View>
-
-                <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.quizContent}>
-                    {quizDone ? (
-                        <View style={styles.quizResult}>
-                            <Text style={styles.quizResultEmoji}>
-                                {quizScore >= 4 ? '🏆' : quizScore >= 3 ? '👍' : '📖'}
-                            </Text>
-                            <Text style={styles.quizResultScore}>
-                                {quizScore} / {QUIZ_QUESTIONS.length}
-                            </Text>
-                            <Text style={styles.quizResultMsg}>
-                                {quizScore >= 4
-                                    ? 'Excellent ! Vous maîtrisez ces notions.'
-                                    : quizScore >= 3
-                                    ? 'Bien ! Continuez à réviser.'
-                                    : 'Révisez les modules de formation.'}
-                            </Text>
-                            <TouchableOpacity style={styles.retryBtn} onPress={resetQuiz}>
-                                <Text style={styles.retryBtnText}>🔄  Recommencer</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={styles.exitBtn}
-                                onPress={() => { setQuizMode(false); resetQuiz(); }}
-                            >
-                                <Text style={styles.exitBtnText}>← Retour aux formations</Text>
-                            </TouchableOpacity>
-                        </View>
-                    ) : (
-                        <>
-                            <View style={styles.questionCard}>
-                                <Text style={styles.questionText}>{q.q}</Text>
-                            </View>
-                            {q.options.map((opt, i) => {
-                                let bg = '#FFFFFF';
-                                let border = '#E5E7EB';
-                                let textColor = '#111827';
-                                if (selectedAnswer !== null) {
-                                    if (i === q.correct) { bg = '#ECFDF5'; border = '#10B981'; textColor = '#065F46'; }
-                                    else if (i === selectedAnswer && i !== q.correct) { bg = '#FEF2F2'; border = '#DC2626'; textColor = '#991B1B'; }
-                                }
-                                return (
-                                    <TouchableOpacity
-                                        key={i}
-                                        style={[styles.optionBtn, { backgroundColor: bg, borderColor: border }]}
-                                        onPress={() => handleAnswerSelect(i)}
-                                        disabled={selectedAnswer !== null}
-                                    >
-                                        <Text style={[styles.optionText, { color: textColor }]}>
-                                            {String.fromCharCode(65 + i)}.  {opt}
-                                        </Text>
-                                        {selectedAnswer !== null && i === q.correct && (
-                                            <Text style={styles.optionCheck}>✓</Text>
-                                        )}
-                                        {selectedAnswer === i && i !== q.correct && (
-                                            <Text style={styles.optionX}>✗</Text>
-                                        )}
-                                    </TouchableOpacity>
-                                );
-                            })}
-                            {selectedAnswer !== null && (
-                                <View style={styles.explanationCard}>
-                                    <Text style={styles.explanationTitle}>💡  Explication</Text>
-                                    <Text style={styles.explanationText}>{q.explanation}</Text>
-                                    <TouchableOpacity style={styles.nextBtn} onPress={handleNextQuestion}>
-                                        <Text style={styles.nextBtnText}>
-                                            {quizIndex + 1 >= QUIZ_QUESTIONS.length ? 'Voir les résultats →' : 'Question suivante →'}
-                                        </Text>
-                                    </TouchableOpacity>
-                                </View>
-                            )}
-                        </>
-                    )}
-                </ScrollView>
-            </SafeAreaView>
-        );
-    }
 
     return (
         <SafeAreaView style={styles.safe} edges={['bottom']}>
             <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
-                {/* Quiz rapide */}
-                <TouchableOpacity style={styles.quizBanner} onPress={() => setQuizMode(true)}>
-                    <Text style={styles.quizBannerIcon}>🧠</Text>
-                    <View style={{ flex: 1 }}>
-                        <Text style={styles.quizBannerTitle}>Quiz Rapide</Text>
-                        <Text style={styles.quizBannerSub}>
-                            Testez vos connaissances — {QUIZ_QUESTIONS.length} questions
-                        </Text>
+                {/* En-tête Stat */}
+                <View style={styles.headerCard}>
+                    <View style={styles.headerTop}>
+                        <View style={styles.headerTextWrap}>
+                            <Text style={styles.headerGreeting}>Formation Continue</Text>
+                            <Text style={styles.headerSub}>Mettez à jour vos connaissances</Text>
+                        </View>
+                        <View style={styles.headerIconWrap}>
+                            <Feather name="book-open" size={26} color="#DC2626" />
+                        </View>
                     </View>
-                    <Text style={styles.quizBannerArrow}>→</Text>
+
+                    <View style={styles.globalProgressBox}>
+                        <View style={styles.globalProgressRow}>
+                            <Text style={styles.globalProgressLabel}>Progression Générale</Text>
+                            <Text style={styles.globalProgressValue}>25%</Text>
+                        </View>
+                        <View style={styles.progressBarBg}>
+                            <View style={[styles.progressBarFill, { width: '25%', backgroundColor: '#DC2626' }]} />
+                        </View>
+                    </View>
+                </View>
+
+                {/* Modules Grid */}
+                <View style={styles.section}>
+                    <View style={styles.sectionHeader}>
+                        <Feather name="grid" size={16} color="#4B5563" style={{ marginRight: 8 }} />
+                        <Text style={styles.sectionTitle}>Modules de formation</Text>
+                    </View>
+
+                    <View style={styles.grid}>
+                        {MODULES.map((mod) => (
+                            <TouchableOpacity
+                                key={mod.id}
+                                style={styles.moduleCard}
+                                onPress={() => setSelectedModule(mod)}
+                            >
+                                <View style={[styles.moduleIconWrap, { backgroundColor: mod.color + '15' }]}>
+                                    <Feather name={mod.icon} size={24} color={mod.color} />
+                                </View>
+                                <Text style={styles.moduleTitle} numberOfLines={2}>
+                                    {mod.title}
+                                </Text>
+                                <Text style={styles.moduleMeta}>
+                                    {mod.lessons} leçons • {mod.time}
+                                </Text>
+
+                                <View style={styles.moduleProgressStack}>
+                                    <View style={styles.moduleProgressBg}>
+                                        <View
+                                            style={[
+                                                styles.moduleProgressFill,
+                                                {
+                                                    width: `${mod.progress}%`,
+                                                    backgroundColor: getProgressColor(mod.progress)
+                                                }
+                                            ]}
+                                        />
+                                    </View>
+                                    <Text style={styles.moduleProgressText}>
+                                        {mod.progress === 100 ? 'Terminé' : `${mod.progress}%`}
+                                    </Text>
+                                </View>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                </View>
+
+                {/* Ressources */}
+                <View style={styles.section}>
+                    <View style={styles.sectionHeader}>
+                        <Feather name="folder" size={16} color="#4B5563" style={{ marginRight: 8 }} />
+                        <Text style={styles.sectionTitle}>Ressources et fiches</Text>
+                    </View>
+
+                    {RESSOURCES.map((res) => (
+                        <TouchableOpacity key={res.id} style={styles.resCard}>
+                            <View style={[styles.resIconBox, { backgroundColor: res.color + '15' }]}>
+                                <Feather name={res.icon} size={20} color={res.color} />
+                            </View>
+                            <View style={styles.resInfo}>
+                                <Text style={styles.resTitle}>{res.title}</Text>
+                                <View style={styles.resMetaRow}>
+                                    <View style={styles.resBadge}>
+                                        <Text style={styles.resBadgeText}>{res.type}</Text>
+                                    </View>
+                                    <Text style={styles.resSize}>{res.size}</Text>
+                                </View>
+                            </View>
+                            <Feather name="download" size={18} color="#9CA3AF" />
+                        </TouchableOpacity>
+                    ))}
+                </View>
+
+                {/* Quiz Rapide Banner */}
+                <TouchableOpacity style={styles.quizBanner}>
+                    <View style={styles.quizIconWrap}>
+                        <Feather name="target" size={28} color="#FFFFFF" />
+                    </View>
+                    <View style={styles.quizInfo}>
+                        <Text style={styles.quizTitle}>Test de connaissances</Text>
+                        <Text style={styles.quizDesc}>10 questions aléatoires pour évaluer votre niveau.</Text>
+                    </View>
+                    <Feather name="chevron-right" size={24} color="#FCA5A5" />
                 </TouchableOpacity>
 
-                {/* Formations */}
-                <Text style={styles.sectionTitle}>📚  Formations Disponibles</Text>
-
-                {COURSES.map((course) => {
-                    const doneLessons = course.modules.filter((m) => m.done).length;
-                    const progress = (doneLessons / course.modules.length) * 100;
-
-                    return (
-                        <TouchableOpacity
-                            key={course.id}
-                            style={styles.courseCard}
-                            onPress={() => setSelectedCourse(selectedCourse?.id === course.id ? null : course)}
-                            activeOpacity={0.85}
-                        >
-                            <View style={styles.courseHeader}>
-                                <Text style={styles.courseIcon}>{course.icon}</Text>
-                                <View style={{ flex: 1 }}>
-                                    <View style={styles.courseTitleRow}>
-                                        <Text style={styles.courseTitle}>{course.title}</Text>
-                                        <View style={[styles.levelBadge, { backgroundColor: course.levelColor + '22', borderColor: course.levelColor }]}>
-                                            <Text style={[styles.levelText, { color: course.levelColor }]}>
-                                                {course.level}
-                                            </Text>
-                                        </View>
-                                    </View>
-                                    <Text style={styles.courseDesc}>{course.description}</Text>
-                                    <View style={styles.courseMeta}>
-                                        <Text style={styles.courseDuration}>⏱ {course.duration}</Text>
-                                        <Text style={styles.courseProgress}>
-                                            {doneLessons}/{course.modules.length} modules
-                                        </Text>
-                                    </View>
-
-                                    {/* Barre de progression */}
-                                    <View style={styles.progressBar}>
-                                        <View style={[styles.progressFill, { width: `${progress}%`, backgroundColor: course.levelColor }]} />
-                                    </View>
-                                </View>
-                                <Text style={styles.courseChevron}>
-                                    {selectedCourse?.id === course.id ? '▲' : '▼'}
-                                </Text>
-                            </View>
-
-                            {/* Modules dépliés */}
-                            {selectedCourse?.id === course.id && (
-                                <View style={styles.modulesList}>
-                                    {course.modules.map((mod) => (
-                                        <View key={mod.id} style={[styles.moduleRow, mod.done && styles.moduleRowDone]}>
-                                            <Text style={styles.moduleIcon}>{mod.icon}</Text>
-                                            <View style={{ flex: 1 }}>
-                                                <Text style={[styles.moduleTitle, mod.done && styles.moduleTitleDone]}>
-                                                    {mod.title}
-                                                </Text>
-                                                <Text style={styles.moduleDuration}>{mod.duration}</Text>
-                                            </View>
-                                            <Text style={mod.done ? styles.moduleDoneCheck : styles.moduleUndone}>
-                                                {mod.done ? '✓' : '○'}
-                                            </Text>
-                                        </View>
-                                    ))}
-                                </View>
-                            )}
-                        </TouchableOpacity>
-                    );
-                })}
-
-                {/* Ressources supplémentaires */}
-                <Text style={styles.sectionTitle}>🔗  Ressources CRT</Text>
-                {[
-                    { icon: '📄', title: 'Guide ERC 2021 (PDF)', sub: 'Directives européennes de réanimation' },
-                    { icon: '🎬', title: 'Vidéos pédagogiques', sub: 'Démonstrations pratiques PSE' },
-                    { icon: '📱', title: 'Fiches mémo', sub: 'Résumés rapides par situation' },
-                ].map((r, i) => (
-                    <TouchableOpacity key={i} style={styles.resourceRow}>
-                        <Text style={styles.resourceIcon}>{r.icon}</Text>
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.resourceTitle}>{r.title}</Text>
-                            <Text style={styles.resourceSub}>{r.sub}</Text>
-                        </View>
-                        <Text style={styles.resourceArrow}>→</Text>
-                    </TouchableOpacity>
-                ))}
-
-                <View style={{ height: 20 }} />
             </ScrollView>
+
+            {/* Modal Module Detail */}
+            <Modal
+                visible={!!selectedModule}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setSelectedModule(null)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        {selectedModule && (
+                            <>
+                                <View style={styles.modalHandle} />
+                                <View style={[styles.modalIconHuge, { backgroundColor: selectedModule.color + '15' }]}>
+                                    <Feather name={selectedModule.icon} size={48} color={selectedModule.color} />
+                                </View>
+                                <Text style={styles.modalTitle}>{selectedModule.title}</Text>
+                                <Text style={styles.modalDesc}>{selectedModule.desc}</Text>
+
+                                <View style={styles.modalStatsRow}>
+                                    <View style={styles.modalStat}>
+                                        <Feather name="list" size={16} color="#6B7280" />
+                                        <Text style={styles.modalStatText}>{selectedModule.lessons} leçons</Text>
+                                    </View>
+                                    <View style={styles.modalStatDivider} />
+                                    <View style={styles.modalStat}>
+                                        <Feather name="clock" size={16} color="#6B7280" />
+                                        <Text style={styles.modalStatText}>{selectedModule.time} estimé</Text>
+                                    </View>
+                                </View>
+
+                                <TouchableOpacity
+                                    style={[styles.modalActionBtn, { backgroundColor: selectedModule.color }]}
+                                    onPress={() => setSelectedModule(null)}
+                                >
+                                    <Feather name="play" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+                                    <Text style={styles.modalActionText}>
+                                        {selectedModule.progress === 0 ? 'Commencer' : 'Continuer'}
+                                    </Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={styles.modalCloseBtn}
+                                    onPress={() => setSelectedModule(null)}
+                                >
+                                    <Text style={styles.modalCloseText}>Fermer</Text>
+                                </TouchableOpacity>
+                            </>
+                        )}
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
     safe: { flex: 1, backgroundColor: '#F9FAFB' },
-    scroll: { padding: 16 },
+    scroll: { padding: 16, paddingBottom: 32 },
 
-    // Quiz banner
+    // Header Card
+    headerCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        padding: 20,
+        marginBottom: 20,
+        elevation: 3,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+    },
+    headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+    headerTextWrap: { flex: 1 },
+    headerGreeting: { fontSize: 22, fontWeight: '800', color: '#111827' },
+    headerSub: { fontSize: 13, color: '#6B7280', marginTop: 2 },
+    headerIconWrap: {
+        width: 52,
+        height: 52,
+        borderRadius: 26,
+        backgroundColor: '#FEE2E2',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    globalProgressBox: { backgroundColor: '#F9FAFB', borderRadius: 12, padding: 12 },
+    globalProgressRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
+    globalProgressLabel: { fontSize: 12, fontWeight: '600', color: '#4B5563' },
+    globalProgressValue: { fontSize: 12, fontWeight: '700', color: '#DC2626' },
+    progressBarBg: { height: 6, backgroundColor: '#E5E7EB', borderRadius: 3, overflow: 'hidden' },
+    progressBarFill: { height: '100%', borderRadius: 3 },
+
+    // Sections
+    section: { marginBottom: 24 },
+    sectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, marginLeft: 4 },
+    sectionTitle: { fontSize: 16, fontWeight: '700', color: '#111827' },
+
+    // Grid
+    grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between' },
+    moduleCard: {
+        width: (width - 44) / 2,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        padding: 14,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 3,
+        borderWidth: 1,
+        borderColor: '#F3F4F6'
+    },
+    moduleIconWrap: {
+        width: 44,
+        height: 44,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 10,
+    },
+    moduleTitle: { fontSize: 14, fontWeight: '700', color: '#111827', marginBottom: 4, minHeight: 36 },
+    moduleMeta: { fontSize: 11, color: '#9CA3AF', marginBottom: 12 },
+    moduleProgressStack: { gap: 6 },
+    moduleProgressBg: { height: 4, backgroundColor: '#F3F4F6', borderRadius: 2, overflow: 'hidden' },
+    moduleProgressFill: { height: '100%', borderRadius: 2 },
+    moduleProgressText: { fontSize: 10, color: '#6B7280', fontWeight: '600', textAlign: 'right' },
+
+    // Ressources
+    resCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        padding: 12,
+        marginBottom: 10,
+        elevation: 1,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 2,
+        borderWidth: 1,
+        borderColor: '#F3F4F6',
+    },
+    resIconBox: {
+        width: 42,
+        height: 42,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 14,
+    },
+    resInfo: { flex: 1 },
+    resTitle: { fontSize: 14, fontWeight: '700', color: '#111827', marginBottom: 4 },
+    resMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    resBadge: { backgroundColor: '#F3F4F6', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+    resBadgeText: { fontSize: 10, fontWeight: '600', color: '#4B5563', textTransform: 'uppercase' },
+    resSize: { fontSize: 11, color: '#9CA3AF' },
+
+    // Quiz Banner
     quizBanner: {
-        backgroundColor: '#7C3AED',
+        backgroundColor: '#DC2626',
         borderRadius: 16,
         padding: 16,
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
-        marginBottom: 20,
+        gap: 14,
+        marginTop: 8,
         elevation: 4,
-        shadowColor: '#7C3AED',
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.3,
+        shadowColor: '#DC2626',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
         shadowRadius: 6,
     },
-    quizBannerIcon: { fontSize: 36 },
-    quizBannerTitle: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
-    quizBannerSub: { color: '#DDD6FE', fontSize: 12, marginTop: 2 },
-    quizBannerArrow: { color: '#FFFFFF', fontSize: 22, fontWeight: '700' },
-
-    sectionTitle: {
-        fontSize: 16,
-        fontWeight: '800',
-        color: '#111827',
-        marginBottom: 12,
-        marginTop: 4,
+    quizIconWrap: {
+        width: 48,
+        height: 48,
+        borderRadius: 14,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
+    quizInfo: { flex: 1 },
+    quizTitle: { fontSize: 16, fontWeight: '800', color: '#FFFFFF', marginBottom: 2 },
+    quizDesc: { fontSize: 12, color: '#FEE2E2', lineHeight: 16 },
 
-    // Course card
-    courseCard: {
+    // Modal
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
         backgroundColor: '#FFFFFF',
-        borderRadius: 16,
-        marginBottom: 12,
-        overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: '#F3F4F6',
-        elevation: 2,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.06,
-        shadowRadius: 3,
+        borderTopLeftRadius: 32,
+        borderTopRightRadius: 32,
+        padding: 24,
+        alignItems: 'center',
+        paddingBottom: Platform.OS === 'ios' ? 40 : 24,
     },
-    courseHeader: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        padding: 16,
-        gap: 12,
-    },
-    courseIcon: { fontSize: 32 },
-    courseTitleRow: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        gap: 8,
-        flexWrap: 'wrap',
-        marginBottom: 4,
-    },
-    courseTitle: { fontSize: 14, fontWeight: '700', color: '#111827', flex: 1 },
-    levelBadge: {
-        borderRadius: 10,
-        paddingVertical: 2,
-        paddingHorizontal: 8,
-        borderWidth: 1,
-    },
-    levelText: { fontSize: 10, fontWeight: '700' },
-    courseDesc: { fontSize: 12, color: '#6B7280', lineHeight: 18, marginBottom: 8 },
-    courseMeta: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
-    courseDuration: { fontSize: 11, color: '#9CA3AF' },
-    courseProgress: { fontSize: 11, color: '#6B7280', fontWeight: '500' },
-    progressBar: {
+    modalHandle: {
+        width: 40,
         height: 4,
-        backgroundColor: '#F3F4F6',
+        backgroundColor: '#E5E7EB',
         borderRadius: 2,
-        overflow: 'hidden',
+        marginBottom: 20,
     },
-    progressFill: { height: 4, borderRadius: 2 },
-    courseChevron: { fontSize: 12, color: '#9CA3AF', marginTop: 2 },
-
-    // Modules list
-    modulesList: {
-        borderTopWidth: 1,
-        borderTopColor: '#F3F4F6',
-        paddingHorizontal: 16,
-        paddingTop: 8,
-        paddingBottom: 12,
-        gap: 8,
-    },
-    moduleRow: {
-        flexDirection: 'row',
+    modalIconHuge: {
+        width: 88,
+        height: 88,
+        borderRadius: 44,
         alignItems: 'center',
-        gap: 10,
-        paddingVertical: 8,
-        paddingHorizontal: 10,
-        borderRadius: 10,
-        backgroundColor: '#F9FAFB',
-    },
-    moduleRowDone: { backgroundColor: '#ECFDF5' },
-    moduleIcon: { fontSize: 18 },
-    moduleTitle: { fontSize: 13, color: '#374151', fontWeight: '500' },
-    moduleTitleDone: { color: '#065F46', textDecorationLine: 'line-through' },
-    moduleDuration: { fontSize: 11, color: '#9CA3AF' },
-    moduleDoneCheck: { color: '#10B981', fontSize: 16, fontWeight: '700' },
-    moduleUndone: { color: '#D1D5DB', fontSize: 16 },
-
-    // Resources
-    resourceRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#FFFFFF',
-        borderRadius: 12,
-        padding: 14,
-        marginBottom: 8,
-        gap: 12,
-        borderWidth: 1,
-        borderColor: '#F3F4F6',
-    },
-    resourceIcon: { fontSize: 24 },
-    resourceTitle: { fontSize: 14, fontWeight: '600', color: '#111827' },
-    resourceSub: { fontSize: 11, color: '#6B7280', marginTop: 2 },
-    resourceArrow: { color: '#9CA3AF', fontSize: 18 },
-
-    // Quiz screen
-    quizHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        backgroundColor: '#7C3AED',
-        paddingHorizontal: 20,
-        paddingVertical: 14,
-    },
-    quizBack: { color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
-    quizProgress: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
-    quizScore: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
-    quizContent: { padding: 16 },
-    questionCard: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 16,
-        padding: 20,
+        justifyContent: 'center',
         marginBottom: 16,
+    },
+    modalTitle: { fontSize: 24, fontWeight: '800', color: '#111827', textAlign: 'center', marginBottom: 8 },
+    modalDesc: { fontSize: 14, color: '#4B5563', textAlign: 'center', lineHeight: 22, paddingHorizontal: 10, marginBottom: 20 },
+
+    modalStatsRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F9FAFB',
+        borderRadius: 12,
+        paddingVertical: 12,
+        paddingHorizontal: 20,
+        marginBottom: 24,
+        borderWidth: 1,
+        borderColor: '#F3F4F6'
+    },
+    modalStat: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    modalStatDivider: { width: 1, height: 16, backgroundColor: '#E5E7EB', marginHorizontal: 20 },
+    modalStatText: { fontSize: 13, fontWeight: '600', color: '#4B5563' },
+
+    modalActionBtn: {
+        width: '100%',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 16,
+        borderRadius: 16,
+        marginBottom: 12,
         elevation: 2,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.08,
-        shadowRadius: 3,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
     },
-    questionText: { fontSize: 16, fontWeight: '600', color: '#111827', lineHeight: 24 },
-    optionBtn: {
-        borderRadius: 12,
-        padding: 14,
-        marginBottom: 10,
-        borderWidth: 2,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-    optionText: { fontSize: 14, flex: 1 },
-    optionCheck: { color: '#10B981', fontSize: 18, fontWeight: '700' },
-    optionX: { color: '#DC2626', fontSize: 18, fontWeight: '700' },
-    explanationCard: {
-        backgroundColor: '#EFF6FF',
-        borderRadius: 12,
-        padding: 16,
-        marginTop: 4,
-    },
-    explanationTitle: { fontSize: 14, fontWeight: '700', color: '#1D4ED8', marginBottom: 6 },
-    explanationText: { fontSize: 13, color: '#374151', lineHeight: 20 },
-    nextBtn: {
-        backgroundColor: '#7C3AED',
-        borderRadius: 10,
-        paddingVertical: 10,
-        alignItems: 'center',
-        marginTop: 12,
-    },
-    nextBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 14 },
-    quizResult: { alignItems: 'center', padding: 20 },
-    quizResultEmoji: { fontSize: 64, marginBottom: 16 },
-    quizResultScore: { fontSize: 48, fontWeight: '900', color: '#7C3AED' },
-    quizResultMsg: { fontSize: 16, color: '#374151', textAlign: 'center', marginTop: 8, lineHeight: 24 },
-    retryBtn: {
-        backgroundColor: '#7C3AED',
-        borderRadius: 12,
+    modalActionText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
+
+    modalCloseBtn: {
+        width: '100%',
         paddingVertical: 14,
-        paddingHorizontal: 32,
-        marginTop: 24,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 16,
+        backgroundColor: '#F3F4F6',
     },
-    retryBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 15 },
-    exitBtn: { marginTop: 12, padding: 10 },
-    exitBtnText: { color: '#7C3AED', fontWeight: '600', fontSize: 14 },
+    modalCloseText: { color: '#4B5563', fontSize: 15, fontWeight: '700' },
 });

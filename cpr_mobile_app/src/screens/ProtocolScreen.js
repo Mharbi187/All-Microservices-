@@ -12,9 +12,20 @@ import {
     TouchableOpacity,
     Dimensions
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 import { MEDICAL_PROTOCOLS } from '../services/MedicalProtocols';
 
 const { width } = Dimensions.get('window');
+
+// Map emoji protocols to feather icons
+const PROTOCOL_ICONS = {
+    adult_cpr: 'user',
+    child_cpr: 'user-minus',
+    infant_cpr: 'users', // using users for infant
+    choking_adult: 'alert-octagon',
+    choking_infant: 'alert-triangle'
+};
 
 export default function ProtocolScreen() {
     const [expandedProtocol, setExpandedProtocol] = useState(null);
@@ -27,10 +38,13 @@ export default function ProtocolScreen() {
 
     return (
         <SafeAreaView style={styles.container} edges={['bottom']}>
-            <ScrollView style={styles.scrollView}>
+            <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
                 {/* Header */}
                 <View style={styles.header}>
-                    <Text style={styles.title}>📋 Guide des Protocoles</Text>
+                    <View style={styles.headerTitleRow}>
+                        <Feather name="clipboard" size={24} color="#FFFFFF" style={{ marginRight: 10 }} />
+                        <Text style={styles.title}>Guide des Protocoles</Text>
+                    </View>
                     <Text style={styles.subtitle}>دليل البروتوكولات</Text>
                     <Text style={styles.reference}>
                         Conforme aux directives Croissant-Rouge / Croix-Rouge 2021
@@ -39,23 +53,26 @@ export default function ProtocolScreen() {
 
                 {/* Rappel Chaîne de Survie */}
                 <View style={styles.survivalChain}>
-                    <Text style={styles.chainTitle}>🔗 Chaîne de Survie</Text>
+                    <View style={styles.chainTitleRow}>
+                        <Feather name="link" size={16} color="#FFFFFF" style={{ marginRight: 8 }} />
+                        <Text style={styles.chainTitle}>Chaîne de Survie</Text>
+                    </View>
                     <View style={styles.chainSteps}>
                         <View style={styles.chainStep}>
                             <Text style={styles.chainNumber}>1</Text>
                             <Text style={styles.chainText}>Sécurité</Text>
                         </View>
-                        <Text style={styles.chainArrow}>→</Text>
+                        <Feather name="arrow-right" size={16} color="#64748B" style={styles.chainArrow} />
                         <View style={styles.chainStep}>
                             <Text style={styles.chainNumber}>2</Text>
                             <Text style={styles.chainText}>Conscience</Text>
                         </View>
-                        <Text style={styles.chainArrow}>→</Text>
+                        <Feather name="arrow-right" size={16} color="#64748B" style={styles.chainArrow} />
                         <View style={styles.chainStep}>
                             <Text style={styles.chainNumber}>3</Text>
                             <Text style={styles.chainText}>Appeler 190</Text>
                         </View>
-                        <Text style={styles.chainArrow}>→</Text>
+                        <Feather name="arrow-right" size={16} color="#64748B" style={styles.chainArrow} />
                         <View style={styles.chainStep}>
                             <Text style={styles.chainNumber}>4</Text>
                             <Text style={styles.chainText}>RCP</Text>
@@ -73,15 +90,19 @@ export default function ProtocolScreen() {
                     >
                         <View style={styles.protocolHeader}>
                             <View style={styles.protocolTitleRow}>
-                                <Text style={styles.protocolIcon}>{protocol.icon}</Text>
+                                <View style={styles.protocolIconWrap}>
+                                    <Feather name={PROTOCOL_ICONS[id] || 'file'} size={22} color="#DC2626" />
+                                </View>
                                 <View style={styles.protocolTitleContainer}>
                                     <Text style={styles.protocolName}>{protocol.name}</Text>
                                     <Text style={styles.protocolNameAr}>{protocol.nameAr}</Text>
                                 </View>
                             </View>
-                            <Text style={styles.expandIcon}>
-                                {expandedProtocol === id ? '▼' : '▶'}
-                            </Text>
+                            <Feather
+                                name={expandedProtocol === id ? 'chevron-down' : 'chevron-right'}
+                                size={20}
+                                color="#64748B"
+                            />
                         </View>
 
                         {/* Résumé rapide */}
@@ -120,22 +141,28 @@ export default function ProtocolScreen() {
 
                                 {protocol.initialVentilations && (
                                     <View style={styles.specialNote}>
+                                        <Feather name="alert-circle" size={16} color="#60A5FA" style={{ marginRight: 6, marginTop: 1 }} />
                                         <Text style={styles.specialNoteText}>
-                                            ⚠️ {protocol.initialVentilations} insufflations initiales AVANT les compressions
+                                            {protocol.initialVentilations} insufflations initiales AVANT les compressions
                                         </Text>
                                     </View>
                                 )}
 
                                 {protocol.specialWarning && (
                                     <View style={styles.warningNote}>
-                                        <Text style={styles.warningNoteText}>
-                                            🚨 {protocol.specialWarning}
-                                        </Text>
-                                        {protocol.specialWarningAr && (
-                                            <Text style={styles.warningNoteTextAr}>
-                                                {protocol.specialWarningAr}
-                                            </Text>
-                                        )}
+                                        <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+                                            <Feather name="alert-triangle" size={16} color="#F87171" style={{ marginRight: 6, marginTop: 1 }} />
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={styles.warningNoteText}>
+                                                    {protocol.specialWarning}
+                                                </Text>
+                                                {protocol.specialWarningAr && (
+                                                    <Text style={styles.warningNoteTextAr}>
+                                                        {protocol.specialWarningAr}
+                                                    </Text>
+                                                )}
+                                            </View>
+                                        </View>
                                     </View>
                                 )}
                             </View>
@@ -145,31 +172,34 @@ export default function ProtocolScreen() {
 
                 {/* Rappels importants */}
                 <View style={styles.reminders}>
-                    <Text style={styles.remindersTitle}>💡 Rappels Essentiels</Text>
+                    <View style={styles.remindersTitleRow}>
+                        <Feather name="zap" size={16} color="#F59E0B" style={{ marginRight: 8 }} />
+                        <Text style={styles.remindersTitle}>Rappels Essentiels</Text>
+                    </View>
 
                     <View style={styles.reminderItem}>
-                        <Text style={styles.reminderBullet}>•</Text>
+                        <Feather name="check" size={16} color="#22C55E" style={styles.reminderBullet} />
                         <Text style={styles.reminderText}>
                             Poussez FORT (5-6 cm) et VITE (100-120/min)
                         </Text>
                     </View>
 
                     <View style={styles.reminderItem}>
-                        <Text style={styles.reminderBullet}>•</Text>
+                        <Feather name="check" size={16} color="#22C55E" style={styles.reminderBullet} />
                         <Text style={styles.reminderText}>
                             Laissez le thorax remonter COMPLÈTEMENT entre les compressions
                         </Text>
                     </View>
 
                     <View style={styles.reminderItem}>
-                        <Text style={styles.reminderBullet}>•</Text>
+                        <Feather name="check" size={16} color="#22C55E" style={styles.reminderBullet} />
                         <Text style={styles.reminderText}>
                             Minimisez les interruptions (max 10 secondes)
                         </Text>
                     </View>
 
                     <View style={styles.reminderItem}>
-                        <Text style={styles.reminderBullet}>•</Text>
+                        <Feather name="check" size={16} color="#22C55E" style={styles.reminderBullet} />
                         <Text style={styles.reminderText}>
                             Alternez les secouristes toutes les 2 minutes si possible
                         </Text>
@@ -199,6 +229,11 @@ const styles = StyleSheet.create({
         padding: 20,
         alignItems: 'center',
     },
+    headerTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 4,
+    },
     title: {
         fontSize: 24,
         fontWeight: 'bold',
@@ -207,7 +242,6 @@ const styles = StyleSheet.create({
     subtitle: {
         fontSize: 16,
         color: '#94A3B8',
-        marginTop: 4,
     },
     reference: {
         fontSize: 12,
@@ -222,12 +256,16 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         marginBottom: 20,
     },
+    chainTitleRow: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
     chainTitle: {
         fontSize: 16,
         fontWeight: 'bold',
         color: '#FFFFFF',
-        marginBottom: 12,
-        textAlign: 'center',
     },
     chainSteps: {
         flexDirection: 'row',
@@ -256,8 +294,6 @@ const styles = StyleSheet.create({
         marginTop: 4,
     },
     chainArrow: {
-        color: '#64748B',
-        fontSize: 16,
         marginHorizontal: 8,
     },
     protocolCard: {
@@ -275,9 +311,15 @@ const styles = StyleSheet.create({
     protocolTitleRow: {
         flexDirection: 'row',
         alignItems: 'center',
+        flex: 1,
     },
-    protocolIcon: {
-        fontSize: 32,
+    protocolIconWrap: {
+        width: 44,
+        height: 44,
+        borderRadius: 12,
+        backgroundColor: '#FEE2E2',
+        alignItems: 'center',
+        justifyContent: 'center',
         marginRight: 12,
     },
     protocolTitleContainer: {
@@ -291,34 +333,30 @@ const styles = StyleSheet.create({
     protocolNameAr: {
         fontSize: 12,
         color: '#94A3B8',
-        textAlign: 'right',
-    },
-    expandIcon: {
-        fontSize: 14,
-        color: '#64748B',
+        textAlign: 'left', // Ensure proper alignment for UI
     },
     quickInfo: {
         flexDirection: 'row',
-        marginTop: 12,
+        marginTop: 16,
         gap: 8,
     },
     infoBadge: {
         backgroundColor: '#0F172A',
         paddingHorizontal: 12,
-        paddingVertical: 8,
+        paddingVertical: 10,
         borderRadius: 8,
         alignItems: 'center',
         flex: 1,
     },
     infoLabel: {
-        fontSize: 10,
+        fontSize: 11,
         color: '#64748B',
+        marginBottom: 4,
     },
     infoValue: {
         fontSize: 14,
         fontWeight: 'bold',
         color: '#FFFFFF',
-        marginTop: 2,
     },
     expandedContent: {
         marginTop: 16,
@@ -328,7 +366,7 @@ const styles = StyleSheet.create({
     },
     detailRow: {
         flexDirection: 'row',
-        marginBottom: 8,
+        marginBottom: 10,
     },
     detailLabel: {
         color: '#94A3B8',
@@ -336,28 +374,38 @@ const styles = StyleSheet.create({
         width: 80,
     },
     detailValue: {
-        color: '#FFFFFF',
+        color: '#F8FAFC',
         fontSize: 13,
         flex: 1,
+        lineHeight: 20,
     },
     detailValueAr: {
-        color: '#FFFFFF',
+        color: '#F8FAFC',
         fontSize: 13,
         flex: 1,
         textAlign: 'right',
+        lineHeight: 20,
     },
     specialNote: {
-        backgroundColor: 'rgba(59, 130, 246, 0.2)',
+        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        borderWidth: 1,
+        borderColor: 'rgba(59, 130, 246, 0.2)',
         padding: 12,
         borderRadius: 8,
-        marginTop: 8,
+        marginTop: 12,
+        flexDirection: 'row',
+        alignItems: 'flex-start',
     },
     specialNoteText: {
         color: '#60A5FA',
         fontSize: 13,
+        flex: 1,
+        lineHeight: 20,
     },
     warningNote: {
-        backgroundColor: 'rgba(239, 68, 68, 0.2)',
+        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+        borderWidth: 1,
+        borderColor: 'rgba(239, 68, 68, 0.2)',
         padding: 12,
         borderRadius: 8,
         marginTop: 8,
@@ -366,12 +414,14 @@ const styles = StyleSheet.create({
         color: '#F87171',
         fontSize: 13,
         fontWeight: 'bold',
+        lineHeight: 20,
     },
     warningNoteTextAr: {
         color: '#F87171',
-        fontSize: 12,
+        fontSize: 13,
         textAlign: 'right',
-        marginTop: 4,
+        marginTop: 6,
+        lineHeight: 20,
     },
     reminders: {
         backgroundColor: '#1E293B',
@@ -381,25 +431,30 @@ const styles = StyleSheet.create({
         marginTop: 8,
         marginBottom: 20,
     },
+    remindersTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
     remindersTitle: {
         fontSize: 16,
         fontWeight: 'bold',
         color: '#FFFFFF',
-        marginBottom: 12,
     },
     reminderItem: {
         flexDirection: 'row',
-        marginBottom: 8,
+        alignItems: 'flex-start',
+        marginBottom: 12,
     },
     reminderBullet: {
-        color: '#22C55E',
-        fontSize: 16,
-        marginRight: 8,
+        marginRight: 10,
+        marginTop: 1,
     },
     reminderText: {
-        color: '#94A3B8',
-        fontSize: 13,
+        color: '#CBD5E1',
+        fontSize: 14,
         flex: 1,
+        lineHeight: 20,
     },
     footer: {
         padding: 20,

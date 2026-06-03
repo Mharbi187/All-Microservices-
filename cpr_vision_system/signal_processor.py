@@ -137,6 +137,9 @@ class SignalProcessor:
             self.session_start_s = timestamp_s
             self._initialized = True
 
+        # Always track the latest timestamp for time_since_last calculation
+        self._last_timestamp_s = timestamp_s
+
         # ── Extract wrist and torso landmarks (may be None if occluded) ──
         lw = rescuer_pose[_LEFT_WRIST]    if len(rescuer_pose) > _LEFT_WRIST    else None
         rw = rescuer_pose[_RIGHT_WRIST]   if len(rescuer_pose) > _RIGHT_WRIST   else None

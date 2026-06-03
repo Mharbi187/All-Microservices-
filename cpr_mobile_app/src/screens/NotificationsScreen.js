@@ -17,16 +17,17 @@ import {
     Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 import { mockDataService } from '../services/MockDataService';
 import { useAuth } from '../contexts/AuthContext';
 
 const { width } = Dimensions.get('window');
 
 const PRIORITY_CONFIG = {
-    urgent: { label: 'URGENT', color: '#DC2626', bg: '#FEE2E2', icon: '🚨' },
-    high: { label: 'ÉLEVÉ', color: '#F59E0B', bg: '#FEF3C7', icon: '⚠️' },
-    normal: { label: 'NORMAL', color: '#3B82F6', bg: '#EFF6FF', icon: 'ℹ️' },
-    info: { label: 'INFO', color: '#6B7280', bg: '#F3F4F6', icon: '📢' },
+    urgent: { label: 'URGENT', color: '#DC2626', bg: '#FEE2E2', icon: 'alert-octagon' },
+    high: { label: 'ÉLEVÉ', color: '#F59E0B', bg: '#FEF3C7', icon: 'alert-triangle' },
+    normal: { label: 'NORMAL', color: '#3B82F6', bg: '#EFF6FF', icon: 'info' },
+    info: { label: 'INFO', color: '#6B7280', bg: '#F3F4F6', icon: 'message-circle' },
 };
 
 const STATUS_CONFIG = {
@@ -86,9 +87,9 @@ export default function NotificationsScreen({ navigation }) {
 
     const FILTERS = [
         { key: 'all', label: 'Tout' },
-        { key: 'urgent', label: '🚨 Urgent' },
-        { key: 'pending', label: '⏳ En attente' },
-        { key: 'accepted', label: '✓ Accepté' },
+        { key: 'urgent', label: 'Urgent' },
+        { key: 'pending', label: 'En attente' },
+        { key: 'accepted', label: 'Accepté' },
     ];
 
     const filteredNotifs = notifications.filter((n) => {
@@ -140,15 +141,18 @@ export default function NotificationsScreen({ navigation }) {
                     {/* Header compteur */}
                     {unreadCount > 0 && (
                         <View style={styles.unreadBanner}>
+                            <Feather name="bell" size={13} color="#92400E" style={{ marginRight: 6 }} />
                             <Text style={styles.unreadBannerText}>
-                                🔔  {unreadCount} nouvelle{unreadCount > 1 ? 's' : ''} notification{unreadCount > 1 ? 's' : ''}
+                                {unreadCount} nouvelle{unreadCount > 1 ? 's' : ''} notification{unreadCount > 1 ? 's' : ''}
                             </Text>
                         </View>
                     )}
 
                     {filteredNotifs.length === 0 ? (
                         <View style={styles.empty}>
-                            <Text style={styles.emptyIcon}>🔕</Text>
+                            <View style={styles.emptyIconWrap}>
+                                <Feather name="bell-off" size={48} color="#D1D5DB" />
+                            </View>
                             <Text style={styles.emptyTitle}>Aucune notification</Text>
                             <Text style={styles.emptySub}>
                                 Tirez vers le bas pour actualiser.
@@ -171,9 +175,10 @@ export default function NotificationsScreen({ navigation }) {
                                     <View style={[styles.prioStripe, { backgroundColor: prio.color }]} />
                                     <View style={styles.notifBody}>
                                         <View style={styles.notifTop}>
-                                            <View style={[styles.prioBadge, { backgroundColor: prio.bg, borderColor: prio.color }]}>
+                                            <View style={[styles.prioBadge, { backgroundColor: prio.bg, borderColor: prio.color, flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
+                                                <Feather name={prio.icon} size={11} color={prio.color} />
                                                 <Text style={[styles.prioText, { color: prio.color }]}>
-                                                    {prio.icon} {prio.label}
+                                                    {prio.label}
                                                 </Text>
                                             </View>
                                             {notif.unread && <View style={styles.unreadDot} />}
@@ -186,13 +191,15 @@ export default function NotificationsScreen({ navigation }) {
                                             {notif.message}
                                         </Text>
                                         <View style={styles.notifMeta}>
-                                            <Text style={styles.notifTime}>
-                                                🕐 {notif.date}
-                                            </Text>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                                <Feather name="clock" size={11} color="#9CA3AF" />
+                                                <Text style={styles.notifTime}>{notif.date}</Text>
+                                            </View>
                                             {notif.location && (
-                                                <Text style={styles.notifLocation}>
-                                                    📍 {notif.location}
-                                                </Text>
+                                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                                    <Feather name="map-pin" size={11} color="#9CA3AF" />
+                                                    <Text style={styles.notifLocation}>{notif.location}</Text>
+                                                </View>
                                             )}
                                         </View>
                                     </View>
@@ -220,18 +227,22 @@ export default function NotificationsScreen({ navigation }) {
                                 <>
                                     <View style={styles.modalHandle} />
 
-                                    <View style={[styles.modalPrio, { backgroundColor: prio.bg, borderColor: prio.color }]}>
+                                    <View style={[styles.modalPrio, { backgroundColor: prio.bg, borderColor: prio.color, flexDirection: 'row', alignItems: 'center', gap: 6 }]}>
+                                        <Feather name={prio.icon} size={13} color={prio.color} />
                                         <Text style={[styles.modalPrioText, { color: prio.color }]}>
-                                            {prio.icon}  {prio.label}
+                                            {prio.label}
                                         </Text>
                                     </View>
 
                                     <Text style={styles.modalTitle}>{selected.title}</Text>
-                                    <Text style={styles.modalTime}>🕐 {selected.date}</Text>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+                                        <Feather name="clock" size={12} color="#9CA3AF" />
+                                        <Text style={styles.modalTime}>{selected.date}</Text>
+                                    </View>
 
                                     {selected.location && (
                                         <View style={styles.modalInfoRow}>
-                                            <Text style={styles.modalInfoIcon}>📍</Text>
+                                            <Feather name="map-pin" size={16} color="#6B7280" />
                                             <Text style={styles.modalInfoText}>{selected.location}</Text>
                                         </View>
                                     )}
@@ -256,13 +267,13 @@ export default function NotificationsScreen({ navigation }) {
                                                 style={styles.declineBtn}
                                                 onPress={() => handleDecline(selected.id)}
                                             >
-                                                <Text style={styles.declineBtnText}>✗  Refuser</Text>
+                                                <Text style={styles.declineBtnText}>Refuser</Text>
                                             </TouchableOpacity>
                                             <TouchableOpacity
                                                 style={styles.acceptBtn}
                                                 onPress={() => handleAccept(selected.id)}
                                             >
-                                                <Text style={styles.acceptBtnText}>✓  Accepter</Text>
+                                                <Text style={styles.acceptBtnText}>Accepter</Text>
                                             </TouchableOpacity>
                                         </View>
                                     )}
@@ -311,10 +322,21 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#FDE68A',
     },
-    unreadBannerText: { color: '#92400E', fontSize: 13, fontWeight: '600', textAlign: 'center' },
+    unreadBanner: {
+        backgroundColor: '#FEF3C7',
+        borderRadius: 10,
+        padding: 10,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: '#FDE68A',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    unreadBannerText: { color: '#92400E', fontSize: 13, fontWeight: '600' },
 
     empty: { alignItems: 'center', paddingTop: 60 },
-    emptyIcon: { fontSize: 56, marginBottom: 12 },
+    emptyIconWrap: { marginBottom: 12 },
     emptyTitle: { fontSize: 18, fontWeight: '700', color: '#374151' },
     emptySub: { fontSize: 13, color: '#9CA3AF', marginTop: 6 },
 

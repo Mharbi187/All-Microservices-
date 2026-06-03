@@ -44,9 +44,18 @@ class PairSelector:
             h = p["y2"] - p["y1"]
             p["aspect_ratio"] = w / h if h > 0 else 1.0
 
-        # Primary: find the most horizontal person (largest width/height ratio)
-        # Rescuer is upright (AR < 1.0), Victim is lying down (AR > Rescuer AR)
-        victim = max(persons, key=lambda p: p["aspect_ratio"])
+        # Primary: find the most horizontal person (lying-down victim has larger width/height ratio)
+        # A lying-down person (victim) typically has AR > 1.5; upright rescuer has AR < 1.0
+        best_candidate = max(persons, key=lambda p: p["aspect_ratio"])
+
+        if best_candidate["aspect_ratio"] >= self.HORIZONTAL_ASPECT_RATIO:
+            # Clear horizontal victim detected
+            victim = best_candidate
+        else:
+            # Both persons appear upright (e.g., victim on a bed/table at same height)
+            # Fallback: victim is the person lowest in the frame (highest y2 value)
+            # because a kneeling/lying person will appear lower than the standing rescuer
+            victim = max(persons, key=lambda p: p["y2"])
 
         # Rescuer = person closest (by centroid) to the victim
         victim_cx = (victim["x1"] + victim["x2"]) / 2.0

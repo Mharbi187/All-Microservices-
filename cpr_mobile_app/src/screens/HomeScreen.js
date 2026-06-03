@@ -70,7 +70,7 @@ export default function HomeScreen({ navigation }) {
                 {/* Header avec logo */}
                 <View style={styles.header}>
                     <View style={styles.logoContainer}>
-                        <Text style={styles.logoEmoji}>🌙</Text>
+                        <Image source={require('../../assets/logo_symbole.png')} style={styles.logoImage} />
                         <View>
                             <Text style={styles.title}>الهلال الأحمر التونسي</Text>
                             <Text style={styles.subtitle}>Croissant Rouge Tunisien</Text>
@@ -190,10 +190,11 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 12,
     },
-    logoEmoji: {
-        fontSize: 48,
+    logoImage: {
+        width: 50,
+        height: 50,
         marginRight: 12,
-        color: '#DC2626',
+        resizeMode: 'contain',
     },
     title: {
         fontSize: 22,

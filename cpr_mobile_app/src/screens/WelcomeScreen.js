@@ -15,40 +15,46 @@ import {
     Animated,
     Linking,
     Alert,
+    Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Feather } from '@expo/vector-icons';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
 const FEATURES = [
     {
-        icon: '🫀',
+        icon: 'activity',
         title: 'Assistance RCP',
         desc: 'Guidage en temps réel pour la réanimation cardio-pulmonaire',
         color: '#FEE2E2',
         border: '#DC2626',
+        iconColor: '#DC2626',
     },
     {
-        icon: '🤖',
+        icon: 'cpu',
         title: 'Assistant IA',
         desc: 'Posez vos questions sur les gestes de premiers secours',
         color: '#EFF6FF',
         border: '#3B82F6',
+        iconColor: '#3B82F6',
     },
     {
-        icon: '📚',
+        icon: 'book-open',
         title: 'Formations',
         desc: 'Apprenez les protocoles PSE1, PSE2 et plus encore',
         color: '#F0FDF4',
         border: '#10B981',
+        iconColor: '#10B981',
     },
     {
-        icon: '🔔',
+        icon: 'bell',
         title: 'Interventions',
         desc: 'Notifications de déploiement pour membres NDRT/RDRT',
         color: '#FFF7ED',
         border: '#F59E0B',
+        iconColor: '#F59E0B',
     },
 ];
 
@@ -73,7 +79,7 @@ export default function WelcomeScreen({ navigation }) {
 
     const handleEmergencyCall = () => {
         Alert.alert(
-            '⚠️ Appel d\'urgence',
+            'Appel d\'urgence',
             'Voulez-vous appeler le SAMU (190) ?',
             [
                 { text: 'Annuler', style: 'cancel' },
@@ -104,7 +110,7 @@ export default function WelcomeScreen({ navigation }) {
                         ]}
                     >
                         <View style={styles.logoRow}>
-                            <Text style={styles.logoIcon}>🌙</Text>
+                            <Image source={require('../../assets/logo_symbole.png')} style={styles.logoIcon} />
                             <View>
                                 <Text style={styles.orgAr}>الهلال الأحمر التونسي</Text>
                                 <Text style={styles.orgFr}>Croissant Rouge Tunisien</Text>
@@ -122,7 +128,7 @@ export default function WelcomeScreen({ navigation }) {
                             onPress={handleEmergencyCall}
                             activeOpacity={0.8}
                         >
-                            <Text style={styles.emergencyIcon}>📞</Text>
+                            <Feather name="phone" size={18} color="#DC2626" />
                             <Text style={styles.emergencyText}>URGENCE — 190</Text>
                         </TouchableOpacity>
                     </Animated.View>
@@ -140,7 +146,9 @@ export default function WelcomeScreen({ navigation }) {
                                     { backgroundColor: f.color, borderLeftColor: f.border },
                                 ]}
                             >
-                                <Text style={styles.featureIcon}>{f.icon}</Text>
+                                <View style={[styles.featureIconWrap, { backgroundColor: f.border + '18' }]}>
+                                    <Feather name={f.icon} size={22} color={f.iconColor} />
+                                </View>
                                 <Text style={styles.featureTitle}>{f.title}</Text>
                                 <Text style={styles.featureDesc}>{f.desc}</Text>
                             </View>
@@ -173,7 +181,8 @@ export default function WelcomeScreen({ navigation }) {
                         onPress={() => navigation.navigate('Login')}
                         activeOpacity={0.85}
                     >
-                        <Text style={styles.loginBtnText}>🔐  Se connecter</Text>
+                        <Feather name="log-in" size={18} color="#FFFFFF" />
+                        <Text style={styles.loginBtnText}>Se connecter</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -181,8 +190,9 @@ export default function WelcomeScreen({ navigation }) {
                         onPress={() => navigation.navigate('CPRGuest')}
                         activeOpacity={0.85}
                     >
+                        <Feather name="activity" size={18} color="#DC2626" />
                         <Text style={styles.guestBtnText}>
-                            🫀  Démarrer la RCP sans compte
+                            Démarrer la RCP sans compte
                         </Text>
                     </TouchableOpacity>
 
@@ -215,7 +225,7 @@ const styles = StyleSheet.create({
         gap: 12,
         marginBottom: 24,
     },
-    logoIcon: { fontSize: 44 },
+    logoIcon: { width: 44, height: 44, resizeMode: 'contain' },
     orgAr: { color: '#FEE2E2', fontSize: 14, fontWeight: '700', textAlign: 'right' },
     orgFr: { color: '#FCA5A5', fontSize: 11, textAlign: 'right' },
     heroTitle: {
@@ -239,14 +249,13 @@ const styles = StyleSheet.create({
         borderRadius: 50,
         paddingVertical: 12,
         paddingHorizontal: 28,
-        gap: 8,
+        gap: 10,
         elevation: 4,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.25,
         shadowRadius: 4,
     },
-    emergencyIcon: { fontSize: 20 },
     emergencyText: {
         color: '#DC2626',
         fontSize: 16,
@@ -278,7 +287,14 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.08,
         shadowRadius: 3,
     },
-    featureIcon: { fontSize: 28, marginBottom: 8 },
+    featureIconWrap: {
+        width: 40,
+        height: 40,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 10,
+    },
     featureTitle: { fontSize: 14, fontWeight: '700', color: '#111827', marginBottom: 4 },
     featureDesc: { fontSize: 12, color: '#6B7280', lineHeight: 18 },
 
@@ -303,6 +319,9 @@ const styles = StyleSheet.create({
         borderRadius: 14,
         paddingVertical: 16,
         alignItems: 'center',
+        flexDirection: 'row',
+        justifyContent: 'center',
+        gap: 10,
         elevation: 3,
         shadowColor: '#DC2626',
         shadowOffset: { width: 0, height: 3 },
@@ -315,6 +334,9 @@ const styles = StyleSheet.create({
         borderRadius: 14,
         paddingVertical: 16,
         alignItems: 'center',
+        flexDirection: 'row',
+        justifyContent: 'center',
+        gap: 10,
         borderWidth: 2,
         borderColor: '#DC2626',
     },

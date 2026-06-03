@@ -16,8 +16,10 @@ import {
     ActivityIndicator,
     Alert,
     Animated,
+    Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function LoginScreen({ navigation }) {
@@ -53,7 +55,6 @@ export default function LoginScreen({ navigation }) {
                 setError(result.error || 'Identifiants incorrects.');
                 shake();
             }
-            // Si succès, la navigation se fait automatiquement via App.js
         } catch (e) {
             setError('Erreur de connexion. Vérifiez votre réseau.');
             shake();
@@ -85,10 +86,10 @@ export default function LoginScreen({ navigation }) {
                             style={styles.backBtn}
                             onPress={() => navigation.goBack()}
                         >
-                            <Text style={styles.backArrow}>←</Text>
+                            <Feather name="arrow-left" size={22} color="#FFFFFF" />
                         </TouchableOpacity>
                         <View style={styles.logoArea}>
-                            <Text style={styles.logoEmoji}>🌙</Text>
+                            <Image source={require('../../assets/logo_symbole.png')} style={styles.logoEmoji} />
                             <Text style={styles.logoTitle}>CRT Secours</Text>
                             <Text style={styles.logoSub}>Espace Membre</Text>
                         </View>
@@ -108,7 +109,8 @@ export default function LoginScreen({ navigation }) {
 
                         {error ? (
                             <View style={styles.errorBox}>
-                                <Text style={styles.errorText}>⚠️  {error}</Text>
+                                <Feather name="alert-circle" size={15} color="#DC2626" style={{ marginRight: 8 }} />
+                                <Text style={styles.errorText}>{error}</Text>
                             </View>
                         ) : null}
 
@@ -116,7 +118,7 @@ export default function LoginScreen({ navigation }) {
                         <View style={styles.fieldGroup}>
                             <Text style={styles.fieldLabel}>Matricule CRT</Text>
                             <View style={styles.inputWrap}>
-                                <Text style={styles.inputIcon}>🪪</Text>
+                                <Feather name="credit-card" size={18} color="#9CA3AF" style={styles.inputIcon} />
                                 <TextInput
                                     style={styles.input}
                                     placeholder="ex: CRT001"
@@ -134,7 +136,7 @@ export default function LoginScreen({ navigation }) {
                         <View style={styles.fieldGroup}>
                             <Text style={styles.fieldLabel}>Mot de passe</Text>
                             <View style={styles.inputWrap}>
-                                <Text style={styles.inputIcon}>🔒</Text>
+                                <Feather name="lock" size={18} color="#9CA3AF" style={styles.inputIcon} />
                                 <TextInput
                                     style={[styles.input, { flex: 1 }]}
                                     placeholder="Votre mot de passe"
@@ -146,9 +148,12 @@ export default function LoginScreen({ navigation }) {
                                     onSubmitEditing={handleLogin}
                                 />
                                 <TouchableOpacity onPress={() => setShowPass(!showPass)}>
-                                    <Text style={styles.eyeIcon}>
-                                        {showPass ? '🙈' : '👁️'}
-                                    </Text>
+                                    <Feather
+                                        name={showPass ? 'eye-off' : 'eye'}
+                                        size={18}
+                                        color="#9CA3AF"
+                                        style={{ padding: 4 }}
+                                    />
                                 </TouchableOpacity>
                             </View>
                         </View>
@@ -163,7 +168,10 @@ export default function LoginScreen({ navigation }) {
                             {loading ? (
                                 <ActivityIndicator color="#FFFFFF" size="small" />
                             ) : (
-                                <Text style={styles.loginBtnText}>Se connecter →</Text>
+                                <>
+                                    <Text style={styles.loginBtnText}>Se connecter</Text>
+                                    <Feather name="arrow-right" size={18} color="#FFFFFF" />
+                                </>
                             )}
                         </TouchableOpacity>
 
@@ -176,7 +184,10 @@ export default function LoginScreen({ navigation }) {
 
                     {/* Comptes de test */}
                     <View style={styles.testSection}>
-                        <Text style={styles.testTitle}>🧪  Comptes de démonstration (mdp: 1234)</Text>
+                        <View style={styles.testTitleRow}>
+                            <Feather name="info" size={13} color="#065F46" style={{ marginRight: 6 }} />
+                            <Text style={styles.testTitle}>Comptes de démonstration (mdp: 1234)</Text>
+                        </View>
                         <View style={styles.testGrid}>
                             {TEST_ACCOUNTS.map((a) => (
                                 <TouchableOpacity
@@ -218,9 +229,8 @@ const styles = StyleSheet.create({
         padding: 4,
         marginBottom: 8,
     },
-    backArrow: { color: '#FFFFFF', fontSize: 22, fontWeight: '700' },
     logoArea: { alignItems: 'center' },
-    logoEmoji: { fontSize: 48, marginBottom: 6 },
+    logoEmoji: { width: 56, height: 56, resizeMode: 'contain', marginBottom: 8 },
     logoTitle: {
         color: '#FFFFFF',
         fontSize: 26,
@@ -257,8 +267,10 @@ const styles = StyleSheet.create({
         marginBottom: 16,
         borderLeftWidth: 4,
         borderLeftColor: '#DC2626',
+        flexDirection: 'row',
+        alignItems: 'center',
     },
-    errorText: { color: '#DC2626', fontSize: 13 },
+    errorText: { color: '#DC2626', fontSize: 13, flex: 1 },
 
     fieldGroup: { marginBottom: 16 },
     fieldLabel: {
@@ -277,19 +289,21 @@ const styles = StyleSheet.create({
         backgroundColor: '#F9FAFB',
         height: 52,
     },
-    inputIcon: { fontSize: 18, marginRight: 10 },
+    inputIcon: { marginRight: 10 },
     input: {
         flex: 1,
         fontSize: 15,
         color: '#111827',
     },
-    eyeIcon: { fontSize: 18, padding: 4 },
 
     loginBtn: {
         backgroundColor: '#DC2626',
         borderRadius: 14,
         paddingVertical: 15,
         alignItems: 'center',
+        flexDirection: 'row',
+        justifyContent: 'center',
+        gap: 10,
         marginTop: 8,
         elevation: 3,
         shadowColor: '#DC2626',
@@ -313,11 +327,15 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#BBF7D0',
     },
+    testTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
     testTitle: {
         fontSize: 12,
         fontWeight: '600',
         color: '#065F46',
-        marginBottom: 12,
     },
     testGrid: {
         flexDirection: 'row',

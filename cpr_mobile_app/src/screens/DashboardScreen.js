@@ -15,8 +15,10 @@ import {
     Animated,
     Alert,
     Linking,
+    Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 import { useAuth, ROLE_LABELS, ROLE_COLORS } from '../contexts/AuthContext';
 import { mockDataService } from '../services/MockDataService';
 
@@ -27,7 +29,7 @@ const getModules = (role, notifCount) => {
     const base = [
         {
             id: 'cpr',
-            icon: '🫀',
+            icon: 'activity',
             title: 'Assistance RCP',
             subtitle: 'Guidage en temps réel',
             bg: '#DC2626',
@@ -37,7 +39,7 @@ const getModules = (role, notifCount) => {
         },
         {
             id: 'chat',
-            icon: '🤖',
+            icon: 'cpu',
             title: 'Assistant IA',
             subtitle: 'Posez vos questions',
             bg: '#3B82F6',
@@ -47,7 +49,7 @@ const getModules = (role, notifCount) => {
         },
         {
             id: 'study',
-            icon: '📚',
+            icon: 'book-open',
             title: 'Formations',
             subtitle: 'PSE1, PSE2 & Protocoles',
             bg: '#10B981',
@@ -57,7 +59,7 @@ const getModules = (role, notifCount) => {
         },
         {
             id: 'protocol',
-            icon: '📋',
+            icon: 'clipboard',
             title: 'Protocoles',
             subtitle: 'Guides de référence',
             bg: '#FFFFFF',
@@ -67,7 +69,7 @@ const getModules = (role, notifCount) => {
         },
         {
             id: 'calendar',
-            icon: '📅',
+            icon: 'calendar',
             title: 'Calendrier & Météo',
             subtitle: 'Activités & prévisions',
             bg: '#FFFFFF',
@@ -77,7 +79,7 @@ const getModules = (role, notifCount) => {
         },
         {
             id: 'notifications',
-            icon: '🔔',
+            icon: 'bell',
             title: 'Interventions',
             subtitle: notifCount > 0 ? `${notifCount} notification(s)` : 'Déploiements NDRT/RDRT',
             bg: notifCount > 0 ? '#F59E0B' : '#FFFFFF',
@@ -88,7 +90,7 @@ const getModules = (role, notifCount) => {
         },
         {
             id: 'alert',
-            icon: '🚨',
+            icon: 'alert-triangle',
             title: 'Alerte Chef Équipe',
             subtitle: 'Signaler une situation',
             bg: '#FFFFFF',
@@ -98,7 +100,7 @@ const getModules = (role, notifCount) => {
         },
         {
             id: 'profile',
-            icon: '👤',
+            icon: 'user',
             title: 'Mon Profil',
             subtitle: 'Certifications & infos',
             bg: '#FFFFFF',
@@ -133,7 +135,7 @@ export default function DashboardScreen({ navigation }) {
 
     const handleEmergencyCall = () => {
         Alert.alert(
-            '⚠️ Appel d\'urgence',
+            'Appel d\'urgence',
             'Appeler le SAMU (190) ?',
             [
                 { text: 'Annuler', style: 'cancel' },
@@ -171,7 +173,7 @@ export default function DashboardScreen({ navigation }) {
                 <View style={styles.header}>
                     <View style={styles.headerLeft}>
                         <Text style={styles.greeting}>
-                            {getGreeting()}, {user?.prenom} 👋
+                            {getGreeting()}, {user?.prenom}
                         </Text>
                         <View style={[styles.roleBadge, { backgroundColor: roleColor + '22', borderColor: roleColor }]}>
                             <Text style={[styles.roleText, { color: roleColor }]}>
@@ -184,7 +186,7 @@ export default function DashboardScreen({ navigation }) {
                             style={styles.notifBtn}
                             onPress={() => isNDRTorRDRT() && navigation.navigate('Notifications')}
                         >
-                            <Text style={styles.notifIcon}>🔔</Text>
+                            <Feather name="bell" size={22} color="#374151" />
                             {(user?.unreadNotifications || 0) > 0 && (
                                 <View style={styles.badge}>
                                     <Text style={styles.badgeText}>{user.unreadNotifications}</Text>
@@ -192,21 +194,25 @@ export default function DashboardScreen({ navigation }) {
                             )}
                         </TouchableOpacity>
                         <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
-                            <Text style={styles.logoutIcon}>↪️</Text>
+                            <Feather name="log-out" size={20} color="#374151" />
                         </TouchableOpacity>
                     </View>
                 </View>
 
                 {/* Date widget */}
                 <View style={styles.dateBar}>
-                    <Text style={styles.dateText}>
-                        📅  {DAYS[today.getDay()]} {today.getDate()} {MONTHS[today.getMonth()]} {today.getFullYear()}
-                    </Text>
+                    <View style={styles.dateLeft}>
+                        <Feather name="calendar" size={14} color="#6B7280" style={{ marginRight: 6 }} />
+                        <Text style={styles.dateText}>
+                            {DAYS[today.getDay()]} {today.getDate()} {MONTHS[today.getMonth()]} {today.getFullYear()}
+                        </Text>
+                    </View>
                     <TouchableOpacity
                         style={styles.emergencyPill}
                         onPress={handleEmergencyCall}
                     >
-                        <Text style={styles.emergencyPillText}>🆘 190</Text>
+                        <Feather name="phone" size={12} color="#FFFFFF" style={{ marginRight: 4 }} />
+                        <Text style={styles.emergencyPillText}>190</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -219,8 +225,10 @@ export default function DashboardScreen({ navigation }) {
                             onPress={() => handleModulePress(firstModule.screen)}
                             activeOpacity={0.85}
                         >
-                            <Text style={styles.cardLargeIcon}>{firstModule.icon}</Text>
-                            <View>
+                            <View style={styles.cardLargeIconWrap}>
+                                <Feather name={firstModule.icon} size={36} color={firstModule.textColor} />
+                            </View>
+                            <View style={{ flex: 1 }}>
                                 <Text style={[styles.cardLargeTitle, { color: firstModule.textColor }]}>
                                     {firstModule.title}
                                 </Text>
@@ -228,7 +236,7 @@ export default function DashboardScreen({ navigation }) {
                                     {firstModule.subtitle}
                                 </Text>
                             </View>
-                            <Text style={[styles.cardArrow, { color: firstModule.textColor }]}>→</Text>
+                            <Feather name="arrow-right" size={20} color={firstModule.textColor} />
                         </TouchableOpacity>
                     )}
 
@@ -250,7 +258,9 @@ export default function DashboardScreen({ navigation }) {
                                         <Text style={styles.cardBadgeText}>{m.badge}</Text>
                                     </View>
                                 )}
-                                <Text style={styles.cardSmallIcon}>{m.icon}</Text>
+                                <View style={styles.cardSmallIconWrap}>
+                                    <Feather name={m.icon} size={24} color={m.textColor} />
+                                </View>
                                 <Text style={[styles.cardSmallTitle, { color: m.textColor }]}>
                                     {m.title}
                                 </Text>
@@ -263,9 +273,10 @@ export default function DashboardScreen({ navigation }) {
                 </Animated.View>
 
                 {/* Footer info */}
-                <View style={styles.footer}>
+                <View style={[styles.footer, { flexDirection: 'row', justifyContent: 'center' }]}>
+                    <Image source={require('../../assets/logo_symbole.png')} style={{ width: 16, height: 16, marginRight: 6, resizeMode: 'contain' }} />
                     <Text style={styles.footerText}>
-                        🌙  الهلال الأحمر التونسي  •  Croissant Rouge Tunisien
+                        الهلال الأحمر التونسي  •  Croissant Rouge Tunisien
                     </Text>
                 </View>
             </ScrollView>
@@ -309,7 +320,6 @@ const styles = StyleSheet.create({
     roleText: { fontSize: 12, fontWeight: '700' },
     headerRight: { flexDirection: 'row', gap: 8, alignItems: 'center' },
     notifBtn: { position: 'relative', padding: 6 },
-    notifIcon: { fontSize: 22 },
     badge: {
         position: 'absolute',
         top: 2,
@@ -323,7 +333,6 @@ const styles = StyleSheet.create({
     },
     badgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: '700' },
     logoutBtn: { padding: 6 },
-    logoutIcon: { fontSize: 20 },
 
     // Date bar
     dateBar: {
@@ -342,12 +351,15 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.05,
         shadowRadius: 2,
     },
+    dateLeft: { flexDirection: 'row', alignItems: 'center' },
     dateText: { fontSize: 13, color: '#374151', fontWeight: '500' },
     emergencyPill: {
         backgroundColor: '#DC2626',
         borderRadius: 20,
         paddingVertical: 4,
         paddingHorizontal: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
     },
     emergencyPillText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
 
@@ -366,10 +378,16 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.25,
         shadowRadius: 8,
     },
-    cardLargeIcon: { fontSize: 42 },
+    cardLargeIconWrap: {
+        width: 52,
+        height: 52,
+        borderRadius: 14,
+        backgroundColor: 'rgba(255,255,255,0.18)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     cardLargeTitle: { fontSize: 18, fontWeight: '800' },
     cardLargeSub: { fontSize: 12, marginTop: 2 },
-    cardArrow: { marginLeft: 'auto', fontSize: 22, fontWeight: '700' },
 
     grid: {
         flexDirection: 'row',
@@ -390,7 +408,7 @@ const styles = StyleSheet.create({
         position: 'relative',
     },
     cardSmallBorder: { borderWidth: 1.5, borderColor: '#E5E7EB' },
-    cardSmallIcon: { fontSize: 28, marginBottom: 8 },
+    cardSmallIconWrap: { marginBottom: 10 },
     cardSmallTitle: { fontSize: 14, fontWeight: '700' },
     cardSmallSub: { fontSize: 11, marginTop: 2 },
     cardBadge: {

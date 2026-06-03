@@ -19,22 +19,23 @@ import {
     Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { mockDataService } from '../services/MockDataService';
 
 const ALERT_TYPES = [
-    { id: 'urgence', label: 'Situation d\'urgence', icon: '🚨', color: '#DC2626', desc: 'Incident grave nécessitant intervention immédiate' },
-    { id: 'medical', label: 'Urgence médicale', icon: '🏥', color: '#EF4444', desc: 'Blessé grave ou situation médicale critique' },
-    { id: 'securite', label: 'Problème de sécurité', icon: '🦺', color: '#F59E0B', desc: 'Risque pour l\'équipe ou les bénévoles' },
-    { id: 'logistique', label: 'Problème logistique', icon: '📦', color: '#3B82F6', desc: 'Matériel manquant ou défectueux' },
-    { id: 'reclamation', label: 'Réclamation', icon: '📝', color: '#7C3AED', desc: 'Signalement d\'une situation problématique' },
-    { id: 'info', label: 'Information', icon: '📢', color: '#6B7280', desc: 'Information à transmettre au responsable' },
+    { id: 'urgence', label: 'Situation d\'urgence', icon: 'alert-octagon', color: '#DC2626', desc: 'Incident grave nécessitant intervention immédiate' },
+    { id: 'medical', label: 'Urgence médicale', icon: 'plus-circle', color: '#EF4444', desc: 'Blessé grave ou situation médicale critique' },
+    { id: 'securite', label: 'Problème de sécurité', icon: 'shield', color: '#F59E0B', desc: 'Risque pour l\'équipe ou les bénévoles' },
+    { id: 'logistique', label: 'Problème logistique', icon: 'package', color: '#3B82F6', desc: 'Matériel manquant ou défectueux' },
+    { id: 'reclamation', label: 'Réclamation', icon: 'file-text', color: '#7C3AED', desc: 'Signalement d\'une situation problématique' },
+    { id: 'info', label: 'Information', icon: 'message-circle', color: '#6B7280', desc: 'Information à transmettre au responsable' },
 ];
 
 const PRIORITY_LEVELS = [
-    { id: 'critical', label: 'Critique', color: '#DC2626', icon: '🔴' },
-    { id: 'high', label: 'Élevée', color: '#F59E0B', icon: '🟡' },
-    { id: 'normal', label: 'Normale', color: '#3B82F6', icon: '🔵' },
+    { id: 'critical', label: 'Critique', color: '#DC2626', icon: 'alert-octagon' },
+    { id: 'high', label: 'Élevée', color: '#F59E0B', icon: 'alert-triangle' },
+    { id: 'normal', label: 'Normale', color: '#3B82F6', icon: 'info' },
 ];
 
 export default function AlertScreen({ navigation }) {
@@ -118,7 +119,9 @@ export default function AlertScreen({ navigation }) {
                 >
                     {/* Info banner */}
                     <View style={styles.infoBanner}>
-                        <Text style={styles.infoBannerIcon}>📡</Text>
+                        <View style={[styles.infoBannerIconWrap, { backgroundColor: '#FCA5A5' }]}>
+                            <Feather name="radio" size={22} color="#991B1B" />
+                        </View>
                         <View style={{ flex: 1 }}>
                             <Text style={styles.infoBannerTitle}>Alerte Chef d'Équipe</Text>
                             <Text style={styles.infoBannerSub}>
@@ -140,7 +143,9 @@ export default function AlertScreen({ navigation }) {
                                 ]}
                                 onPress={() => setAlertType(t.id)}
                             >
-                                <Text style={styles.typeIcon}>{t.icon}</Text>
+                                <View style={[styles.typeIconWrap, { backgroundColor: t.color + '16' }]}>
+                                    <Feather name={t.icon} size={22} color={t.color} />
+                                </View>
                                 <Text
                                     style={[
                                         styles.typeLabel,
@@ -171,7 +176,7 @@ export default function AlertScreen({ navigation }) {
                                 ]}
                                 onPress={() => setPriority(p.id)}
                             >
-                                <Text style={styles.prioIcon}>{p.icon}</Text>
+                                <Feather name={p.icon} size={15} color={priority === p.id ? '#FFFFFF' : p.color} />
                                 <Text
                                     style={[
                                         styles.prioLabel,
@@ -222,7 +227,10 @@ export default function AlertScreen({ navigation }) {
 
                     {/* Infos expéditeur */}
                     <View style={styles.senderInfo}>
-                        <Text style={styles.senderTitle}>📤  Envoyé par</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 6 }}>
+                            <Feather name="send" size={12} color="#6B7280" />
+                            <Text style={styles.senderTitle}>Envoyé par</Text>
+                        </View>
                         <Text style={styles.senderName}>
                             {user?.prenom} {user?.nom} — {user?.matricule}
                         </Text>
@@ -241,7 +249,10 @@ export default function AlertScreen({ navigation }) {
                         {sending ? (
                             <ActivityIndicator color="#FFFFFF" size="small" />
                         ) : (
-                            <Text style={styles.sendBtnText}>🚀  Envoyer l'alerte</Text>
+                            <>
+                                <Feather name="send" size={18} color="#FFFFFF" />
+                                <Text style={styles.sendBtnText}>Envoyer l'alerte</Text>
+                            </>
                         )}
                     </TouchableOpacity>
 
@@ -251,9 +262,12 @@ export default function AlertScreen({ navigation }) {
                             style={styles.historyBtn}
                             onPress={() => setShowHistory(true)}
                         >
-                            <Text style={styles.historyBtnText}>
-                                📋  Historique ({history.length} alerte{history.length > 1 ? 's' : ''})
-                            </Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                <Feather name="list" size={16} color="#6B7280" />
+                                <Text style={styles.historyBtnText}>
+                                    Historique ({history.length} alerte{history.length > 1 ? 's' : ''})
+                                </Text>
+                            </View>
                         </TouchableOpacity>
                     )}
 
@@ -265,7 +279,9 @@ export default function AlertScreen({ navigation }) {
             <Modal visible={success} animationType="fade" transparent>
                 <View style={styles.successOverlay}>
                     <View style={styles.successCard}>
-                        <Text style={styles.successIcon}>✅</Text>
+                        <View style={styles.successIconWrap}>
+                            <Feather name="check-circle" size={52} color="#10B981" />
+                        </View>
                         <Text style={styles.successTitle}>Alerte envoyée !</Text>
                         <Text style={styles.successRef}>Référence : #{sentRef}</Text>
                         <Text style={styles.successMsg}>
@@ -287,7 +303,7 @@ export default function AlertScreen({ navigation }) {
                 <View style={styles.historyOverlay}>
                     <View style={styles.historySheet}>
                         <View style={styles.historyHandle} />
-                        <Text style={styles.historyTitle}>📋  Alertes Envoyées</Text>
+                        <Text style={styles.historyTitle}>Alertes Envoyées</Text>
                         <ScrollView>
                             {history.map((h) => (
                                 <View key={h.ref} style={styles.historyItem}>
@@ -329,7 +345,13 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#FECACA',
     },
-    infoBannerIcon: { fontSize: 28 },
+    infoBannerIconWrap: {
+        width: 44,
+        height: 44,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     infoBannerTitle: { fontSize: 15, fontWeight: '800', color: '#991B1B' },
     infoBannerSub: { fontSize: 12, color: '#B91C1C', lineHeight: 18, marginTop: 2 },
 
@@ -351,7 +373,14 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
         position: 'relative',
     },
-    typeIcon: { fontSize: 24, marginBottom: 6 },
+    typeIconWrap: {
+        width: 44,
+        height: 44,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 8,
+    },
     typeLabel: { fontSize: 13, fontWeight: '700', color: '#111827', marginBottom: 3 },
     typeDesc: { fontSize: 11, color: '#6B7280', lineHeight: 16 },
     typeCheck: {
@@ -419,7 +448,7 @@ const styles = StyleSheet.create({
         marginBottom: 12,
     },
     sendBtnDisabled: { opacity: 0.6, elevation: 0 },
-    sendBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
+    sendBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700', marginLeft: 8 },
 
     historyBtn: {
         borderRadius: 12,
@@ -445,7 +474,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         width: '100%',
     },
-    successIcon: { fontSize: 56, marginBottom: 12 },
+    successIconWrap: { marginBottom: 12 },
     successTitle: { fontSize: 22, fontWeight: '800', color: '#111827' },
     successRef: { fontSize: 13, color: '#6B7280', marginTop: 4 },
     successMsg: {

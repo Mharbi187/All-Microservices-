@@ -38,7 +38,8 @@
     "react-native-worklets-core": "^1.6.2"
   },
   "devDependencies": {
-    "@babel/core": "^7.20.0"
+    "@babel/core": "^7.20.0",
+    "puppeteer": "^25.1.0"
   },
   "private": true,
   "author": "Croissant Rouge Tunisien",

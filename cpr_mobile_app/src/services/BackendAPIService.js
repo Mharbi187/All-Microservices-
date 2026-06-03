@@ -6,13 +6,15 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
+
+const debuggerHost = Constants.expoConfig?.hostUri;
+const hostIp = debuggerHost ? debuggerHost.split(':')[0] : '10.0.2.2';
 
 // Configuration API
 const API_CONFIG = {
-    // URL du serveur backend (à modifier selon l'environnement)
-    // Pour le développement local: http://192.168.x.x:5000
-    // Remplacez par l'IP de votre ordinateur
-    BASE_URL: 'http://192.168.0.134:5000',
+    // Automatically uses the PC's IP via Expo Constants
+    BASE_URL: `http://${hostIp}:8000`,
 
     // Endpoints
     ENDPOINTS: {
@@ -36,16 +38,15 @@ class BackendAPIService {
         this.isConnected = false;
         this.serverUrl = API_CONFIG.BASE_URL;
         this.ws = null;
+        this.resolversQueue = [];
     }
 
     async setServerUrl(url) {
-        this.serverUrl = url;
-        await AsyncStorage.setItem('cpr_server_url', url);
+        this.serverUrl = API_CONFIG.BASE_URL;
     }
 
     async loadServerUrl() {
-        const savedUrl = await AsyncStorage.getItem('cpr_server_url');
-        if (savedUrl) this.serverUrl = savedUrl;
+        this.serverUrl = API_CONFIG.BASE_URL;
         return this.serverUrl;
     }
 
@@ -68,28 +69,51 @@ class BackendAPIService {
         // Our new backend automatically creates the pipeline when WS connects!
         // So we just generate a session ID and connect the WS.
         this.sessionId = `session_${Date.now()}`;
+        this.victimType = victimType;
+        this.rescuerCount = rescuerCount;
 
+        return this._connect();
+    }
+
+    async _connect() {
         return new Promise((resolve, reject) => {
             const wsUrl = this.serverUrl.replace('http://', 'ws://').replace('https://', 'wss://')
                 + `/ws/session/${this.sessionId}`;
 
             console.log("Connecting WebSocket to", wsUrl);
             this.ws = new WebSocket(wsUrl);
-            this.ws.binaryType = 'blob'; // Prepare to send/receive binary
+            this.ws.binaryType = 'blob';
 
             this.ws.onopen = () => {
                 console.log("WebSocket connected!");
                 this.isConnected = true;
+                this.resolversQueue = [];
                 resolve({ success: true, sessionId: this.sessionId });
+            };
+
+            this.ws.onmessage = (e) => {
+                if (this.resolversQueue.length > 0) {
+                    const reqResolve = this.resolversQueue.shift();
+                    try {
+                        const data = JSON.parse(e.data);
+                        const success = data.status !== "ERROR";
+                        reqResolve({ success, ...data });
+                    } catch (err) {
+                        reqResolve({ success: false, error: 'Malformed JSON from server' });
+                    }
+                }
             };
 
             this.ws.onerror = (e) => {
                 console.log("WebSocket error on setup", e.message);
+                this.isConnected = false;
                 reject({ success: false, error: e.message });
             };
 
             this.ws.onclose = () => {
+                console.log("WebSocket closed — will reconnect on next frame.");
                 this.isConnected = false;
+                this.ws = null;
             };
         });
     }
@@ -100,39 +124,52 @@ class BackendAPIService {
      * 2. Send Binary JPEG frame
      */
     async processFrame(photoUri, base64Frame) {
+        // Guard: ensure we have actual data to send
+        if (!base64Frame || typeof base64Frame !== 'string') {
+            return { success: false, error: 'Invalid frame data' };
+        }
+
+        // Auto-reconnect if WebSocket dropped
         if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-            return { success: false, error: 'WebSocket not connected' };
+            if (this.sessionId) {
+                try {
+                    console.log("[BackendAPI] WebSocket lost — reconnecting...");
+                    await this._connect();
+                } catch {
+                    return { success: false, error: 'WebSocket reconnection failed' };
+                }
+            } else {
+                return { success: false, error: 'WebSocket not connected' };
+            }
         }
 
         return new Promise(async (resolve, reject) => {
-            const timeout = setTimeout(() => reject(new Error('Backend timeout')), API_CONFIG.FRAME_TIMEOUT_MS);
-
-            // Wait for response text frame
-            this.ws.onmessage = (e) => {
+            const resWrapper = (data) => {
                 clearTimeout(timeout);
-                try {
-                    const data = JSON.parse(e.data);
-                    // Standardize status format to what mobile expects (success = true if active)
-                    const success = data.status !== "ERROR";
-                    resolve({ success, ...data });
-                } catch (err) {
-                    resolve({ success: false, error: 'Malformed JSON from server' });
+                resolve(data);
+            };
+
+            const timeout = setTimeout(() => {
+                const idx = this.resolversQueue.indexOf(resWrapper);
+                if (idx !== -1) {
+                    this.resolversQueue.splice(idx, 1);
                 }
-            };
+                reject(new Error('Backend timeout'));
+            }, API_CONFIG.FRAME_TIMEOUT_MS);
 
-            this.ws.onerror = (e) => {
-                clearTimeout(timeout);
-                resolve({ success: false, error: 'WebSocket transport error' });
-            };
+            this.resolversQueue.push(resWrapper);
 
             try {
                 // Option A: Message 1 (JSON Metadata)
                 this.ws.send(JSON.stringify({ ts: Date.now() }));
 
                 // Option A: Message 2 (Base64 JPEG Text Frame)
-                // Sending direct Base64 string to avoid React Native Blob WebSocket bugs
                 this.ws.send(base64Frame);
             } catch (err) {
+                const idx = this.resolversQueue.indexOf(resWrapper);
+                if (idx !== -1) {
+                    this.resolversQueue.splice(idx, 1);
+                }
                 clearTimeout(timeout);
                 resolve({ success: false, error: err.message });
             }
