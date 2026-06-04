@@ -61,6 +61,14 @@ public class AuthDtos {
         private String email;
         private String fullName;
         private String message;
+        private String role;
+        private String delegation;
+        private String matricule;
+        private String prenom;
+        private String nom;
+        private List<String> certifications;
+        @Builder.Default
+        private int unreadNotifications = 0;
         /** Set to true when CAPTCHA is required (after 2+ failed attempts) */
         @Builder.Default
         private boolean captchaRequired = false;

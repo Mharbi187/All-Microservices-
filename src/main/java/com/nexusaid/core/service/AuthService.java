@@ -75,9 +75,9 @@ public class AuthService {
                                         .flatMap(r -> {
                                                 if (r.getCommittee() != null && r.getCommittee().getType() != null) {
                                                         return java.util.stream.Stream.of(
-                                                                r.getTitle().name(),
-                                                                r.getTitle().name() + "_" + r.getCommittee().getType().name()
-                                                        );
+                                                                        r.getTitle().name(),
+                                                                        r.getTitle().name() + "_" + r.getCommittee()
+                                                                                        .getType().name());
                                                 }
                                                 return java.util.stream.Stream.of(r.getTitle().name());
                                         })
@@ -94,7 +94,8 @@ public class AuthService {
         public AuthResponse register(RegisterRequest request, String ipAddress, String userAgent) {
 
                 // ── Validate CAPTCHA for registration (always required) ──
-                if (captchaService.isEnabled() && request.getCaptchaToken() != null && !request.getCaptchaToken().isBlank()) {
+                if (captchaService.isEnabled() && request.getCaptchaToken() != null
+                                && !request.getCaptchaToken().isBlank()) {
                         boolean captchaValid = captchaService.verify(request.getCaptchaToken(), "REGISTER");
                         if (!captchaValid) {
                                 auditService.logEvent(
@@ -225,7 +226,8 @@ public class AuthService {
                 }
 
                 // ── 2. Check if CAPTCHA is required (after 2 failed attempts) ──
-                boolean captchaRequired = captchaService.isEnabled() && loginAttemptService.isCaptchaRequired(ipAddress, email);
+                boolean captchaRequired = captchaService.isEnabled()
+                                && loginAttemptService.isCaptchaRequired(ipAddress, email);
                 if (captchaRequired) {
                         if (request.getCaptchaToken() == null || request.getCaptchaToken().isBlank()) {
                                 int failedAttempts = loginAttemptService.getFailedAttempts(ipAddress);
@@ -302,17 +304,8 @@ public class AuthService {
                                 new UserDetailsImpl(user));
                 RefreshToken refreshToken = jwtService.createRefreshToken(user.getId());
 
-                return AuthResponse.builder()
-                                .token(jwtToken)
-                                .refreshToken(refreshToken.getToken())
-                                .id(user.getId())
-                                .email(user.getEmail())
-                                .fullName(user.getFullName())
-                                .message("Login successful")
-                                .captchaRequired(false)
-                                .failedAttempts(0)
-                                .blockRemainingSeconds(0)
-                                .build();
+                return buildEnrichedAuthResponse(user, jwtToken, refreshToken.getToken(), "Login successful", false, 0,
+                                0);
         }
 
         /**
@@ -330,13 +323,67 @@ public class AuthService {
 
                 auditService.logTokenRefresh(user.getId(), user.getEmail(), ipAddress);
 
+                return buildEnrichedAuthResponse(user, jwtToken, newRefreshToken.getToken(),
+                                "Token refreshed successfully", false, 0, 0);
+        }
+
+        private AuthResponse buildEnrichedAuthResponse(User user, String token, String refreshToken, String message,
+                        boolean captchaRequired, int failedAttempts, long blockRemainingSeconds) {
+                String role = "volunteer";
+                String delegation = "Non défini";
+                String matricule = "CRT-000";
+
+                String fullName = user.getFullName() != null ? user.getFullName() : "";
+                String prenom = fullName.contains(" ") ? fullName.split(" ")[0] : fullName;
+                String nom = fullName.contains(" ") ? fullName.substring(fullName.indexOf(" ") + 1) : "";
+                List<String> certifications = List.of();
+
+                if (user instanceof Volunteer) {
+                        Volunteer volunteer = (Volunteer) user;
+                        matricule = volunteer.getMatricule() != null ? volunteer.getMatricule() : matricule;
+                        certifications = volunteer.getSkills() != null ? volunteer.getSkills() : certifications;
+
+                        List<CommitteeRole> roles = committeeRoleRepository.findByVolunteerId(user.getId());
+                        if (roles != null && !roles.isEmpty()) {
+                                CommitteeRole highestRole = roles.stream()
+                                                .filter(r -> r.getStatus() == CommitteeRoleStatus.APPROVED)
+                                                .findFirst().orElse(roles.get(0));
+
+                                String title = highestRole.getTitle().name();
+                                if (title.contains("PRESIDENT"))
+                                        role = "responsable";
+                                else if (title.contains("NDRT"))
+                                        role = "ndrt";
+                                else if (title.contains("RDRT"))
+                                        role = "rdrt";
+                                else if (title.contains("CHEF_D_EQUIPE"))
+                                        role = "chef_equipe";
+                                else
+                                        role = "secouriste";
+
+                                if (highestRole.getCommittee() != null) {
+                                        delegation = highestRole.getCommittee().getRegion();
+                                }
+                        }
+                }
+
                 return AuthResponse.builder()
-                                .token(jwtToken)
-                                .refreshToken(newRefreshToken.getToken())
+                                .token(token)
+                                .refreshToken(refreshToken)
                                 .id(user.getId())
                                 .email(user.getEmail())
                                 .fullName(user.getFullName())
-                                .message("Token refreshed successfully")
+                                .prenom(prenom)
+                                .nom(nom)
+                                .role(role)
+                                .delegation(delegation)
+                                .matricule(matricule)
+                                .certifications(certifications)
+                                .unreadNotifications(0)
+                                .message(message)
+                                .captchaRequired(captchaRequired)
+                                .failedAttempts(failedAttempts)
+                                .blockRemainingSeconds(blockRemainingSeconds)
                                 .build();
         }
 
