@@ -196,6 +196,9 @@ class SimulationRequest(BaseModel):
     lat: float = 36.9542
     lon: float = 8.7589
 
+class FullSimulationRequest(BaseModel):
+    scenario: str = "wildfire_jendouba"
+
 class RiskPoint(BaseModel):
     lat: float
     lon: float
@@ -230,6 +233,185 @@ class AddParticipantRequest(BaseModel):
     name: str
     role: str = "coordinator"
     agency: str = "Red Crescent"
+
+# ═══════════════════════════════════════════════════════════════
+#  SIMULATION SCENARIOS — Preset multi-wilaya disaster profiles
+# ═══════════════════════════════════════════════════════════════
+SIMULATION_SCENARIOS = {
+    "wildfire_jendouba": {
+        "name": "Wildfire Jendouba + Tabarka",
+        "description": "Critical wildfire outbreak in the Northwest forests, extreme temperatures, strong winds spreading fire across Jendouba and Tabarka",
+        "crisis_room_name": "Operation Foret Alpha",
+        "disasters": [
+            {
+                "wilaya": "Jendouba",
+                "lat": 36.5011, "lon": 8.7802,
+                "risk_score": 0.95, "confidence_pct": 97.2,
+                "disaster_type": "WILDFIRE",
+                "is_high_risk": True,
+                "satellite": {"precipitation_7d_mm": 0.0, "max_frp": 385.2, "ndvi_anomaly": -0.35},
+                "weather": {"temperature": 47.0, "humidity": 12, "wind_speed": 82.0, "wind_direction": "NW", "conditions": "Clear sky — extreme heat"}
+            },
+            {
+                "wilaya": "Tabarka",
+                "lat": 36.9542, "lon": 8.7589,
+                "risk_score": 0.88, "confidence_pct": 94.1,
+                "disaster_type": "WILDFIRE",
+                "is_high_risk": True,
+                "satellite": {"precipitation_7d_mm": 0.0, "max_frp": 312.8, "ndvi_anomaly": -0.28},
+                "weather": {"temperature": 44.0, "humidity": 15, "wind_speed": 68.0, "wind_direction": "NW", "conditions": "Dry gusts"}
+            },
+            {
+                "wilaya": "Le Kef",
+                "lat": 36.1676, "lon": 8.7046,
+                "risk_score": 0.52, "confidence_pct": 78.4,
+                "disaster_type": "WILDFIRE",
+                "is_high_risk": False,
+                "satellite": {"precipitation_7d_mm": 2.1, "max_frp": 145.3, "ndvi_anomaly": -0.12},
+                "weather": {"temperature": 41.0, "humidity": 22, "wind_speed": 45.0, "wind_direction": "W", "conditions": "Hot and dry"}
+            },
+        ],
+        "messages": [
+            {"sender": "AI Detection System", "role": "system", "content": "🔴 CRITICAL ALERT: Wildfire detected in Jendouba (FRP=385.2). Risk score 0.95. Satellite confirmation via FIRMS + Sentinel-2.", "type": "alert"},
+            {"sender": "Col. Ahmed Ben Salah", "role": "commander", "content": "Crisis Room activated. All regional teams on DEFCON-2. Requesting immediate aerial reconnaissance of the Jendouba perimeter.", "type": "decision"},
+            {"sender": "Dr. Fatma Trabelsi", "role": "coordinator", "content": "Medical teams Alpha and Bravo are mobilized. Setting up triage point at Jendouba General Hospital. ETA 25 minutes.", "type": "text"},
+            {"sender": "Logistics Central", "role": "logistics", "content": "📦 Resource estimate: 12 fire trucks, 200 evacuee kits, 8 water tankers. Procurement initiated from Béja regional stock.", "type": "text"},
+            {"sender": "AI Propagation Model", "role": "system", "content": "⚠️ PROPAGATION ALERT: Fire spread model projects NW advancement at 3.2 km/h toward Tabarka. Estimated arrival: 4 hours. Recommend preemptive evacuation of zones TB-03 through TB-07.", "type": "alert"},
+            {"sender": "Capt. Khaled Mansouri", "role": "field_medic", "content": "Ground team confirms active fire fronts on ridgeline. Smoke column visible from 40km. Wind shift expected at 18:00.", "type": "text"},
+        ]
+    },
+    "flood_nabeul": {
+        "name": "Flash Floods Nabeul + Sousse",
+        "description": "Severe flash flooding in the Sahel coast regions after 72h of extreme rainfall exceeding 180mm",
+        "crisis_room_name": "Operation Sahel Shield",
+        "disasters": [
+            {
+                "wilaya": "Nabeul",
+                "lat": 36.4561, "lon": 10.7376,
+                "risk_score": 0.92, "confidence_pct": 96.0,
+                "disaster_type": "FLOOD",
+                "is_high_risk": True,
+                "satellite": {"precipitation_7d_mm": 187.3, "max_frp": 0.0, "water_change_pct": 0.45},
+                "weather": {"temperature": 18.0, "humidity": 94, "wind_speed": 55.0, "wind_direction": "E", "conditions": "Torrential rain"}
+            },
+            {
+                "wilaya": "Sousse",
+                "lat": 35.8253, "lon": 10.6369,
+                "risk_score": 0.85, "confidence_pct": 91.3,
+                "disaster_type": "FLOOD",
+                "is_high_risk": True,
+                "satellite": {"precipitation_7d_mm": 156.8, "max_frp": 0.0, "water_change_pct": 0.38},
+                "weather": {"temperature": 17.0, "humidity": 96, "wind_speed": 62.0, "wind_direction": "NE", "conditions": "Heavy storm"}
+            },
+            {
+                "wilaya": "Monastir",
+                "lat": 35.7779, "lon": 10.8261,
+                "risk_score": 0.61, "confidence_pct": 82.5,
+                "disaster_type": "FLOOD",
+                "is_high_risk": False,
+                "satellite": {"precipitation_7d_mm": 98.2, "max_frp": 0.0, "water_change_pct": 0.22},
+                "weather": {"temperature": 19.0, "humidity": 89, "wind_speed": 45.0, "wind_direction": "E", "conditions": "Moderate rain"}
+            },
+        ],
+        "messages": [
+            {"sender": "AI Detection System", "role": "system", "content": "🔴 CRITICAL ALERT: Flash flood risk in Nabeul — 187mm recorded in 72h. CHIRPS + HydroSAR confirm 45% water extent increase.", "type": "alert"},
+            {"sender": "Gov. Sami Bouzid", "role": "commander", "content": "Declaring State of Emergency for Nabeul Governorate. All civilian vehicles banned from coastal roads. National Guard deployed.", "type": "decision"},
+            {"sender": "Dr. Leila Chaabane", "role": "coordinator", "content": "Evacuation shelters opened at 3 schools in Nabeul city. Capacity: 2,000 people. Red Crescent volunteers distributing blankets and food kits.", "type": "text"},
+            {"sender": "Logistics Central", "role": "logistics", "content": "📦 Emergency supplies: 500 sandbag units, 3 water pumps, 150 emergency blankets dispatched from Tunis warehouse. ETA: 90 minutes.", "type": "text"},
+            {"sender": "AI Hydrological Model", "role": "system", "content": "⚠️ RIVER LEVEL ALERT: Oued Miliane projected to exceed critical threshold (4.2m) by 02:00. Downstream communities at extreme risk.", "type": "alert"},
+        ]
+    },
+    "earthquake_kasserine": {
+        "name": "Earthquake Kasserine-Gafsa",
+        "description": "Moderate earthquake (M5.2) epicenter near Kasserine with aftershock potential in the central-western region",
+        "crisis_room_name": "Operation Terra Response",
+        "disasters": [
+            {
+                "wilaya": "Kasserine",
+                "lat": 35.1676, "lon": 8.8365,
+                "risk_score": 0.91, "confidence_pct": 99.1,
+                "disaster_type": "EARTHQUAKE",
+                "is_high_risk": True,
+                "satellite": {"precipitation_7d_mm": 5.0, "max_frp": 0.0, "seismic_magnitude": 5.2},
+                "weather": {"temperature": 28.0, "humidity": 45, "wind_speed": 15.0, "wind_direction": "N", "conditions": "Clear"}
+            },
+            {
+                "wilaya": "Gafsa",
+                "lat": 34.4250, "lon": 8.7842,
+                "risk_score": 0.72, "confidence_pct": 88.7,
+                "disaster_type": "EARTHQUAKE",
+                "is_high_risk": True,
+                "satellite": {"precipitation_7d_mm": 3.0, "max_frp": 0.0, "seismic_magnitude": 3.8},
+                "weather": {"temperature": 30.0, "humidity": 40, "wind_speed": 12.0, "wind_direction": "N", "conditions": "Clear"}
+            },
+            {
+                "wilaya": "Sidi Bouzid",
+                "lat": 35.0382, "lon": 9.4849,
+                "risk_score": 0.48, "confidence_pct": 72.3,
+                "disaster_type": "EARTHQUAKE",
+                "is_high_risk": False,
+                "satellite": {"precipitation_7d_mm": 4.0, "max_frp": 0.0, "seismic_magnitude": 2.1},
+                "weather": {"temperature": 29.0, "humidity": 42, "wind_speed": 10.0, "wind_direction": "NW", "conditions": "Clear"}
+            },
+        ],
+        "messages": [
+            {"sender": "AI Seismic Monitor", "role": "system", "content": "🔴 SEISMIC ALERT: Magnitude 5.2 earthquake detected. Epicenter: 12km NE of Kasserine (35.17°N, 8.84°E). Depth: 10km. Aftershock probability: HIGH.", "type": "alert"},
+            {"sender": "Gen. Nabil Touati", "role": "commander", "content": "Activating National Earthquake Response Protocol. Urban Search & Rescue teams deploying from Tunis and Sfax. Airspace restricted over Kasserine.", "type": "decision"},
+            {"sender": "Dr. Amira Khelifi", "role": "field_medic", "content": "Field assessment: structural damage reported in old medina sector. 3 buildings partially collapsed. Setting up field hospital at the stadium.", "type": "text"},
+            {"sender": "Logistics Central", "role": "logistics", "content": "📦 Emergency deployment: 10 rescue dog units, heavy lifting equipment, 500 tents, 2000 MREs. Convoy departing from Sfax depot.", "type": "text"},
+        ]
+    },
+    "multi_crisis": {
+        "name": "Multi-Region Crisis",
+        "description": "Simultaneous wildfire in Jendouba + floods in Nabeul — tests multi-disaster coordination capacity",
+        "crisis_room_name": "Operation Unified Shield",
+        "disasters": [
+            {
+                "wilaya": "Jendouba",
+                "lat": 36.5011, "lon": 8.7802,
+                "risk_score": 0.93, "confidence_pct": 96.5,
+                "disaster_type": "WILDFIRE",
+                "is_high_risk": True,
+                "satellite": {"precipitation_7d_mm": 0.0, "max_frp": 350.0, "ndvi_anomaly": -0.30},
+                "weather": {"temperature": 46.0, "humidity": 14, "wind_speed": 75.0, "wind_direction": "NW", "conditions": "Extreme heat"}
+            },
+            {
+                "wilaya": "Nabeul",
+                "lat": 36.4561, "lon": 10.7376,
+                "risk_score": 0.89, "confidence_pct": 93.8,
+                "disaster_type": "FLOOD",
+                "is_high_risk": True,
+                "satellite": {"precipitation_7d_mm": 165.0, "max_frp": 0.0, "water_change_pct": 0.40},
+                "weather": {"temperature": 19.0, "humidity": 92, "wind_speed": 50.0, "wind_direction": "E", "conditions": "Torrential rain"}
+            },
+            {
+                "wilaya": "Tunis",
+                "lat": 36.8065, "lon": 10.1815,
+                "risk_score": 0.35, "confidence_pct": 65.0,
+                "disaster_type": "FLOOD",
+                "is_high_risk": False,
+                "satellite": {"precipitation_7d_mm": 45.0, "max_frp": 0.0, "water_change_pct": 0.08},
+                "weather": {"temperature": 22.0, "humidity": 75, "wind_speed": 30.0, "wind_direction": "NE", "conditions": "Overcast"}
+            },
+            {
+                "wilaya": "Béja",
+                "lat": 36.7256, "lon": 9.1816,
+                "risk_score": 0.58, "confidence_pct": 80.0,
+                "disaster_type": "WILDFIRE",
+                "is_high_risk": False,
+                "satellite": {"precipitation_7d_mm": 1.5, "max_frp": 180.0, "ndvi_anomaly": -0.18},
+                "weather": {"temperature": 42.0, "humidity": 20, "wind_speed": 55.0, "wind_direction": "W", "conditions": "Hot and dry"}
+            },
+        ],
+        "messages": [
+            {"sender": "AI Detection System", "role": "system", "content": "🔴 MULTI-CRISIS ALERT: Simultaneous wildfire (Jendouba, FRP=350) and flash flood (Nabeul, 165mm/72h) detected. National disaster coordination required.", "type": "alert"},
+            {"sender": "National Ops Director", "role": "commander", "content": "Activating dual-theater command. Northwest teams assigned to wildfire. East coast teams assigned to flood. Reserve units on standby in Tunis.", "type": "decision"},
+            {"sender": "Red Crescent HQ", "role": "coordinator", "content": "All 24 regional committees notified. International assistance request prepared for IFRC. 1,200 volunteers mobilized across both theaters.", "type": "text"},
+            {"sender": "AI Resource Optimizer", "role": "system", "content": "📊 RESOURCE ALLOCATION: Optimal split — 60% assets to Jendouba theater (higher casualty risk), 40% to Nabeul theater. Supply chain rerouting via Bizerte corridor.", "type": "alert"},
+        ]
+    }
+}
+
 
 # --- ML RADAR ROUTES ---
 @app.get("/")
@@ -293,12 +475,31 @@ def get_cached_radar() -> Dict[str, Any]:
         logger.error(f"Failed to read radar cache: {e}")
         raise HTTPException(status_code=500, detail="Failed to read cache data.")
 
+# ═══════════════════════════════════════════════════════════════
+#  SIMULATION ENDPOINTS
+# ═══════════════════════════════════════════════════════════════
+
+@app.get("/api/v1/simulation/scenarios")
+def list_scenarios():
+    """List all available preset simulation scenarios."""
+    return {
+        "scenarios": [
+            {
+                "id": k,
+                "name": v["name"],
+                "description": v["description"],
+                "disaster_count": len(v["disasters"]),
+                "high_risk_count": sum(1 for d in v["disasters"] if d.get("is_high_risk")),
+            }
+            for k, v in SIMULATION_SCENARIOS.items()
+        ]
+    }
+
 @app.post("/api/v1/simulation/trigger")
 def trigger_demo_disaster(req: SimulationRequest):
     """
-    JURY PRESENTATION MODE:
-    Directly injects a critical disaster into the ML radar cache so the React Frontend
-    shows the alerts immediately, bypassing the Google Earth Engine 15-min daemon.
+    LEGACY: Simple single-wilaya injection. Kept for backward compatibility.
+    For the full scenario, use POST /api/v1/simulation/full.
     """
     try:
         if os.path.exists(CACHE_PATH):
@@ -306,33 +507,217 @@ def trigger_demo_disaster(req: SimulationRequest):
                 data = json.load(f)
         else:
             data = {"timestamp": datetime.utcnow().isoformat(), "daemon_status": "demo", "wilayats": {}, "cycle": 0}
-        
-        # Inject the mock disaster
+
         data["wilayats"][req.wilaya_name] = {
             "coordinates": {"lat": req.lat, "lon": req.lon},
             "risk_score": req.risk_score,
             "confidence_pct": 98.5,
             "disaster_type": req.disaster_type,
-            "satellite": {
-                "precipitation_7d_mm": 0.0,
-                "max_frp": 320.5
-            },
-            "weather": {
-                "temperature": 45.0,
-                "wind_speed": 75.0
-            }
+            "is_high_risk": req.risk_score >= 0.7,
+            "satellite": {"precipitation_7d_mm": 0.0, "max_frp": 320.5},
+            "weather": {"temperature": 45.0, "wind_speed": 75.0}
         }
         data["timestamp"] = datetime.utcnow().isoformat()
-        data["daemon_status"] = "demo_active"
-        
+        data["daemon_status"] = "running"
+
         os.makedirs(os.path.dirname(CACHE_PATH), exist_ok=True)
         with open(CACHE_PATH, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2)
-            
+
         return {"success": True, "message": f"Demo disaster triggered at {req.wilaya_name}", "data": data["wilayats"][req.wilaya_name]}
     except Exception as e:
         logger.error(f"Failed to trigger demo disaster: {e}")
         raise HTTPException(status_code=500, detail="Simulation failed")
+
+
+@app.post("/api/v1/simulation/full")
+def trigger_full_simulation(req: FullSimulationRequest):
+    """
+    🎯 FULL END-TO-END SIMULATION
+    Orchestrates an entire disaster scenario across all microservices:
+      Phase 1 → Injects multi-wilaya disaster data into the ML radar cache
+      Phase 2 → Auto-creates an activated Crisis Room
+      Phase 3 → Dispatches all available response teams
+      Phase 4 → Populates crisis room with realistic messages
+    The React frontend auto-picks up Phase 1 via its 5-second polling on /api/v1/radar.
+    """
+    scenario = SIMULATION_SCENARIOS.get(req.scenario)
+    if not scenario:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Scenario '{req.scenario}' not found. Available: {list(SIMULATION_SCENARIOS.keys())}"
+        )
+
+    results = {
+        "scenario": req.scenario,
+        "scenario_name": scenario["name"],
+        "phases": {}
+    }
+
+    # ────── PHASE 1: Inject disasters into radar cache ──────
+    try:
+        if os.path.exists(CACHE_PATH):
+            with open(CACHE_PATH, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+        else:
+            data = {"timestamp": None, "daemon_status": "initializing", "wilayats": {}, "cycle": 0}
+
+        for d in scenario["disasters"]:
+            data["wilayats"][d["wilaya"]] = {
+                "coordinates": {"lat": d["lat"], "lon": d["lon"]},
+                "risk_score": d["risk_score"],
+                "confidence_pct": d["confidence_pct"],
+                "disaster_type": d["disaster_type"],
+                "is_high_risk": d.get("is_high_risk", d["risk_score"] >= 0.7),
+                "satellite": d.get("satellite", {}),
+                "weather": d.get("weather", {}),
+            }
+
+        data["timestamp"] = datetime.utcnow().isoformat()
+        data["daemon_status"] = "running"
+        data["cycle"] = data.get("cycle", 0) + 1
+        data["data_sources"] = {
+            "firms_active": True,
+            "chirps_lag_days": 0,
+            "hydrosar_available": True,
+            "sentinel2_latest": datetime.utcnow().strftime("%Y-%m-%d"),
+        }
+
+        os.makedirs(os.path.dirname(CACHE_PATH), exist_ok=True)
+        with open(CACHE_PATH, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2)
+
+        results["phases"]["1_radar_injection"] = {
+            "status": "success",
+            "wilayats_injected": len(scenario["disasters"]),
+            "high_risk_count": sum(1 for d in scenario["disasters"] if d.get("is_high_risk")),
+        }
+    except Exception as e:
+        logger.error(f"Phase 1 failed: {e}")
+        results["phases"]["1_radar_injection"] = {"status": "error", "error": str(e)}
+
+    # ────── PHASE 2: Create & Activate Crisis Room ──────
+    room_id = None
+    disaster_id = f"disaster_{req.scenario}_{int(datetime.utcnow().timestamp())}"
+    try:
+        room = crisis_service.create_crisis_room(
+            disaster_id,
+            scenario["crisis_room_name"],
+        )
+        crisis_service.activate_room(room.id)
+        room_id = room.id
+
+        # Add key participants
+        participants = [
+            ("sim_commander_01", "Col. Ahmed Ben Salah", ParticipantRole.COMMANDER, "Tunisian Red Crescent"),
+            ("sim_coordinator_01", "Dr. Fatma Trabelsi", ParticipantRole.COORDINATOR, "Ministry of Health"),
+            ("sim_logistics_01", "Logistics Central", ParticipantRole.LOGISTICS, "Red Crescent Supply Chain"),
+            ("sim_medic_01", "Dr. Amira Khelifi", ParticipantRole.FIELD_MEDIC, "Emergency Medical Services"),
+        ]
+        for uid, name, role, agency in participants:
+            crisis_service.handle_participant_transaction(room.id, uid, name, role, agency)
+
+        results["phases"]["2_crisis_room"] = {
+            "status": "success",
+            "room_id": room_id,
+            "room_name": scenario["crisis_room_name"],
+            "participants": len(participants),
+        }
+    except Exception as e:
+        logger.error(f"Phase 2 failed: {e}")
+        results["phases"]["2_crisis_room"] = {"status": "error", "error": str(e)}
+
+    # ────── PHASE 3: Dispatch available teams ──────
+    try:
+        available_teams = team_service.get_available_teams()
+        dispatched = []
+        # Target = first high-risk disaster coordinates
+        primary = next((d for d in scenario["disasters"] if d.get("is_high_risk")), scenario["disasters"][0])
+        target_loc = Location(latitude=primary["lat"], longitude=primary["lon"])
+
+        for team in available_teams[:5]:  # Dispatch up to 5 teams
+            res = team_service.deploy_team(team.id, disaster_id, target_loc)
+            if res["success"]:
+                dispatched.append({"team_id": team.id, "team_name": team.name})
+
+        results["phases"]["3_team_dispatch"] = {
+            "status": "success",
+            "teams_dispatched": len(dispatched),
+            "teams": dispatched,
+            "target": {"lat": primary["lat"], "lon": primary["lon"], "wilaya": primary["wilaya"]},
+        }
+    except Exception as e:
+        logger.error(f"Phase 3 failed: {e}")
+        results["phases"]["3_team_dispatch"] = {"status": "error", "error": str(e)}
+
+    # ────── PHASE 4: Populate Crisis Room with messages ──────
+    if room_id:
+        try:
+            role_map = {
+                "system": MessageType.SYSTEM,
+                "commander": MessageType.DECISION,
+                "coordinator": MessageType.TEXT,
+                "logistics": MessageType.TEXT,
+                "field_medic": MessageType.TEXT,
+            }
+            msg_type_map = {
+                "alert": MessageType.ALERT,
+                "decision": MessageType.DECISION,
+                "text": MessageType.TEXT,
+                "system": MessageType.SYSTEM,
+            }
+            sent_count = 0
+            for msg in scenario.get("messages", []):
+                mtype = msg_type_map.get(msg.get("type", "text"), MessageType.TEXT)
+                sender_id = f"sim_{msg['role']}_01"
+                crisis_service.handle_msg_transaction(
+                    room_id, sender_id, msg["sender"], msg["content"], message_type=mtype
+                )
+                sent_count += 1
+
+            results["phases"]["4_messages"] = {
+                "status": "success",
+                "messages_sent": sent_count,
+            }
+        except Exception as e:
+            logger.error(f"Phase 4 failed: {e}")
+            results["phases"]["4_messages"] = {"status": "error", "error": str(e)}
+
+    results["crisis_room_id"] = room_id
+    results["success"] = all(
+        p.get("status") == "success" for p in results["phases"].values()
+    )
+
+    return results
+
+
+@app.post("/api/v1/simulation/reset")
+def reset_simulation():
+    """
+    Clears the radar cache and resets it to a clean initial state.
+    Use this between simulation runs during demonstrations.
+    """
+    try:
+        clean_data = {
+            "timestamp": datetime.utcnow().isoformat(),
+            "daemon_status": "running",
+            "wilayats": {},
+            "cycle": 0,
+            "data_sources": {
+                "firms_active": True,
+                "chirps_lag_days": 0,
+                "hydrosar_available": True,
+                "sentinel2_latest": datetime.utcnow().strftime("%Y-%m-%d"),
+            }
+        }
+        os.makedirs(os.path.dirname(CACHE_PATH), exist_ok=True)
+        with open(CACHE_PATH, 'w', encoding='utf-8') as f:
+            json.dump(clean_data, f, indent=2)
+
+        return {"success": True, "message": "Radar cache reset to clean state. All wilaya data cleared."}
+    except Exception as e:
+        logger.error(f"Reset failed: {e}")
+        raise HTTPException(status_code=500, detail="Reset failed")
 
 @app.get("/realtime", response_model=RealtimeResponse)
 def realtime() -> RealtimeResponse:

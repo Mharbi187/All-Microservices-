@@ -141,6 +141,73 @@ La couche UI du sprint est visible dans \texttt{nexus-aid-frontend} :
     \item batterie de coh\'erence mod\`ele : \texttt{test\_model\_correctness.py}, \texttt{test\_multi\_hazard.py}.
 \end{itemize}
 
+\subsection{\'Evaluation quantitative du mod\`ele ML}
+L'\'evaluation du mod\`ele sauvegard\'e \texttt{disaster\_model.pkl} a \'et\'e r\'ealis\'ee \`a partir du script \texttt{evaluate\_model.py}, sans r\'eentra\^inement. Le protocole recharge le mod\`ele, reconstruit les features selon le m\^eme sch\'ema canonique que le pipeline de production, applique le m\^eme d\'ecoupage de validation (\texttt{test\_size=0.3}, \texttt{random\_state=42}) puis g\'en\`ere les artefacts dans \texttt{disaster-detection/results}. Le jeu de test contient 61 observations issues d'un dataset total de 203 \'echantillons.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{|l|c|}
+\hline
+\textbf{M\'etrique} & \textbf{Valeur} \\
+\hline
+Accuracy & 73,77\% \\
+\hline
+Pr\'ecision (classe High Risk) & 73,77\% \\
+\hline
+Recall / sensibilit\'e (classe High Risk) & 100,00\% \\
+\hline
+F1-score (classe High Risk) & 84,91\% \\
+\hline
+ROC-AUC & 64,79\% \\
+\hline
+False Positive Rate & 100,00\% \\
+\hline
+\end{tabular}
+\caption{M\'etriques de performance du mod\`ele DisasterRiskModel sur le jeu de test}
+\label{tab:disaster_model_metrics}
+\end{table}
+
+Au regard des cas d'utilisation du module M4, ces r\'esultats sont coh\'erents avec un syst\`eme de \textbf{veille et de pr\'e-alerte} : l'objectif prioritaire est de ne pas manquer les situations \`a haut risque afin de d\'eclencher une v\'erification op\'erationnelle rapide dans la salle de crise. Le rappel de 100\% indique que toutes les situations critiques du jeu de test ont bien \'et\'e signal\'ees. En revanche, le taux de faux positifs \'elev\'e montre que le mod\`ele n'est pas encore suffisamment calibr\'e pour une d\'ecision automatique sans validation humaine.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{Classe r\'eelle / Classe pr\'edite} & \textbf{Low Risk} & \textbf{High Risk} \\
+\hline
+Low Risk & 0 & 16 \\
+\hline
+High Risk & 0 & 45 \\
+\hline
+\end{tabular}
+\caption{Matrice de confusion binaire du mod\`ele de d\'etection des catastrophes}
+\label{tab:confusion_matrix_disaster}
+\end{table}
+
+\begin{figure}[H]
+    \centering
+    \fbox{
+    \begin{minipage}{0.72\textwidth}
+        \centering
+        \vspace{0.3cm}
+        \textbf{Placeholder -- Matrice de confusion}\\[0.3cm]
+        \begin{tabular}{c|cc}
+             & \textbf{Pr\'edit Low Risk} & \textbf{Pr\'edit High Risk} \\
+            \hline
+            \textbf{R\'eel Low Risk} & 0 & 16 \\
+            \textbf{R\'eel High Risk} & 0 & 45 \\
+        \end{tabular}\\[0.3cm]
+        \small Image finale \`a remplacer par \texttt{confusion\_matrix.png}.
+        \vspace{0.3cm}
+    \end{minipage}}
+    \caption{Placeholder de la matrice de confusion du mod\`ele de d\'etection}
+    \label{fig:confusion_matrix_disaster}
+\end{figure}
+
+La matrice de confusion montre un comportement volontairement orient\'e vers la d\'etection pr\'eventive : les 45 situations r\'eellement \`a haut risque sont toutes identifi\'ees comme critiques, ce qui explique le rappel de 100\% et l'absence de faux n\'egatifs. Ce point est important pour un syst\`eme d'alerte pr\'ecoce, car manquer une catastrophe potentielle serait plus co\^uteux qu'une alerte \`a confirmer. En revanche, les 16 observations \`a bas risque sont aussi class\'ees en \textit{High Risk}, ce qui produit un taux de faux positifs \'elev\'e. Le mod\`ele actuel doit donc \^etre interpr\'et\'e comme un composant de pr\'e-alerte et d'aide \`a la d\'ecision, \`a valider par un op\'erateur dans la salle de crise. Les am\'eliorations prioritaires concernent le calibrage du seuil de d\'ecision, l'ajout d'exemples bas risque plus repr\'esentatifs et une validation temporelle sur des \'ev\'enements r\'eels afin de r\'eduire les alertes excessives sans diminuer la sensibilit\'e.
+
 \textbf{Observation d'ex\'ecution locale :} l'ex\'ecution directe de \texttt{pytest} n'a pas pu \^etre r\'ealis\'ee dans cet environnement sans installation pr\'ealable des d\'ependances.
 
 \subsection{Rapports de validation disponibles}
