@@ -55,6 +55,23 @@ export const getMyBadgeQr = async (volunteerId: string): Promise<string> => {
     return URL.createObjectURL(data);
 };
 
+/**
+ * Request a password-reset link to be sent to the given email address.
+ * Always resolves — the backend always responds 200 (anti-enumeration).
+ */
+export const forgotPassword = async (email: string): Promise<void> => {
+    await apiClient.post('/auth/forgot-password', { email });
+};
+
+/**
+ * Submit a new password using the reset token received by email.
+ * Throws on validation failure (token expired, already used, weak password…).
+ */
+export const resetPassword = async (token: string, newPassword: string): Promise<void> => {
+    const { data } = await apiClient.post<{ error?: string }>('/auth/reset-password', { token, newPassword });
+    if (data?.error) throw new Error(data.error);
+};
+
 // Default export as an object for backward compatibility
 const authService = {
     login,
@@ -63,6 +80,8 @@ const authService = {
     updateAvatarUrl,
     updateProfile,
     getMyBadgeQr,
+    forgotPassword,
+    resetPassword,
 };
 
 export default authService;

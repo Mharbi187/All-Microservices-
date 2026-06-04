@@ -203,9 +203,24 @@ const YouthStatsDashboard: React.FC<StatsProps> = ({ onExport, data: apiData, lo
 
     // Enrich from real API data when available
     const enrichedKpis = activeData.kpis.map(kpi => {
-        if (kpi.key === 'projects' && apiData?.totalProjects) return { ...kpi, value: apiData.totalProjects };
+        if (kpi.key === 'projects' && typeof apiData?.totalProjects === 'number') return { ...kpi, value: apiData.totalProjects };
+        if (kpi.key === 'volunteers' && typeof apiData?.totalForms === 'number') return { ...kpi, value: apiData.totalForms };
+        if (kpi.key === 'certified' && typeof apiData?.totalRecommendations === 'number') return { ...kpi, value: apiData.totalRecommendations };
+        if (kpi.key === 'hours' && typeof apiData?.totalResponses === 'number') return { ...kpi, value: apiData.totalResponses };
         return kpi;
     });
+
+    const interestRadarData = (apiData?.emergingInterests && apiData.emergingInterests.length > 0)
+        ? apiData.emergingInterests.map((item: any) => ({ area: item.name, score: item.value * 25 > 100 ? 100 : item.value * 25 }))
+        : activeData.interestRadar;
+
+    const goalsData = (apiData?.topSkills && apiData.topSkills.length > 0)
+        ? apiData.topSkills.map((item: any, idx: number) => ({
+            label: item.name,
+            value: item.value * 25 > 100 ? 100 : item.value * 25,
+            color: ['#e01c2e', '#059669', '#D97706', '#0284C7', '#7C3AED', '#E11D48'][idx % 6]
+          }))
+        : activeData.goals;
 
     const engagementData = activeData.engagement.flatMap(item => [
         { region: item.region, type: 'Heures', value: item.heures },
@@ -448,7 +463,7 @@ const YouthStatsDashboard: React.FC<StatsProps> = ({ onExport, data: apiData, lo
                         >
                             <div style={{ height: 320 }}>
                                 <Radar
-                                    data={activeData.interestRadar}
+                                    data={interestRadarData}
                                     xField="area"
                                     yField="score"
                                     scale={{ y: { domain: [0, 100] } }}
@@ -499,13 +514,15 @@ const YouthStatsDashboard: React.FC<StatsProps> = ({ onExport, data: apiData, lo
                             title={
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                     <SafetyCertificateOutlined style={{ color: '#059669', fontSize: 18 }} />
-                                    <span style={{ fontWeight: 800, fontSize: 17 }}>Niveaux de Certification</span>
+                                    <span style={{ fontWeight: 800, fontSize: 17 }}>
+                                        {(apiData?.ageDemographics && apiData.ageDemographics.length > 0) ? "Démographie d'Âge" : "Niveaux de Certification"}
+                                    </span>
                                 </div>
                             }
                         >
                             <div style={{ height: 280 }}>
                                 <Pie
-                                    data={activeData.certificationPie}
+                                    data={(apiData?.ageDemographics && apiData.ageDemographics.length > 0) ? apiData.ageDemographics : activeData.certificationPie}
                                     angleField="value"
                                     colorField="type"
                                     radius={0.85}
@@ -527,10 +544,10 @@ const YouthStatsDashboard: React.FC<StatsProps> = ({ onExport, data: apiData, lo
                 <Col xs={24} md={10}>
                     <motion.div variants={fadeUp}>
                         <Card variant="borderless" style={{ borderRadius: 24, border: '1px solid rgba(0,0,0,0.04)', height: '100%' }}
-                            title={<span style={{ fontWeight: 800, fontSize: 17 }}>🎯 Objectifs Stratégiques</span>}
+                            title={<span style={{ fontWeight: 800, fontSize: 17 }}>{(apiData?.topSkills && apiData.topSkills.length > 0) ? "💪 Compétences les plus Fréquentes" : "🎯 Objectifs Stratégiques"}</span>}
                         >
                             <motion.div variants={stagger} style={{ marginTop: 8 }}>
-                                {activeData.goals.map((g) => (
+                                {goalsData.map((g: any) => (
                                     <GoalProgress key={g.label} {...g} />
                                 ))}
                             </motion.div>

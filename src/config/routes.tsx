@@ -95,6 +95,8 @@ const FullscreenProtectedRoute: React.FC = () => {
 const HomePage = lazy(() => import('@/pages/home/HomePage'));
 const LoginPage = lazy(() => import('@/pages/auth/LoginPage'));
 const RegisterPage = lazy(() => import('@/pages/auth/RegisterPage'));
+const ForgotPasswordPage = lazy(() => import('@/pages/auth/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('@/pages/auth/ResetPasswordPage'));
 const DashboardPage = lazy(() => import('@/pages/dashboard/DashboardPage'));
 const VolunteersPage = lazy(() => import('@/pages/volunteers/VolunteersPage'));
 const CommitteesPage = lazy(() => import('@/pages/committees/CommitteesPage'));
@@ -260,6 +262,8 @@ export const router = createBrowserRouter([
         children: [
             { path: '/login', element: withLoader(<LoginPage />) },
             { path: '/register', element: withLoader(<RegisterPage />) },
+            { path: '/forgot-password', element: withLoader(<ForgotPasswordPage />) },
+            { path: '/reset-password', element: withLoader(<ResetPasswordPage />) },
         ],
     },
 

@@ -33,7 +33,8 @@ export type RoleTitle =
     | 'VICE_PRESIDENT_NATIONAL'
     | 'SECRETAIRE_GENERAL_LOCAL'
     | 'SECRETAIRE_GENERAL_REGIONAL'
-    | 'SECRETAIRE_GENERAL_NATIONAL';
+    | 'SECRETAIRE_GENERAL_NATIONAL'
+    | 'RESP_DIFFUSION_NATIONAL';
 
 export type StockCategory = 'MEDICAL' | 'CLOTHING' | 'FOOD' | 'EQUIPMENT' | 'RESCUE_GEAR';
 
@@ -419,7 +420,7 @@ export interface YouthFormResponseDTO {
 
 export interface YouthRecommendationDTO {
     id?: string;
-    formId: string;
+    formId?: string;
     title: string;
     description: string;
     category: string;
@@ -652,6 +653,7 @@ export interface VictimCaseDTO {
     isConfidential?: boolean;
     accessRestricted?: boolean;
     typeOfViolence?: string;
+    createdAt?: string;
 }
 
 export interface ProtectionCampaignDTO {
@@ -715,3 +717,28 @@ export interface AuthTokens {
 }
 // ---- Crisis / MS4 Types ----
 export * from './crisisTypes';
+
+// ---- Additional VFF Types ----
+export interface ShelterDTO {
+    id?: string;
+    name: string;
+    address?: string;
+    manager?: string;
+    phone?: string;
+    capacity: number;
+    available: number;
+    region?: string;
+    services: string[];
+}
+
+export interface PartnerDTO {
+    id?: string;
+    type: string;
+    label: string;
+    region?: string;
+    phone?: string;
+    address?: string;
+    latitude?: number;
+    longitude?: number;
+}
+

@@ -100,6 +100,43 @@ export const jeunesseService = {
         return data;
     },
 
+    validateProject: async (projectId: string, approve: boolean): Promise<MicroProjectDTO> => {
+        const { data } = await apiClient.post(`/jeunesse/projects/${projectId}/validate`, null, {
+            params: { approve }
+        });
+        return data;
+    },
+
+    // ----- General Recommendations -----
+
+    getRecommendations: async (): Promise<YouthRecommendationDTO[]> => {
+        const { data } = await apiClient.get<any>('/jeunesse/recommendations');
+        if (Array.isArray(data)) return data;
+        if (data && Array.isArray(data.content)) return data.content;
+        return [];
+    },
+
+    publishRecommendation: async (payload: YouthRecommendationDTO): Promise<YouthRecommendationDTO> => {
+        const { data } = await apiClient.post('/jeunesse/recommendations/publish', payload);
+        return data;
+    },
+
+    updateRecommendation: async (id: string, payload: YouthRecommendationDTO): Promise<YouthRecommendationDTO> => {
+        const { data } = await apiClient.put(`/jeunesse/recommendations/${id}`, payload);
+        return data;
+    },
+
+    deleteRecommendation: async (id: string): Promise<void> => {
+        await apiClient.delete(`/jeunesse/recommendations/${id}`);
+    },
+
+    validateRecommendation: async (recId: string, approve: boolean): Promise<YouthRecommendationDTO> => {
+        const { data } = await apiClient.post(`/jeunesse/recommendations/${recId}/validate`, null, {
+            params: { approve }
+        });
+        return data;
+    },
+
     // ----- Statistics -----
 
     getStats: async (): Promise<YouthStatsDTO> => {

@@ -44,7 +44,8 @@ const RegisterPage: React.FC = () => {
     const [acceptTerms, setAcceptTerms] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
-    const [committees, setCommittees] = useState<{ id: string; name: string; type: string }[]>([]);
+    const [committees, setCommittees] = useState<{ id: string; name: string; type: string; region?: string; parentRegion?: string }[]>([]);
+    const [selectedGovernorate, setSelectedGovernorate] = useState('');
 
     // Form fields
     const [firstName, setFirstName] = useState('');
@@ -55,6 +56,14 @@ const RegisterPage: React.FC = () => {
     const [birthDate, setBirthDate] = useState('');
     const [selectedCommittee, setSelectedCommittee] = useState('');
 
+    const filteredCommittees = committees.filter((c) => {
+        if (c.type === 'NATIONAL') return true;
+        if (!selectedGovernorate) return false;
+        const govLower = selectedGovernorate.toLowerCase();
+        return (c.region && c.region.toLowerCase() === govLower) ||
+               (c.parentRegion && c.parentRegion.toLowerCase() === govLower);
+    });
+
     const languageMenuItems = [
         { key: 'fr', label: 'Français (FR)' },
         { key: 'ar', label: 'العربية (AR)' },
@@ -63,7 +72,7 @@ const RegisterPage: React.FC = () => {
 
     // Fetch real committees on mount
     useEffect(() => {
-        apiClient.get<{ id: string; name: string; type: string; region: string }[]>(
+        apiClient.get<{ id: string; name: string; type: string; region: string; parentRegion?: string }[]>(
             '/onboarding/public/committees/all'
         )
             .then(res => setCommittees(res.data))
@@ -359,7 +368,16 @@ const RegisterPage: React.FC = () => {
                             </div>
                             <div>
                                 <label style={labelStyle}>{t("auth_page.governorate", "Gouvernorat")}</label>
-                                <select style={selectStyle} required {...focusHandlers}>
+                                <select
+                                    style={selectStyle}
+                                    required
+                                    {...focusHandlers}
+                                    value={selectedGovernorate}
+                                    onChange={(e) => {
+                                        setSelectedGovernorate(e.target.value);
+                                        setSelectedCommittee('');
+                                    }}
+                                >
                                     <option style={optionStyle} value="" disabled>{t("auth_page.selectGov", "Sélectionner...")}</option>
                                     {gouvernorats.map((g) => (
                                         <option style={optionStyle} key={g} value={g}>{g}</option>
@@ -374,7 +392,7 @@ const RegisterPage: React.FC = () => {
                             <select style={selectStyle} required {...focusHandlers}
                                 value={selectedCommittee} onChange={(e) => setSelectedCommittee(e.target.value)}>
                                 <option style={optionStyle} value="" disabled>{t("auth_page.selectCommittee", "Sélectionner votre comité...")}</option>
-                                {committees.map((c) => (
+                                {filteredCommittees.map((c) => (
                                     <option style={optionStyle} key={c.id} value={c.id}>{c.name} ({c.type})</option>
                                 ))}
                             </select>

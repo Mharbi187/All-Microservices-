@@ -300,6 +300,22 @@ const MainLayout: React.FC = () => {
             label: t('nav.dashboard'),
         });
 
+        // Modifier l'Accueil — only for authorized national roles
+        const canEditHomepage = user?.roles?.some(role => [
+            'PRESIDENT_NATIONAL',
+            'RESP_DIFFUSION_NATIONAL',
+            'VICE_PRESIDENT_NATIONAL',
+            'SECRETAIRE_GENERAL_NATIONAL'
+        ].includes(role));
+
+        if (canEditHomepage) {
+            items.push({
+                key: '/',
+                icon: <GlobalOutlined />,
+                label: "Modifier l'Accueil",
+            });
+        }
+
         // Volunteer Space
         const volunteerChildren: MenuProps['items'] = [];
         if (isAllowed('/volunteer/committee')) {

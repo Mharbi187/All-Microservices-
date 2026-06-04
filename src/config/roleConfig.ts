@@ -140,6 +140,12 @@ export const ROLE_PERMISSIONS: Record<RoleTitle, RolePermission> = {
         label: 'Resp. Diffusion',
         dashboardType: 'volunteer',
     },
+    RESP_DIFFUSION_NATIONAL: {
+        allowedRoutes: [...SHARED_ROUTES, '/diffusion', '/reports', '/admin-reports', '/volunteer/quiz', '/volunteer/news', '/volunteer/calendar'],
+        sidebarKeys: [...SHARED_SIDEBAR, '/diffusion', '/reports', '/admin-reports', 'domains', '/volunteer/quiz'],
+        label: 'Resp. Diffusion National',
+        dashboardType: 'volunteer',
+    },
     RESP_JEUNESSE: {
         allowedRoutes: [...SHARED_ROUTES, '/jeunesse', '/reports', '/admin-reports'],
         sidebarKeys: [...SHARED_SIDEBAR, '/jeunesse', '/reports', '/admin-reports', 'domains'],

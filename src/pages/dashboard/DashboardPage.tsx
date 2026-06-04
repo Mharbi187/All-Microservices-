@@ -4,7 +4,7 @@
 // ============================================================
 
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Progress, Tooltip, Badge, Spin, Empty, Button } from 'antd';
+import { Row, Col, Progress, Tooltip, Badge, Spin, Empty, Button, Tag, Modal, Form, Input, Select, App, InputNumber } from 'antd';
 import {
     TeamOutlined, AlertOutlined, InboxOutlined, GiftOutlined,
     HeartOutlined, ApartmentOutlined, ClockCircleOutlined,
@@ -14,6 +14,7 @@ import {
     CrownOutlined, BookOutlined, TrophyOutlined, SettingOutlined,
     FundOutlined, CalendarOutlined, StarOutlined, SafetyOutlined,
     AuditOutlined, InfoCircleOutlined, PlusOutlined, UserOutlined,
+    WomanOutlined, LockOutlined, SafetyCertificateOutlined, NotificationOutlined, SearchOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore, useUIStore } from '@/stores';
@@ -21,8 +22,8 @@ import { getUserPermissions } from '@/config/roleConfig';
 import committeeService from '@/services/committeeService';
 import volunteerService from '@/services/volunteerService';
 import inventoryService from '@/services/inventoryService';
-import { secourismeService } from '@/services/domainServices';
-import type { CommitteeOverview, InventoryItemDTO, StockAlertDTO } from '@/types';
+import { secourismeService, vffService } from '@/services/domainServices';
+import type { CommitteeOverview, InventoryItemDTO, StockAlertDTO, VictimCaseDTO, ProtectionCampaignDTO } from '@/types';
 import calendarService from '@/services/calendarService';
 import type { CalendarEventDTO } from '@/services/calendarService';
 import quizService from '@/services/quizService';
@@ -1502,6 +1503,249 @@ const VolunteerDash: React.FC<{
 };
 
 // ─────────────────────────────────────────────────────────────
+// VFF DASHBOARD — Responsable VFF (Violence Faite aux Femmes)
+// ─────────────────────────────────────────────────────────────
+const VffDash: React.FC<{
+    isDark: boolean; navigate: (p: string) => void;
+    cases: VictimCaseDTO[]; campaigns: ProtectionCampaignDTO[];
+    onNewCase: () => void;
+}> = ({ isDark, navigate, cases, campaigns, onNewCase }) => {
+    const t = makeTheme(isDark);
+    const vffRed = '#DC2626';
+    const vffPink = '#EC4899';
+    const vffPurple = '#7C3AED';
+
+    const totalCases = cases.length;
+    const urgentCases = cases.filter(c => c.priority === 'CRITICAL' || c.riskLevel === 'CRITICAL').length;
+    const pendingCases = cases.filter(c => c.status === 'REPORTED').length;
+    const hostedCases = cases.filter(c => (c.description || '').toLowerCase().includes('héberg')).length;
+    const closedCases = cases.filter(c => c.status === 'CLOSED' || c.status === 'RESOLVED').length;
+    const activeCampaigns = campaigns.filter(c => c.status === 'ACTIVE').length;
+
+    // Violence type breakdown
+    const violenceTypes = [
+        { label: 'Violence physique', key: 'PHYSIQUE', color: vffRed },
+        { label: 'Violence psychologique', key: 'PSYCHOLOGIQUE', color: vffPink },
+        { label: 'Violence économique', key: 'ECONOMIQUE', color: p.amb600 },
+        { label: 'Violence sexuelle', key: 'SEXUELLE', color: vffPurple },
+        { label: 'Négligence', key: 'NEGLIGENCE', color: p.grn600 },
+        { label: 'Maltraitance infantile', key: 'ENFANT', color: '#0284C7' },
+        { label: 'Mariage forcé', key: 'MARIAGE', color: '#DB2777' },
+        { label: 'Autre', key: 'AUTRE', color: p.slate },
+    ];
+    const violenceBreakdown = violenceTypes.map(vt => ({
+        ...vt,
+        count: cases.filter(c => (c.typeOfViolence || c.incidentType || '').toUpperCase().includes(vt.key)).length,
+    }));
+    const maxViolence = Math.max(...violenceBreakdown.map(v => v.count), 1);
+
+    return (
+        <>
+            {/* KPI Cards — 6 indicateurs */}
+            <div className="nd-kpi-grid" style={{
+                display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                gap: 14, marginBottom: 20,
+            }}>
+                {[
+                    { icon: <WomanOutlined />, value: totalCases, label: 'Total Signalements', accent: vffRed, spark: [2,4,3,6,5,8,totalCases||10] },
+                    { icon: <ClockCircleOutlined />, value: pendingCases, label: 'En Attente', accent: p.amb600, spark: [1,3,2,4,3,5,pendingCases||6] },
+                    { icon: <AlertOutlined />, value: urgentCases, label: 'Cas Urgents', accent: '#EF4444', spark: [1,2,1,3,2,4,urgentCases||5] },
+                    { icon: <HomeOutlined />, value: hostedCases, label: 'Victimes Hébergées', accent: '#0284C7', spark: [0,1,1,2,1,2,hostedCases||3] },
+                    { icon: <CheckCircleOutlined />, value: closedCases, label: 'Dossiers Clôturés', accent: p.grn600, spark: [0,1,2,2,3,4,closedCases||5] },
+                    { icon: <NotificationOutlined />, value: activeCampaigns, label: 'Campagnes Actives', accent: vffPurple, spark: [0,1,1,2,2,3,activeCampaigns||4] },
+                ].map((k, i) => (
+                    <KpiCard key={k.label} isDark={isDark} delay={i * 70}
+                        icon={k.icon} value={k.value} label={k.label} accent={k.accent} sparkData={k.spark}
+                    />
+                ))}
+            </div>
+
+            {/* Main grid */}
+            <div className="nd-two-col" style={{
+                display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 16, marginBottom: 20,
+            }}>
+                {/* Left: Recent cases */}
+                <SCard isDark={isDark} accentLine={vffRed}
+                    title={<><WomanOutlined style={{ color: vffRed, fontSize: 16, marginRight: 8 }} />
+                        <span style={{ fontFamily: fonts.body, fontWeight: 700, fontSize: 14, color: isDark ? '#F0F4FF' : p.ink }}>Derniers Signalements Confidentiels</span></>
+                    }
+                    extra={
+                        <button
+                            onClick={onNewCase}
+                            className="nd-action"
+                            style={{
+                                display: 'flex', alignItems: 'center', gap: 6,
+                                background: `linear-gradient(135deg, ${vffRed}, #9B0B22)`,
+                                color: '#fff', border: 'none', borderRadius: r.md,
+                                padding: '7px 14px', fontFamily: fonts.body, fontSize: 12,
+                                fontWeight: 700, cursor: 'pointer',
+                            }}
+                        >
+                            <PlusOutlined /> Nouveau Dossier
+                        </button>
+                    }
+                >
+                    {cases.length === 0 ? (
+                        <Empty description="Aucun signalement enregistré" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                    ) : cases.slice(0, 5).map((c, i) => (
+                        <div key={c.id || i} className="nd-row-hover" style={{
+                            display: 'flex', alignItems: 'center', gap: 12,
+                            padding: '10px 0',
+                            borderBottom: i < Math.min(cases.length - 1, 4) ? `1px solid ${t.divider}` : 'none',
+                        }}>
+                            {/* Confidentiality lock icon */}
+                            <div style={{
+                                width: 38, height: 38, borderRadius: r.sm,
+                                background: isDark ? 'rgba(220,38,38,0.12)' : '#FEF2F2',
+                                border: `1px solid ${vffRed}22`,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                fontSize: 16, color: vffRed, flexShrink: 0,
+                            }}>
+                                <LockOutlined />
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontFamily: fonts.body, fontWeight: 600, fontSize: 13, color: isDark ? '#F0F4FF' : p.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {c.victimName || 'Identité protégée'}
+                                </div>
+                                <div style={{ fontFamily: fonts.body, fontSize: 11, color: t.textFaint }}>
+                                    {c.typeOfViolence || c.incidentType || 'Type non précisé'} · {c.gender || c.victimGender || '—'}
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                                <span style={{
+                                    fontFamily: fonts.body, fontSize: 10, fontWeight: 700,
+                                    color: c.priority === 'CRITICAL' || c.riskLevel === 'CRITICAL' ? '#EF4444'
+                                         : c.priority === 'HIGH' ? p.amb600 : p.grn600,
+                                    background: c.priority === 'CRITICAL' || c.riskLevel === 'CRITICAL' ? 'rgba(239,68,68,0.1)'
+                                              : c.priority === 'HIGH' ? `${p.amb600}10` : `${p.grn600}10`,
+                                    borderRadius: r.pill, padding: '2px 8px',
+                                    border: `1px solid ${
+                                        c.priority === 'CRITICAL' || c.riskLevel === 'CRITICAL' ? 'rgba(239,68,68,0.2)'
+                                        : c.priority === 'HIGH' ? `${p.amb600}20` : `${p.grn600}20`
+                                    }`,
+                                }}>
+                                    {c.priority === 'CRITICAL' || c.riskLevel === 'CRITICAL' ? 'CRITIQUE'
+                                     : c.priority === 'HIGH' ? 'ÉLEVÉ' : 'STANDARD'}
+                                </span>
+                                <span style={{
+                                    fontFamily: fonts.body, fontSize: 10,
+                                    color: t.textFaint,
+                                }}>
+                                    {c.status === 'CLOSED' || c.status === 'RESOLVED' ? 'Clôturé' : c.status === 'IN_PROGRESS' ? 'En cours' : 'Signalé'}
+                                </span>
+                            </div>
+                        </div>
+                    ))}
+                </SCard>
+
+                {/* Right column */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    {/* Violence breakdown */}
+                    <SCard isDark={isDark} accentLine={vffPink}
+                        title={<><SafetyOutlined style={{ color: vffPink, fontSize: 16, marginRight: 8 }} />
+                            <span style={{ fontFamily: fonts.body, fontWeight: 700, fontSize: 14, color: isDark ? '#F0F4FF' : p.ink }}>Types de Violence</span></>
+                        }
+                    >
+                        {violenceBreakdown.filter(v => v.count > 0).length === 0 ? (
+                            <Empty description="Aucune donnée" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                        ) : violenceBreakdown.map(vt => (
+                            vt.count > 0 && (
+                                <ProgRow key={vt.key} isDark={isDark}
+                                    label={vt.label.split(' ').slice(-1)[0]}
+                                    value={vt.count} max={maxViolence} color={vt.color}
+                                />
+                            )
+                        ))}
+                    </SCard>
+
+                    {/* Active campaigns */}
+                    <SCard isDark={isDark} accentLine={vffPurple}
+                        title={<><NotificationOutlined style={{ color: vffPurple, fontSize: 16, marginRight: 8 }} />
+                            <span style={{ fontFamily: fonts.body, fontWeight: 700, fontSize: 14, color: isDark ? '#F0F4FF' : p.ink }}>Campagnes de Prévention</span></>
+                        }
+                    >
+                        {campaigns.length === 0 ? (
+                            <div style={{ textAlign: 'center', padding: '14px 0', fontFamily: fonts.body, color: t.textFaint }}>
+                                Aucune campagne planifiée
+                            </div>
+                        ) : campaigns.slice(0, 3).map((camp, i) => (
+                            <div key={camp.id || i} className="nd-row-hover" style={{
+                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                padding: '9px 0',
+                                borderBottom: i < Math.min(campaigns.length - 1, 2) ? `1px solid ${t.divider}` : 'none',
+                            }}>
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ fontFamily: fonts.body, fontSize: 12, fontWeight: 600, color: isDark ? '#F0F4FF' : p.ink }}>
+                                        {camp.title || camp.name || 'Campagne'}
+                                    </div>
+                                    <div style={{ fontFamily: fonts.body, fontSize: 11, color: t.textFaint }}>
+                                        {camp.targetAudience || '—'}
+                                    </div>
+                                </div>
+                                <span style={{
+                                    fontFamily: fonts.body, fontSize: 10, fontWeight: 700,
+                                    color: camp.status === 'ACTIVE' ? p.grn600 : p.amb600,
+                                    background: camp.status === 'ACTIVE' ? `${p.grn600}10` : `${p.amb600}10`,
+                                    border: `1px solid ${camp.status === 'ACTIVE' ? p.grn600 : p.amb600}20`,
+                                    borderRadius: r.pill, padding: '2px 8px', flexShrink: 0,
+                                }}>
+                                    {camp.status === 'ACTIVE' ? 'Active' : 'Planifiée'}
+                                </span>
+                            </div>
+                        ))}
+                    </SCard>
+                </div>
+            </div>
+
+            {/* Quick Actions */}
+            <SCard isDark={isDark} accentLine={p.amb600}
+                title={<><ThunderboltOutlined style={{ color: p.amb600, fontSize: 16, marginRight: 8 }} />
+                    <span style={{ fontFamily: fonts.body, fontWeight: 700, fontSize: 14, color: isDark ? '#F0F4FF' : p.ink }}>Actions Rapides</span></>
+                }
+            >
+                <div className="nd-action-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+                    {[
+                        { icon: <PlusOutlined style={{ fontSize: 26, color: vffRed }} />, label: 'Nouveau Signalement', desc: 'Dossier confidentiel', accent: vffRed, action: onNewCase },
+                        { icon: <WomanOutlined style={{ fontSize: 26, color: vffPink }} />, label: 'Consulter Dossier', desc: 'Suivi des victimes', accent: vffPink, action: () => navigate('/vff') },
+                        { icon: <SearchOutlined style={{ fontSize: 26, color: vffPurple }} />, label: 'Rechercher Victime', desc: 'Accès sécurisé', accent: vffPurple, action: () => navigate('/vff') },
+                        { icon: <FileTextOutlined style={{ fontSize: 26, color: p.grn600 }} />, label: 'Générer Rapport', desc: 'Statistiques VFF', accent: p.grn600, action: () => navigate('/reports') },
+                    ].map((a, i) => (
+                        <div
+                            key={i}
+                            className="nd-action"
+                            onClick={a.action}
+                            style={{
+                                borderRadius: r.md, padding: '16px 14px',
+                                background: isDark ? `${a.accent}0E` : `${a.accent}07`,
+                                border: `1px solid ${a.accent}20`,
+                                cursor: 'pointer', textAlign: 'center',
+                            }}
+                        >
+                            <div style={{ fontSize: 26, marginBottom: 8, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>{a.icon}</div>
+                            <div style={{ fontFamily: fonts.body, fontSize: 12, fontWeight: 700, color: a.accent, marginBottom: 3 }}>{a.label}</div>
+                            <div style={{ fontFamily: fonts.body, fontSize: 11, color: t.textFaint }}>{a.desc}</div>
+                        </div>
+                    ))}
+                </div>
+            </SCard>
+
+            {/* Confidentiality notice */}
+            <div style={{
+                marginTop: 16, borderRadius: r.md, padding: '12px 18px',
+                background: isDark ? 'rgba(220,38,38,0.06)' : '#FEF2F2',
+                border: `1px solid ${vffRed}20`,
+                display: 'flex', alignItems: 'center', gap: 10,
+            }}>
+                <SafetyCertificateOutlined style={{ color: vffRed, fontSize: 16 }} />
+                <span style={{ fontFamily: fonts.body, fontSize: 12, color: isDark ? 'rgba(255,200,200,0.8)' : '#9B1C1C', fontWeight: 500 }}>
+                    Toutes les informations sur les victimes sont strictement confidentielles et protégées conformément aux directives de protection des données sensibles.
+                </span>
+            </div>
+        </>
+    );
+};
+
+// ─────────────────────────────────────────────────────────────
 // MAIN DASHBOARD PAGE
 // ─────────────────────────────────────────────────────────────
 const DashboardPage: React.FC = () => {
@@ -1528,6 +1772,11 @@ const DashboardPage: React.FC = () => {
     const [socialActionsCount, setSocialActionsCount] = useState<number | string>('—');
     const [vffCasesCount, setVffCasesCount] = useState<number | string>('—');
     const [immigrationCasesCount, setImmigrationCasesCount] = useState<number | string>('—');
+    // VFF full data
+    const [vffCases, setVffCases] = useState<VictimCaseDTO[]>([]);
+    const [vffCampaigns, setVffCampaigns] = useState<ProtectionCampaignDTO[]>([]);
+    const [vffNewCaseOpen, setVffNewCaseOpen] = useState(false);
+    const [vffForm] = Form.useForm();
 
     useEffect(() => {
         (async () => {
@@ -1562,7 +1811,11 @@ const DashboardPage: React.FC = () => {
                     setSocialFamiliesCount(fam.length); setSocialActionsCount(act.length);
                 }
                 if (permissions.sidebarKeys.includes('/vff')) {
-                    setVffCasesCount((await ds.vffService.getCases().catch(() => [])).length);
+                    const vffData = await ds.vffService.getCases().catch(() => []);
+                    setVffCasesCount(vffData.length);
+                    setVffCases(vffData);
+                    const vffCampData = await ds.vffService.getCampaigns().catch(() => []);
+                    setVffCampaigns(vffCampData);
                 }
                 if (permissions.sidebarKeys.includes('/immigration')) {
                     setImmigrationCasesCount((await ds.immigrationService.getCases().catch(() => [])).length);
@@ -1630,19 +1883,124 @@ const DashboardPage: React.FC = () => {
             )}
             {dt === 'donor' && <DonorDash isDark={isDark} navigate={navigate} />}
             {dt === 'volunteer' && (
-                <VolunteerDash isDark={isDark} navigate={navigate}
-                    permissions={permissions} user={user}
-                    totalVolunteers={totalVolunteers} pendingVolunteers={pendingVolunteers}
-                    totalCommittees={totalCommittees} totalStock={totalStock}
-                    activeAlerts={activeAlerts} committees={committees} alerts={alerts}
-                    jeunesseFormsCount={jeunesseFormsCount} jeunesseProjectsCount={jeunesseProjectsCount}
-                    santeActionsCount={santeActionsCount}
-                    socialFamiliesCount={socialFamiliesCount} socialActionsCount={socialActionsCount}
-                    vffCasesCount={vffCasesCount} immigrationCasesCount={immigrationCasesCount}
-                    secourismeEqCount={secourismeEqCount} secourismeDvCount={secourismeDvCount}
-                    upcomingEvents={upcomingEvents}
-                    myQuizResults={myQuizResults}
-                />
+                <>
+                    {/* If user is exclusively RESP_VFF domain role, show dedicated VFF dashboard */}
+                    {(user?.roles || []).some((role: any) => {
+                        const rStr = (typeof role === 'string' ? role : role?.role || '').toUpperCase();
+                        return rStr === 'RESP_VFF';
+                    }) && !(user?.roles || []).some((role: any) => {
+                        const rStr = (typeof role === 'string' ? role : role?.role || '').toUpperCase();
+                        return rStr.includes('PRESIDENT') || rStr.includes('VICE') || rStr.includes('SECRETAIRE') || rStr.includes('ADMIN');
+                    }) ? (
+                        <VffDash
+                            isDark={isDark} navigate={navigate}
+                            cases={vffCases} campaigns={vffCampaigns}
+                            onNewCase={() => setVffNewCaseOpen(true)}
+                        />
+                    ) : (
+                        <VolunteerDash isDark={isDark} navigate={navigate}
+                            permissions={permissions} user={user}
+                            totalVolunteers={totalVolunteers} pendingVolunteers={pendingVolunteers}
+                            totalCommittees={totalCommittees} totalStock={totalStock}
+                            activeAlerts={activeAlerts} committees={committees} alerts={alerts}
+                            jeunesseFormsCount={jeunesseFormsCount} jeunesseProjectsCount={jeunesseProjectsCount}
+                            santeActionsCount={santeActionsCount}
+                            socialFamiliesCount={socialFamiliesCount} socialActionsCount={socialActionsCount}
+                            vffCasesCount={vffCasesCount} immigrationCasesCount={immigrationCasesCount}
+                            secourismeEqCount={secourismeEqCount} secourismeDvCount={secourismeDvCount}
+                            upcomingEvents={upcomingEvents}
+                            myQuizResults={myQuizResults}
+                        />
+                    )}
+
+                    {/* VFF New Case Modal */}
+                    <Modal
+                        title={<span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><LockOutlined style={{ color: '#DC2626' }} /> Signalement Confidentiel</span>}
+                        open={vffNewCaseOpen}
+                        onCancel={() => { setVffNewCaseOpen(false); vffForm.resetFields(); }}
+                        footer={null}
+                        width={640}
+                        centered
+                        styles={{ content: { borderRadius: 24, padding: 32 } }}
+                    >
+                        <div style={{ padding: '10px 16px', borderRadius: 10, background: '#FEF2F2', border: '1px solid #FEE2E2', marginBottom: 20, display: 'flex', gap: 10, alignItems: 'center' }}>
+                            <SafetyCertificateOutlined style={{ color: '#EF4444', fontSize: 16 }} />
+                            <span style={{ fontSize: 13, fontWeight: 600, color: '#991B1B' }}>Confidentialité absolue requise pour ce dossier.</span>
+                        </div>
+                        <Form form={vffForm} layout="vertical" requiredMark={false}
+                            onFinish={async (values) => {
+                                try {
+                                    await vffService.createCase({
+                                        victimName: values.victimName,
+                                        age: values.age,
+                                        gender: values.gender,
+                                        typeOfViolence: values.typeOfViolence,
+                                        description: values.description,
+                                        status: 'REPORTED',
+                                        priority: values.priority || 'MEDIUM',
+                                    });
+                                    const updated = await vffService.getCases().catch(() => []);
+                                    setVffCases(updated);
+                                    setVffCasesCount(updated.length);
+                                    setVffNewCaseOpen(false);
+                                    vffForm.resetFields();
+                                } catch { /* ignore */ }
+                            }}
+                        >
+                            <Form.Item name="victimName" label="Identité (ou Alias)" rules={[{ required: true }]}>
+                                <Input size="large" style={{ borderRadius: 10 }} placeholder="Ex: Madame X" />
+                            </Form.Item>
+                            <Row gutter={16}>
+                                <Col span={12}>
+                                    <Form.Item name="age" label="Âge (estimatif)">
+                                        <InputNumber size="large" style={{ width: '100%', borderRadius: 10 }} min={0} />
+                                    </Form.Item>
+                                </Col>
+                                <Col span={12}>
+                                    <Form.Item name="gender" label="Sexe">
+                                        <Select size="large">
+                                            <Select.Option value="FEMALE">Femme</Select.Option>
+                                            <Select.Option value="MALE">Homme</Select.Option>
+                                            <Select.Option value="CHILD">Enfant</Select.Option>
+                                        </Select>
+                                    </Form.Item>
+                                </Col>
+                            </Row>
+                            <Row gutter={16}>
+                                <Col span={12}>
+                                    <Form.Item name="typeOfViolence" label="Nature de la situation" rules={[{ required: true }]}>
+                                        <Select size="large">
+                                            <Select.Option value="PHYSIQUE">Violence Physique</Select.Option>
+                                            <Select.Option value="PSYCHOLOGIQUE">Psychologique</Select.Option>
+                                            <Select.Option value="SEXUELLE">Sexuelle</Select.Option>
+                                            <Select.Option value="ECONOMIQUE">Économique</Select.Option>
+                                            <Select.Option value="NEGLIGENCE">Négligence</Select.Option>
+                                            <Select.Option value="MARIAGE_FORCE">Mariage Forcé</Select.Option>
+                                            <Select.Option value="AUTRE">Autre</Select.Option>
+                                        </Select>
+                                    </Form.Item>
+                                </Col>
+                                <Col span={12}>
+                                    <Form.Item name="priority" label="Niveau d'urgence">
+                                        <Select size="large">
+                                            <Select.Option value="CRITICAL">Critique / Immédiat</Select.Option>
+                                            <Select.Option value="HIGH">Élevé (Protection)</Select.Option>
+                                            <Select.Option value="MEDIUM">Suivi standard</Select.Option>
+                                            <Select.Option value="LOW">Faible</Select.Option>
+                                        </Select>
+                                    </Form.Item>
+                                </Col>
+                            </Row>
+                            <Form.Item name="description" label="Observations &amp; Besoins">
+                                <Input.TextArea rows={3} style={{ borderRadius: 10 }} placeholder="Détails, besoins immédiats, risques identifiés..." />
+                            </Form.Item>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                                <Button onClick={() => { setVffNewCaseOpen(false); vffForm.resetFields(); }} style={{ borderRadius: 10, height: 42 }}>Annuler</Button>
+                                <Button type="primary" htmlType="submit" style={{ borderRadius: 10, height: 42, background: 'linear-gradient(135deg, #DC2626, #9B0B22)', border: 'none', fontWeight: 700 }}>Générer le Dossier</Button>
+                            </div>
+                        </Form>
+                    </Modal>
+                </>
             )}
 
             {/* System status footer */}

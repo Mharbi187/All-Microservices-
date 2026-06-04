@@ -12,6 +12,7 @@ import type {
     FamilyDTO, SocialActionDTO, VulnerabilityScoreDTO, SocialAnalyticsDTO,
     MigrantCaseDTO, FamilyLinkCaseDTO,
     VictimCaseDTO, ProtectionCampaignDTO,
+    ShelterDTO, PartnerDTO
 } from '@/types';
 
 // ---- Secourisme ----
@@ -267,6 +268,22 @@ export const vffService = {
     },
     createCampaign: async (payload: ProtectionCampaignDTO): Promise<ProtectionCampaignDTO> => {
         const { data } = await apiClient.post('/vff/campaigns', payload);
+        return data;
+    },
+    getShelters: async (): Promise<ShelterDTO[]> => {
+        const { data } = await apiClient.get('/vff/shelters');
+        return data;
+    },
+    createShelter: async (payload: ShelterDTO): Promise<ShelterDTO> => {
+        const { data } = await apiClient.post('/vff/shelters', payload);
+        return data;
+    },
+    getPartners: async (): Promise<PartnerDTO[]> => {
+        const { data } = await apiClient.get('/vff/partners');
+        return data;
+    },
+    createPartner: async (payload: PartnerDTO): Promise<PartnerDTO> => {
+        const { data } = await apiClient.post('/vff/partners', payload);
         return data;
     },
 };

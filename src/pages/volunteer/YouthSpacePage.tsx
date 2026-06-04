@@ -16,15 +16,17 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import { jeunesseService } from '@/services/jeunesseService';
 import { useAuthStore } from '@/stores';
-import type { MicroProjectDTO, YouthIntegrationFormDTO, YouthFormTemplateDTO } from '@/types';
+import type { MicroProjectDTO, YouthIntegrationFormDTO, YouthFormTemplateDTO, YouthRecommendationDTO } from '@/types';
 import dayjs from 'dayjs';
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
 
 const projectStatusColors: Record<string, string> = {
-    PROPOSED: 'blue',
-    ACTIVE: 'green',
+    PENDING_VALIDATION: 'gold',
+    APPROVED: 'green',
+    REJECTED: 'red',
+    ACTIVE: 'blue',
     COMPLETED: 'default',
 };
 
@@ -43,13 +45,19 @@ const YouthSpacePage: React.FC = () => {
     const [projects, setProjects] = useState<MicroProjectDTO[]>([]);
     const [templates, setTemplates] = useState<YouthFormTemplateDTO[]>([]);
     const [recommendation, setRecommendation] = useState<any>(null);
+    const [publishedRecommendations, setPublishedRecommendations] = useState<YouthRecommendationDTO[]>([]);
     const [loading, setLoading] = useState(true);
+    
     const [projectModalVisible, setProjectModalVisible] = useState(false);
     const [formModalVisible, setFormModalVisible] = useState(false);
     const [recommendationVisible, setRecommendationVisible] = useState(false);
+    const [isDynamicFormModalOpen, setIsDynamicFormModalOpen] = useState(false);
+    const [selectedTemplateForFill, setSelectedTemplateForFill] = useState<YouthFormTemplateDTO | null>(null);
+    
     const [submitting, setSubmitting] = useState(false);
     const [projectForm] = Form.useForm();
     const [integrationForm] = Form.useForm();
+    const [dynamicForm] = Form.useForm();
 
     const isApproved = user?.status === 'APPROVED';
     // Restrict "Integration Jeunesse" exclusively to classic volunteers (no responsible roles)
@@ -67,12 +75,14 @@ const YouthSpacePage: React.FC = () => {
     const loadData = async () => {
         setLoading(true);
         try {
-            const [projectsData, templatesData] = await Promise.all([
+            const [projectsData, templatesData, recsData] = await Promise.all([
                 jeunesseService.getProjects(),
                 jeunesseService.getTemplates().catch(() => []),
+                jeunesseService.getRecommendations().catch(() => [])
             ]);
             setProjects(projectsData);
             setTemplates(templatesData);
+            setPublishedRecommendations(recsData);
         } catch (err) {
             console.error('Failed to load youth data:', err);
         } finally {
@@ -91,10 +101,24 @@ const YouthSpacePage: React.FC = () => {
                 aptitudes: values.aptitudes || [],
                 interestAreas: values.interestAreas || [],
             };
-            await jeunesseService.submitForm(payload);
+            const formRes = await jeunesseService.submitForm(payload);
             message.success('Formulaire d\'intégration soumis avec succès !');
             setFormModalVisible(false);
             integrationForm.resetFields();
+
+            // Live instant AI recommendation generation
+            if (formRes.id) {
+                try {
+                    message.loading({ content: 'Génération de votre orientation personnalisée par l\'IA...', key: 'ai-rec', duration: 0 });
+                    const rec = await jeunesseService.autoGenerateRecommendation(formRes.id);
+                    message.success({ content: 'Orientation IA générée avec succès !', key: 'ai-rec' });
+                    setRecommendation(rec);
+                    setRecommendationVisible(true);
+                } catch (err) {
+                    message.destroy('ai-rec');
+                    console.error('Failed to auto-generate AI recommendation:', err);
+                }
+            }
         } catch (err: any) {
             if (err?.errorFields) return;
             message.error('Erreur lors de la soumission du formulaire.');
@@ -116,13 +140,51 @@ const YouthSpacePage: React.FC = () => {
                 endDate: values.dates?.[1]?.format('YYYY-MM-DD'),
             };
             await jeunesseService.createProject(payload);
-            message.success('Micro-projet proposé avec succès !');
+            message.success('Micro-projet proposé avec succès ! (En attente de validation du Président)');
             setProjectModalVisible(false);
             projectForm.resetFields();
             loadData();
         } catch (err: any) {
             if (err?.errorFields) return;
             message.error('Erreur lors de la création du projet.');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    // Submit dynamic template form response
+    const handleSubmitDynamicForm = async () => {
+        if (!selectedTemplateForFill) return;
+        try {
+            const values = await dynamicForm.validateFields();
+            setSubmitting(true);
+
+            // Format values (especially date picker formatting)
+            const formattedAnswers: Record<string, any> = {};
+            Object.keys(values).forEach(key => {
+                const val = values[key];
+                if (dayjs.isDayjs(val)) {
+                    formattedAnswers[key] = val.format('YYYY-MM-DD');
+                } else {
+                    formattedAnswers[key] = val;
+                }
+            });
+
+            const payload: any = {
+                idFormTemplate: selectedTemplateForFill.id!,
+                idVolunteer: user?.id || '',
+                responses: JSON.stringify(formattedAnswers),
+            };
+
+            await jeunesseService.submitDynamicResponse(payload);
+            message.success('Votre réponse a été enregistrée avec succès !');
+            setIsDynamicFormModalOpen(false);
+            setSelectedTemplateForFill(null);
+            dynamicForm.resetFields();
+            loadData();
+        } catch (error: any) {
+            if (error?.errorFields) return;
+            message.error('Échec de la soumission de votre réponse.');
         } finally {
             setSubmitting(false);
         }
@@ -162,9 +224,9 @@ const YouthSpacePage: React.FC = () => {
             title: 'Statut',
             dataIndex: 'status',
             key: 'status',
-            width: 120,
+            width: 150,
             render: (status: string) => (
-                <Tag color={projectStatusColors[status || ''] || 'default'}>{status || 'PROPOSED'}</Tag>
+                <Tag color={projectStatusColors[status || ''] || 'default'}>{status || 'PENDING_VALIDATION'}</Tag>
             ),
         },
         {
@@ -272,7 +334,7 @@ const YouthSpacePage: React.FC = () => {
                 <Col xs={8}>
                     <Card style={{ borderRadius: 12, borderTop: '3px solid #f59e0b' }}>
                         <Statistic
-                            title="Templates"
+                            title="Formulaires Disponibles"
                             value={templates.length}
                             prefix={<FormOutlined style={{ color: '#f59e0b' }} />}
                         />
@@ -327,7 +389,16 @@ const YouthSpacePage: React.FC = () => {
                                             renderItem={(template) => (
                                                 <List.Item
                                                     actions={[
-                                                        <Button type="link" icon={<SendOutlined />} key="fill">
+                                                        <Button
+                                                            type="primary"
+                                                            icon={<SendOutlined />}
+                                                            key="fill"
+                                                            onClick={() => {
+                                                                setSelectedTemplateForFill(template);
+                                                                dynamicForm.resetFields();
+                                                                setIsDynamicFormModalOpen(true);
+                                                            }}
+                                                        >
                                                             Remplir
                                                         </Button>,
                                                     ]}
@@ -356,6 +427,35 @@ const YouthSpacePage: React.FC = () => {
                                 </>
                             ),
                         },
+                        {
+                            key: 'recommendations',
+                            label: <Space><BulbOutlined /> Orientation & Conseils</Space>,
+                            children: (
+                                <List
+                                    grid={{ gutter: 16, column: 2 }}
+                                    dataSource={publishedRecommendations}
+                                    locale={{ emptyText: <Empty description="Aucune recommandation publiée" /> }}
+                                    renderItem={(rec) => (
+                                        <List.Item>
+                                            <Card style={{ borderRadius: 12, borderLeft: '4px solid #059669', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}>
+                                                <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                        <Text strong style={{ fontSize: 16 }}>{rec.title}</Text>
+                                                        <Tag color={rec.priority === 'ELEVEE' ? 'red' : rec.priority === 'MOYENNE' ? 'orange' : 'green'}>{rec.priority}</Tag>
+                                                    </div>
+                                                    <Tag color="blue">{rec.category}</Tag>
+                                                    <Paragraph type="secondary" style={{ margin: 0 }}>{rec.description}</Paragraph>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+                                                        <Text type="secondary" style={{ fontSize: 12 }}>Cible : <Text strong>{rec.target}</Text></Text>
+                                                        <Text type="secondary" style={{ fontSize: 12 }}>Date : {rec.dateCreation ? new Date(rec.dateCreation).toLocaleDateString() : '—'}</Text>
+                                                    </div>
+                                                </Space>
+                                            </Card>
+                                        </List.Item>
+                                    )}
+                                />
+                            )
+                        }
                     ]}
                 />
             </Card>
@@ -464,6 +564,95 @@ const YouthSpacePage: React.FC = () => {
                     </div>
                 ) : (
                     <Empty description="Aucune recommandation" />
+                )}
+            </Modal>
+
+            {/* Dynamic Form Filler Modal */}
+            <Modal
+                title={selectedTemplateForFill?.title}
+                open={isDynamicFormModalOpen}
+                onCancel={() => {
+                    setIsDynamicFormModalOpen(false);
+                    setSelectedTemplateForFill(null);
+                    dynamicForm.resetFields();
+                }}
+                footer={[
+                    <Button key="cancel" onClick={() => {
+                        setIsDynamicFormModalOpen(false);
+                        setSelectedTemplateForFill(null);
+                        dynamicForm.resetFields();
+                    }}>
+                        Annuler
+                    </Button>,
+                    <Button key="submit" type="primary" icon={<SendOutlined />} loading={submitting} onClick={handleSubmitDynamicForm}>
+                        Soumettre
+                    </Button>
+                ]}
+                width={650}
+            >
+                {selectedTemplateForFill && (
+                    <Form form={dynamicForm} layout="vertical" style={{ marginTop: 16 }}>
+                        <Paragraph type="secondary">{selectedTemplateForFill.description}</Paragraph>
+                        <Divider />
+                        {(() => {
+                            try {
+                                const qs = JSON.parse(selectedTemplateForFill.questions) as any[];
+                                return qs.map((q: any) => {
+                                    return (
+                                        <Form.Item
+                                            key={q.id}
+                                            name={q.id}
+                                            label={q.label}
+                                            rules={[{ required: q.required, message: 'Ce champ est obligatoire' }]}
+                                        >
+                                            {q.type === 'TEXT' && (
+                                                <Input placeholder="Saisissez votre réponse..." />
+                                            )}
+                                            {q.type === 'RADIO' && (
+                                                <Select
+                                                    placeholder="Choisissez une option"
+                                                    options={(q.options || []).map((o: string) => ({ label: o, value: o }))}
+                                                />
+                                            )}
+                                            {q.type === 'CHECKBOX' && (
+                                                <Select
+                                                    mode="multiple"
+                                                    placeholder="Choisissez une ou plusieurs options"
+                                                    options={(q.options || []).map((o: string) => ({ label: o, value: o }))}
+                                                />
+                                            )}
+                                            {q.type === 'SATISFACTION' && (
+                                                <Select
+                                                    placeholder="Niveau de satisfaction"
+                                                    options={[1, 2, 3, 4, 5].map(v => ({ label: `${v} / 5`, value: v }))}
+                                                />
+                                            )}
+                                            {q.type === 'BOOLEAN' && (
+                                                <Select
+                                                    placeholder="Oui ou Non"
+                                                    options={[
+                                                        { label: 'Oui', value: 'Oui' },
+                                                        { label: 'Non', value: 'Non' }
+                                                    ]}
+                                                />
+                                            )}
+                                            {q.type === 'DATE' && (
+                                                <DatePicker style={{ width: '100%' }} />
+                                            )}
+                                            {q.type === 'RATING' && (
+                                                <Select
+                                                    placeholder="Évaluation"
+                                                    options={[1, 2, 3, 4, 5].map(v => ({ label: `${v} Étoiles`, value: v }))}
+                                                />
+                                            )}
+                                        </Form.Item>
+                                    );
+                                });
+                            } catch (e) {
+                                return <Alert type="error" message="Erreur de parsing des questions de ce formulaire." />;
+                            }
+                        })()}
+                    </Form>
                 )}
             </Modal>
         </div>

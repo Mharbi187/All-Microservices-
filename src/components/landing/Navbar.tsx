@@ -7,12 +7,14 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Dropdown } from 'antd';
-import { GlobalOutlined } from '@ant-design/icons';
+import { GlobalOutlined, UserOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useUIStore } from '../../stores/uiStore';
+import { useAuthStore } from '../../stores/authStore';
 
 const Navbar: React.FC = () => {
     const { t, i18n } = useTranslation();
+    const isAuthenticated = useAuthStore(s => s.isAuthenticated);
 
     const navLinks = [
         { label: t('nav.home', 'Accueil'), href: '/' },
@@ -214,42 +216,67 @@ const Navbar: React.FC = () => {
                         <GlobalOutlined style={{ fontSize: 16 }} />
                     </button>
                 </Dropdown>
-                <Link to="/login"
-                    style={{
-                        padding: '7px 16px',
-                        borderRadius: 100,
-                        border: dark ? '1.5px solid rgba(255,255,255,0.15)' : '1.5px solid rgba(200,16,46,0.28)',
-                        background: 'transparent',
-                        color: dark ? '#F4F4F5' : '#C8102E',
-                        fontSize: 13,
-                        fontWeight: 500,
-                        textDecoration: 'none',
-                        transition: 'all 0.22s ease',
-                        whiteSpace: 'nowrap',
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = dark ? 'rgba(255,255,255,0.1)' : 'rgba(200,16,46,0.06)'; e.currentTarget.style.borderColor = dark ? 'rgba(255,255,255,0.3)' : '#C8102E'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = dark ? 'rgba(255,255,255,0.15)' : 'rgba(200,16,46,0.28)'; }}
-                >
-                    {t('nav.login', 'Connexion')}
-                </Link>
-                <Link to="/register"
-                    style={{
-                        padding: '8px 20px',
-                        borderRadius: 100,
-                        background: '#C8102E',
-                        color: '#fff',
-                        fontSize: 13,
-                        fontWeight: 600,
-                        textDecoration: 'none',
-                        boxShadow: '0 3px 12px rgba(200,16,46,0.36)',
-                        transition: 'all 0.22s ease',
-                        whiteSpace: 'nowrap',
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = '#9B0B22'; e.currentTarget.style.boxShadow = '0 5px 18px rgba(200,16,46,0.48)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = '#C8102E'; e.currentTarget.style.boxShadow = '0 3px 12px rgba(200,16,46,0.36)'; e.currentTarget.style.transform = 'none'; }}
-                >
-                    {t('nav.register', "S'inscrire")}
-                </Link>
+                {isAuthenticated ? (
+                    <Link to="/dashboard"
+                        title="Retour au Tableau de bord"
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: 38,
+                            height: 38,
+                            borderRadius: '50%',
+                            background: dark ? 'rgba(255,255,255,0.08)' : 'rgba(200,16,46,0.08)',
+                            color: dark ? '#F4F4F5' : '#C8102E',
+                            border: dark ? '1px solid rgba(255,255,255,0.15)' : '1px solid rgba(200,16,46,0.2)',
+                            transition: 'all 0.22s ease',
+                            cursor: 'pointer',
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = '#C8102E'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.transform = 'scale(1.05)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = dark ? 'rgba(255,255,255,0.08)' : 'rgba(200,16,46,0.08)'; e.currentTarget.style.color = dark ? '#F4F4F5' : '#C8102E'; e.currentTarget.style.transform = 'none'; }}
+                    >
+                        <UserOutlined style={{ fontSize: 18 }} />
+                    </Link>
+                ) : (
+                    <>
+                        <Link to="/login"
+                            style={{
+                                padding: '7px 16px',
+                                borderRadius: 100,
+                                border: dark ? '1.5px solid rgba(255,255,255,0.15)' : '1.5px solid rgba(200,16,46,0.28)',
+                                background: 'transparent',
+                                color: dark ? '#F4F4F5' : '#C8102E',
+                                fontSize: 13,
+                                fontWeight: 500,
+                                textDecoration: 'none',
+                                transition: 'all 0.22s ease',
+                                whiteSpace: 'nowrap',
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = dark ? 'rgba(255,255,255,0.1)' : 'rgba(200,16,46,0.06)'; e.currentTarget.style.borderColor = dark ? 'rgba(255,255,255,0.3)' : '#C8102E'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = dark ? 'rgba(255,255,255,0.15)' : 'rgba(200,16,46,0.28)'; }}
+                        >
+                            {t('nav.login', 'Connexion')}
+                        </Link>
+                        <Link to="/register"
+                            style={{
+                                padding: '8px 20px',
+                                borderRadius: 100,
+                                background: '#C8102E',
+                                color: '#fff',
+                                fontSize: 13,
+                                fontWeight: 600,
+                                textDecoration: 'none',
+                                boxShadow: '0 3px 12px rgba(200,16,46,0.36)',
+                                transition: 'all 0.22s ease',
+                                whiteSpace: 'nowrap',
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = '#9B0B22'; e.currentTarget.style.boxShadow = '0 5px 18px rgba(200,16,46,0.48)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = '#C8102E'; e.currentTarget.style.boxShadow = '0 3px 12px rgba(200,16,46,0.36)'; e.currentTarget.style.transform = 'none'; }}
+                        >
+                            {t('nav.register', "S'inscrire")}
+                        </Link>
+                    </>
+                )}
             </div>
 
             {/* ── Mobile hamburger ── */}
@@ -393,12 +420,20 @@ const Navbar: React.FC = () => {
                             </button>
                         </div>
                         <div style={{ display: 'flex', gap: 8, padding: '2px' }}>
-                            <Link to="/login" onClick={() => setMobileOpen(false)} style={{ flex: 1, textAlign: 'center', padding: '11px', borderRadius: 10, border: dark ? '1.5px solid rgba(255,255,255,0.15)' : '1.5px solid rgba(200,16,46,0.25)', color: dark ? '#F4F4F5' : '#C8102E', textDecoration: 'none', fontSize: 14, fontWeight: 500 }}>
-                                {t('nav.login', 'Connexion')}
-                            </Link>
-                            <Link to="/register" onClick={() => setMobileOpen(false)} style={{ flex: 1, textAlign: 'center', padding: '11px', borderRadius: 10, background: '#C8102E', color: '#fff', textDecoration: 'none', fontSize: 14, fontWeight: 600 }}>
-                                {t('nav.register', "S'inscrire")}
-                            </Link>
+                            {isAuthenticated ? (
+                                <Link to="/dashboard" onClick={() => setMobileOpen(false)} style={{ flex: 1, textAlign: 'center', padding: '11px', borderRadius: 10, background: '#C8102E', color: '#fff', textDecoration: 'none', fontSize: 14, fontWeight: 600 }}>
+                                    Tableau de bord
+                                </Link>
+                            ) : (
+                                <>
+                                    <Link to="/login" onClick={() => setMobileOpen(false)} style={{ flex: 1, textAlign: 'center', padding: '11px', borderRadius: 10, border: dark ? '1.5px solid rgba(255,255,255,0.15)' : '1.5px solid rgba(200,16,46,0.25)', color: dark ? '#F4F4F5' : '#C8102E', textDecoration: 'none', fontSize: 14, fontWeight: 500 }}>
+                                        {t('nav.login', 'Connexion')}
+                                    </Link>
+                                    <Link to="/register" onClick={() => setMobileOpen(false)} style={{ flex: 1, textAlign: 'center', padding: '11px', borderRadius: 10, background: '#C8102E', color: '#fff', textDecoration: 'none', fontSize: 14, fontWeight: 600 }}>
+                                        {t('nav.register', "S'inscrire")}
+                                    </Link>
+                                </>
+                            )}
                         </div>
                     </motion.div>
                 )}

@@ -333,9 +333,9 @@ const LoginPage: React.FC = () => {
                                 />
                                 {t('auth_page.rememberMe', 'Se souvenir de moi')}
                             </label>
-                            <a href="#" style={{ fontSize: 13, color: '#f10316', textDecoration: 'none', transition: 'color 0.3s' }}>
+                            <Link to="/forgot-password" style={{ fontSize: 13, color: '#f10316', textDecoration: 'none', transition: 'color 0.3s' }}>
                                 {t('auth_page.forgotPassword', 'Mot de passe oublié ?')}
-                            </a>
+                            </Link>
                         </div>
 
                         {/* Error */}

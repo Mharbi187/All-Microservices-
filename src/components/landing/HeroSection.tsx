@@ -6,9 +6,10 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import { useUIStore } from '@/stores/uiStore';
+import homepageService from '@/services/homepageService';
 
 const Icon = ({ size = 20, children }: { size?: number; children: React.ReactNode }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -61,41 +62,18 @@ const DEFAULT_CONTENT: HeroContent = {
     heroImage: '/hero-volunteers.png',
 };
 
-/* ── Storage helpers (localStorage for persistence) ── */
-const STORAGE_KEY = 'nexusaid_hero_content';
-function loadContent(): HeroContent {
-    try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) return { ...DEFAULT_CONTENT, ...JSON.parse(raw) };
-    } catch { /* ignore */ }
-    return DEFAULT_CONTENT;
-}
-function saveContent(c: HeroContent) {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(c)); } catch { /* ignore */ }
-}
-
 /* ── Check if user can edit hero ── */
 function useCanEditHero() {
     const user = useAuthStore((s: any) => s.user);
     if (!user) return false;
 
-    // Accès complet pour l'administrateur global
-    if (user.type === 'ADMIN' || user.role === 'admin' || (user.roles as string[])?.includes('ADMIN')) {
-        return true;
-    }
-
     const roles: string[] = (user.roles as string[]) ?? [];
-    const rawRoles: { committeeType?: string; role?: string }[] = (user as any).rawRoles ?? [];
-    const isNationalRole = roles.some(r =>
-        ['PRESIDENT', 'VICE_PRESIDENT'].includes(r)
-    );
-    const isNationalCommittee = rawRoles.some(r =>
-        r.committeeType === 'NATIONAL' || r.committeeType === 'national'
-    );
-    const isDiffusionNational = rawRoles.some(r =>
-        r.role === 'RESPONSABLE' && (r.committeeType === 'NATIONAL' || r.committeeType === 'national')
-    );
-    return isNationalRole || isNationalCommittee || isDiffusionNational;
+    return roles.some(role => [
+        'PRESIDENT_NATIONAL',
+        'RESP_DIFFUSION_NATIONAL',
+        'VICE_PRESIDENT_NATIONAL',
+        'SECRETAIRE_GENERAL_NATIONAL'
+    ].includes(role));
 }
 
 /* ── Small labeled input ── */
@@ -131,9 +109,20 @@ const HeroSection: React.FC = () => {
     const dark = themeMode === 'dark';
 
     const [editOpen, setEditOpen] = useState(false);
-    const [content, setContent] = useState<HeroContent>(loadContent);
-    const [draft, setDraft] = useState<HeroContent>(loadContent);
+    const [content, setContent] = useState<HeroContent>(DEFAULT_CONTENT);
+    const [draft, setDraft] = useState<HeroContent>(DEFAULT_CONTENT);
     const fileRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        homepageService.getHomepageConfig()
+            .then((data) => {
+                setContent(data);
+                setDraft(data);
+            })
+            .catch((err) => {
+                console.error("Failed to load homepage config:", err);
+            });
+    }, []);
 
     // Resolve translated labels if content matches the default French values
     const displayHeadline1 = content.headline1 === DEFAULT_CONTENT.headline1 ? t('home.hero.headline1', DEFAULT_CONTENT.headline1) : content.headline1;
@@ -152,10 +141,15 @@ const HeroSection: React.FC = () => {
     const setDraftField = (key: keyof HeroContent) => (val: string) =>
         setDraft((prev) => ({ ...prev, [key]: val }));
 
-    const handleSave = () => {
-        setContent(draft);
-        saveContent(draft);
-        setEditOpen(false);
+    const handleSave = async () => {
+        try {
+            const updated = await homepageService.updateHomepageConfig(draft);
+            setContent(updated);
+            setDraft(updated);
+            setEditOpen(false);
+        } catch (err) {
+            console.error("Failed to update homepage config:", err);
+        }
     };
 
     const handleCancel = () => {
@@ -163,17 +157,25 @@ const HeroSection: React.FC = () => {
         setEditOpen(false);
     };
 
-    const handleReset = () => {
-        setDraft(DEFAULT_CONTENT);
-        setContent(DEFAULT_CONTENT);
-        saveContent(DEFAULT_CONTENT);
+    const handleReset = async () => {
+        try {
+            const updated = await homepageService.updateHomepageConfig(DEFAULT_CONTENT);
+            setContent(updated);
+            setDraft(updated);
+            setEditOpen(false);
+        } catch (err) {
+            console.error("Failed to reset homepage config:", err);
+        }
     };
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        const url = URL.createObjectURL(file);
-        setDraft((prev) => ({ ...prev, heroImage: url }));
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setDraft((prev) => ({ ...prev, heroImage: reader.result as string }));
+        };
+        reader.readAsDataURL(file);
     };
 
     return (
