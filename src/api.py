@@ -475,6 +475,7 @@ def get_cached_radar() -> Dict[str, Any]:
         logger.error(f"Failed to read radar cache: {e}")
         raise HTTPException(status_code=500, detail="Failed to read cache data.")
 
+<<<<<<< Updated upstream
 # ═══════════════════════════════════════════════════════════════
 #  SIMULATION ENDPOINTS
 # ═══════════════════════════════════════════════════════════════
@@ -501,24 +502,246 @@ def trigger_demo_disaster(req: SimulationRequest):
     LEGACY: Simple single-wilaya injection. Kept for backward compatibility.
     For the full scenario, use POST /api/v1/simulation/full.
     """
+=======
+class ScenarioRequest(BaseModel):
+    scenario: str
+
+# ─── Simulation Scenarios Data ─────────────────────────────────
+DEFAULT_WILAYATS = {
+    "Tunis": {"lat": 36.8065, "lon": 10.1815},
+    "Ariana": {"lat": 36.8625, "lon": 10.1955},
+    "Ben Arous": {"lat": 36.7531, "lon": 10.2228},
+    "Manouba": {"lat": 36.8078, "lon": 10.0864},
+    "Bizerte": {"lat": 37.2744, "lon": 9.8739},
+    "Beja": {"lat": 36.7256, "lon": 9.1817},
+    "Jendouba": {"lat": 36.5011, "lon": 8.7802},
+    "Kef": {"lat": 36.1822, "lon": 8.7144},
+    "Siliana": {"lat": 36.0842, "lon": 9.3708},
+    "Zaghouan": {"lat": 36.4025, "lon": 10.1422},
+    "Nabeul": {"lat": 36.4561, "lon": 10.7376},
+    "Sousse": {"lat": 35.8256, "lon": 10.6369},
+    "Monastir": {"lat": 35.7833, "lon": 10.8333},
+    "Mahdia": {"lat": 35.5047, "lon": 11.0622},
+    "Sfax": {"lat": 34.7400, "lon": 10.7600},
+    "Kairouan": {"lat": 35.6781, "lon": 10.0963},
+    "Kasserine": {"lat": 35.1675, "lon": 8.8365},
+    "Sidi Bouzid": {"lat": 35.0382, "lon": 9.4849},
+    "Gabes": {"lat": 33.8814, "lon": 10.0982},
+    "Medenine": {"lat": 33.3549, "lon": 10.4933},
+    "Tataouine": {"lat": 32.9297, "lon": 10.4518},
+    "Gafsa": {"lat": 34.4250, "lon": 8.7842},
+    "Tozeur": {"lat": 33.9197, "lon": 8.1336},
+    "Kebili": {"lat": 33.7043, "lon": 8.9690}
+}
+
+SCENARIOS = {
+    "wildfire_jendouba": {
+        "name": "Incendie : Jendouba / Tabarka",
+        "description": "Feu de forêt critique au Nord-Ouest",
+        "disaster_count": 3,
+        "high_risk_count": 2,
+        "targets": {
+            "Jendouba": {
+                "risk_score": 0.96, "disaster_type": "WILDFIRE", "is_high_risk": True,
+                "satellite": {"precipitation_7d_mm": 0.0, "max_frp": 310.0},
+                "weather": {"temperature": 42.0, "wind_speed": 65.0}
+            },
+            "Siliana": {
+                "risk_score": 0.88, "disaster_type": "WILDFIRE", "is_high_risk": True,
+                "satellite": {"precipitation_7d_mm": 0.0, "max_frp": 280.0},
+                "weather": {"temperature": 40.0, "wind_speed": 55.0}
+            },
+            "Beja": {
+                "risk_score": 0.92, "disaster_type": "WILDFIRE", "is_high_risk": True,
+                "satellite": {"precipitation_7d_mm": 0.0, "max_frp": 295.0},
+                "weather": {"temperature": 41.0, "wind_speed": 60.0}
+            }
+        }
+    },
+    "flood_nabeul": {
+        "name": "Inondations : Nabeul / Sousse",
+        "description": "Inondations éclair sur la côte",
+        "disaster_count": 3,
+        "high_risk_count": 2,
+        "targets": {
+            "Nabeul": {
+                "risk_score": 0.95, "disaster_type": "FLOOD", "is_high_risk": True,
+                "satellite": {"precipitation_7d_mm": 125.0, "max_frp": 0.0},
+                "weather": {"temperature": 22.0, "wind_speed": 70.0}
+            },
+            "Sousse": {
+                "risk_score": 0.87, "disaster_type": "FLOOD", "is_high_risk": True,
+                "satellite": {"precipitation_7d_mm": 95.0, "max_frp": 0.0},
+                "weather": {"temperature": 23.0, "wind_speed": 55.0}
+            }
+        }
+    },
+    "earthquake_kasserine": {
+        "name": "Séisme : Kasserine",
+        "description": "Séisme M5.2",
+        "disaster_count": 3,
+        "high_risk_count": 2,
+        "targets": {
+            "Kasserine": {
+                "risk_score": 0.91, "disaster_type": "EARTHQUAKE", "is_high_risk": True,
+                "satellite": {"precipitation_7d_mm": 10.0, "max_frp": 0.0},
+                "weather": {"temperature": 28.0, "wind_speed": 30.0}
+            }
+        }
+    },
+    "multi_crisis": {
+        "name": "Crise Multi-Régionale",
+        "description": "Incendie + Inondations simultanés",
+        "disaster_count": 4,
+        "high_risk_count": 2,
+        "targets": {
+            "Jendouba": {
+                "risk_score": 0.94, "disaster_type": "WILDFIRE", "is_high_risk": True,
+                "satellite": {"precipitation_7d_mm": 0.0, "max_frp": 290.0},
+                "weather": {"temperature": 41.0, "wind_speed": 62.0}
+            },
+            "Nabeul": {
+                "risk_score": 0.92, "disaster_type": "FLOOD", "is_high_risk": True,
+                "satellite": {"precipitation_7d_mm": 110.0, "max_frp": 0.0},
+                "weather": {"temperature": 21.0, "wind_speed": 65.0}
+            },
+            "Kasserine": {
+                "risk_score": 0.88, "disaster_type": "EARTHQUAKE", "is_high_risk": True,
+                "satellite": {"precipitation_7d_mm": 12.0, "max_frp": 0.0},
+                "weather": {"temperature": 26.0, "wind_speed": 28.0}
+            }
+        }
+    }
+}
+
+def make_default_cache():
+    cache = {
+        "timestamp": datetime.utcnow().isoformat(),
+        "daemon_status": "running",
+        "cycle": 1,
+        "wilayats": {}
+    }
+    for name, coords in DEFAULT_WILAYATS.items():
+        cache["wilayats"][name] = {
+            "coordinates": {"lat": coords["lat"], "lon": coords["lon"]},
+            "risk_score": 0.12,
+            "confidence_pct": 82.5,
+            "is_high_risk": False,
+            "disaster_type": "NONE",
+            "satellite": {
+                "precipitation_7d_mm": 5.0,
+                "max_frp": 0.0
+            },
+            "weather": {
+                "temperature": 24.0,
+                "wind_speed": 12.0
+            }
+        }
+    return cache
+
+@app.get("/api/v1/simulation/scenarios")
+def get_simulation_scenarios():
+    """Returns all structured mock scenarios for frontend drawer dropdown"""
+    return {
+        "scenarios": [
+            {
+                "id": key,
+                "name": val["name"],
+                "description": val["description"],
+                "disaster_count": val["disaster_count"],
+                "high_risk_count": val["high_risk_count"]
+            }
+            for key, val in SCENARIOS.items()
+        ]
+    }
+
+@app.post("/api/v1/simulation/full")
+def trigger_full_simulation(req: ScenarioRequest):
+    """Triggers an immersive mock scenario, generating a comprehensive radar state cache."""
+    try:
+        scen_id = req.scenario
+        if scen_id not in SCENARIOS:
+            raise HTTPException(status_code=404, detail="Scenario not found")
+        
+        scen = SCENARIOS[scen_id]
+        cache = make_default_cache()
+        
+        # Inject target disasters
+        for w_name, target in scen["targets"].items():
+            if w_name in cache["wilayats"]:
+                cache["wilayats"][w_name].update({
+                    "risk_score": target["risk_score"],
+                    "is_high_risk": target["is_high_risk"],
+                    "disaster_type": target["disaster_type"],
+                    "satellite": {
+                        "precipitation_7d_mm": target["satellite"].get("precipitation_7d_mm", 0.0),
+                        "max_frp": target["satellite"].get("max_frp", 0.0)
+                    },
+                    "weather": {
+                        "temperature": target["weather"].get("temperature", 25.0),
+                        "wind_speed": target["weather"].get("wind_speed", 15.0)
+                    }
+                })
+        
+        cache["timestamp"] = datetime.utcnow().isoformat()
+        cache["daemon_status"] = "demo_active"
+        
+        os.makedirs(os.path.dirname(CACHE_PATH), exist_ok=True)
+        with open(CACHE_PATH, 'w', encoding='utf-8') as f:
+            json.dump(cache, f, indent=2)
+            
+        return {
+            "success": True,
+            "scenario": scen_id,
+            "scenario_name": scen["name"],
+            "crisis_room_id": "crisis_demo_01",
+            "phases": {
+                "detection": {"status": "success"},
+                "telemetry": {"status": "success"},
+                "matching": {"status": "success"},
+                "activation": {"status": "success"}
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to run full simulation: {e}")
+        raise HTTPException(status_code=500, detail="Simulation execution failed")
+
+@app.post("/api/v1/simulation/reset")
+def reset_simulation_endpoint():
+    """Clears simulation state and resets GEE cache to safe baseline"""
+    try:
+        cache = make_default_cache()
+        os.makedirs(os.path.dirname(CACHE_PATH), exist_ok=True)
+        with open(CACHE_PATH, 'w', encoding='utf-8') as f:
+            json.dump(cache, f, indent=2)
+        return {"success": True, "message": "Radar cache successfully reset to safe state."}
+    except Exception as e:
+        logger.error(f"Failed to reset simulation: {e}")
+        raise HTTPException(status_code=500, detail="Reset failed")
+
+@app.post("/api/v1/simulation/trigger")
+def trigger_demo_disaster(req: SimulationRequest):
+    """Bridges legacy manual single trigger request format to demo cache"""
     try:
         if os.path.exists(CACHE_PATH):
             with open(CACHE_PATH, 'r', encoding='utf-8') as f:
                 data = json.load(f)
         else:
-            data = {"timestamp": datetime.utcnow().isoformat(), "daemon_status": "demo", "wilayats": {}, "cycle": 0}
-
+            data = make_default_cache()
+        
         data["wilayats"][req.wilaya_name] = {
             "coordinates": {"lat": req.lat, "lon": req.lon},
             "risk_score": req.risk_score,
             "confidence_pct": 98.5,
-            "disaster_type": req.disaster_type,
             "is_high_risk": req.risk_score >= 0.7,
+            "disaster_type": req.disaster_type,
             "satellite": {"precipitation_7d_mm": 0.0, "max_frp": 320.5},
             "weather": {"temperature": 45.0, "wind_speed": 75.0}
         }
         data["timestamp"] = datetime.utcnow().isoformat()
-        data["daemon_status"] = "running"
+        data["daemon_status"] = "demo_active"
 
         os.makedirs(os.path.dirname(CACHE_PATH), exist_ok=True)
         with open(CACHE_PATH, 'w', encoding='utf-8') as f:
