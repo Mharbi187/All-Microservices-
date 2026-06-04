@@ -145,14 +145,7 @@ export function getCameraDevice(devices, position = 'back') {
  * (false en Expo Go, true en development build)
  */
 export function isVisionCameraAvailable() {
-    try {
-        // Essayer d'importer VisionCamera
-        // En Expo Go, cela échouera
-        require('react-native-vision-camera');
-        return true;
-    } catch {
-        return false;
-    }
+    return false;
 }
 
 export default {

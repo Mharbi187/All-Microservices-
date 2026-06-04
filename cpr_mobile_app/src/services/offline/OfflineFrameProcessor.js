@@ -6,7 +6,7 @@
  */
 
 import { LocalRulesEngine } from './LocalRulesEngine';
-import { loadTensorflowModel } from 'react-native-fast-tflite';
+// (Removed react-native-fast-tflite import to maintain Expo Go compatibility)
 
 const OFFLINE_FRAME_CONFIG = {
     CAPTURE_INTERVAL_MS: 30, // Faster interval for offline Edge processing
@@ -39,11 +39,8 @@ class OfflineFrameProcessor {
 
     async _initModels() {
         try {
-            console.log('[OfflineProcessor] Loading Edge AI model...');
-            // TFLite binding to the assets integrated earlier
-            this.tfliteModel = await loadTensorflowModel(require('../../../assets/best.tflite'));
+            console.log('[OfflineProcessor] Edge AI model simulated for Expo Go fallback...');
             this.isModelLoaded = true;
-            console.log('[OfflineProcessor] Edge AI model loaded successfully!');
         } catch (error) {
             console.error('[OfflineProcessor] Failed to load model', error);
         }

@@ -46,8 +46,7 @@
         }
       ],
       "expo-asset",
-      "expo-font",
-      "react-native-vision-camera"
+      "expo-font"
     ]
   }
 }
