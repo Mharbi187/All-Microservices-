@@ -10,10 +10,17 @@ spring:
           enabled: false
       routes:
         # MS1 - Core Service (Module 1: Social & Resources)
+        # Auth routes with strict rate limiting (anti brute-force)
         - id: core-auth
           uri: lb://core-service
           predicates:
             - Path=/api/v1/auth/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                rate-limiter: "#{@authRateLimiter}"
+                key-resolver: "#{@ipKeyResolver}"
+                deny-empty-key: false
 
         - id: core-profiles
           uri: lb://core-service
@@ -135,6 +142,11 @@ spring:
           predicates:
             - Path=/api/v1/notifications/**
 
+        - id: core-homepage-config
+          uri: lb://core-service
+          predicates:
+            - Path=/api/v1/homepage/config,/api/v1/homepage/config/**
+
         # MS3 - Admin Service (Module 3: Admin, Reporting, Donations)
         - id: admin-templates
           uri: lb://admin-service
@@ -198,7 +210,7 @@ spring:
         - id: main-frontend
           uri: ${FRONTEND_URL:http://nexus-aid-frontend:80}
           predicates:
-            - Path=/,/index.html,/assets/**,/favicon**,/static/**,/manifest.json,/robots.txt,/logo.jpg,/logos/**,/images/**,/*.png,/*.jpg,/*.ico,/*.svg,/*.webp,/login,/register,/dashboard/**,/volunteers/**,/volunteers,/committees/**,/committees,/settings,/donations,/stocks,/secourisme,/diffusion,/jeunesse,/sante,/social,/immigration,/vff,/catastrophes,/radar,/reporting/**,/volunteer/**,/validation-queue,/audit-logs
+            - Path=/,/index.html,/assets/**,/favicon**,/static/**,/manifest.json,/robots.txt,/logo.jpg,/logos/**,/images/**,/*.png,/*.jpg,/*.ico,/*.svg,/*.webp,/login,/register,/forgot-password,/reset-password,/dashboard/**,/volunteers/**,/volunteers,/committees/**,/committees,/settings,/donations,/stocks,/secourisme,/diffusion,/jeunesse,/sante,/social,/immigration,/vff,/catastrophes,/radar,/reporting/**,/volunteer/**,/validation-queue,/audit-logs
           filters:
             - SetResponseHeader=X-Frame-Options, SAMEORIGIN
 
