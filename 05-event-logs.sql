@@ -1,4 +1,4 @@
-\c nexusaiddb;
+\c nexusaid_db;
 -- Migration script for event_logs table
 -- Run this on nexusaid_db (core-service database)
 

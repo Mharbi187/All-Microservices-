@@ -7,7 +7,7 @@
 -- $2a$10$EKsszbFgp692dcbMdE8ZL.KDMoL6x/U0ze8jq7JZjJwnBynHm2NCO
 -- For Test@1234!: $2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewSoAVnNDwByGdFi
 -- =============================================================================
-\c nexusaiddb;
+\c nexusaid_db;
 
 -- ─── ADDITIONAL LOCAL COMMITTEES (12 new) ────────────────────────────────────
 INSERT INTO committees (id, name, type, region, parent_committee_id, status, approved_at, current_mandate_start, current_mandate_end) VALUES

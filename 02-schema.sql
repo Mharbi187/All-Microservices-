@@ -1,6 +1,6 @@
 -- =============================================================================
 -- NEXUS-AID — Complete Standalone Schema v3.0
-\c nexusaiddb;
+\c nexusaid_db;
 -- PostgreSQL | Single executable file | Production-ready
 -- Password for all accounts: pass
 -- BCrypt: $2a$10$EKsszbFgp692dcbMdE8ZL.KDMoL6x/U0ze8jq7JZjJwnBynHm2NCO

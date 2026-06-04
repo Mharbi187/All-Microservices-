@@ -2,7 +2,7 @@
 -- NEXUS-AID — 07-core-extended-schema.sql
 -- Adds missing tables for core-service (nexusaid_db)
 -- =============================================================================
-\c nexusaiddb;
+\c nexusaid_db;
 
 -- ─── COMPLAINTS ────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS complaints (

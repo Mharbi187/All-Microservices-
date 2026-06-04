@@ -4,7 +4,7 @@
 -- + Catalogue certifications secourisme dynamique
 -- + Associations volontaire↔certification
 -- =============================================================================
-\c nexusaiddb;
+\c nexusaid_db;
 
 -- ─── ÉDUCATION : ENUM TYPE ──────────────────────────────────────────────────
 DO $$ BEGIN
