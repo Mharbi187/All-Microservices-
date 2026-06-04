@@ -1,9 +1,11 @@
 package com.nexusaid.core.controller;
 
 import com.nexusaid.core.dto.AuthDtos.AuthResponse;
+import com.nexusaid.core.dto.AuthDtos.ForgotPasswordRequest;
 import com.nexusaid.core.dto.AuthDtos.LoginRequest;
 import com.nexusaid.core.dto.AuthDtos.RefreshTokenRequest;
 import com.nexusaid.core.dto.AuthDtos.RegisterRequest;
+import com.nexusaid.core.dto.AuthDtos.ResetPasswordRequest;
 import com.nexusaid.core.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -62,6 +64,36 @@ public class AuthController {
             return ResponseEntity.ok(Map.of("message", "Logged out successfully"));
         } catch (Exception e) {
             return ResponseEntity.ok(Map.of("message", "Logged out"));
+        }
+    }
+
+    /**
+     * Initiates the forgotten-password flow.
+     * Always returns 200 OK regardless of whether the email exists
+     * (anti account-enumeration).
+     */
+    @PostMapping("/forgot-password")
+    public ResponseEntity<Map<String, String>> forgotPassword(@RequestBody ForgotPasswordRequest request) {
+        try {
+            authService.initiatePasswordReset(request.getEmail());
+        } catch (Exception e) {
+            // Swallow all errors to prevent enumeration
+        }
+        return ResponseEntity.ok(Map.of(
+                "message", "Si cette adresse e-mail est associée à un compte, vous recevrez un lien de réinitialisation."
+        ));
+    }
+
+    /**
+     * Validates a reset token and sets the new password.
+     */
+    @PostMapping("/reset-password")
+    public ResponseEntity<Map<String, String>> resetPassword(@RequestBody ResetPasswordRequest request) {
+        try {
+            authService.resetPassword(request.getToken(), request.getNewPassword());
+            return ResponseEntity.ok(Map.of("message", "Mot de passe réinitialisé avec succès."));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 

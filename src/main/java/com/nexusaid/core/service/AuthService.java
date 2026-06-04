@@ -4,6 +4,7 @@ import com.nexusaid.core.dto.AuthDtos.AuthResponse;
 import com.nexusaid.core.dto.AuthDtos.LoginRequest;
 import com.nexusaid.core.dto.AuthDtos.RegisterRequest;
 import com.nexusaid.core.entity.Donor;
+import com.nexusaid.core.entity.PasswordResetToken;
 import com.nexusaid.core.entity.RefreshToken;
 import com.nexusaid.core.entity.Trainer;
 import com.nexusaid.core.entity.User;
@@ -11,6 +12,7 @@ import com.nexusaid.core.entity.Volunteer;
 import com.nexusaid.core.entity.enums.AccountStatus;
 import com.nexusaid.core.entity.enums.UserType;
 import com.nexusaid.core.repository.DonorRepository;
+import com.nexusaid.core.repository.PasswordResetTokenRepository;
 import com.nexusaid.core.repository.TrainerRepository;
 import com.nexusaid.core.repository.UserRepository;
 import com.nexusaid.core.repository.VolunteerRepository;
@@ -22,6 +24,7 @@ import com.nexusaid.core.messaging.EventPublisher;
 import com.nexusaid.core.repository.CommitteeRoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.AuthenticationException;
@@ -31,9 +34,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -46,16 +51,22 @@ public class AuthService {
         private final TrainerRepository trainerRepository;
         private final DonorRepository donorRepository;
         private final CommitteeRoleRepository committeeRoleRepository;
+        private final PasswordResetTokenRepository passwordResetTokenRepository;
         private final PasswordEncoder passwordEncoder;
         private final JwtService jwtService;
         private final AuthenticationManager authenticationManager;
         private final EventPublisher eventPublisher;
+        private final EmailService emailService;
 
         // ── Security Services ──
         private final LoginAttemptService loginAttemptService;
         private final CaptchaService captchaService;
         private final SecurityAuditService auditService;
         private final AnomalyDetectionService anomalyDetectionService;
+
+        /** Base URL used in reset-password links sent by email. */
+        @Value("${app.frontend-url:http://localhost:9173}")
+        private String frontendUrl;
 
         /**
          * Build JWT extra claims with userId, userType, and committee roles.
@@ -428,5 +439,140 @@ public class AuthService {
                 if (!password.matches(".*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?].*")) {
                         throw new RuntimeException("Password must contain at least one special character.");
                 }
+        }
+
+        // ────────────────────────────────────────────────────────────
+        // Password Reset Flow
+        // ────────────────────────────────────────────────────────────
+
+        /**
+         * Initiates the password-reset flow for the given email.
+         * If the email is unknown the method silently exits — this prevents
+         * account enumeration attacks (the frontend always shows the same
+         * generic success message regardless).
+         */
+        @Transactional
+        public void initiatePasswordReset(String email) {
+                // Normalise
+                String normalised = email == null ? "" : email.trim().toLowerCase();
+
+                // Silent exit if unknown — anti-enumeration
+                if (!userRepository.findByEmail(normalised).isPresent()) {
+                        log.info("Password reset requested for unknown email: {}", normalised);
+                        return;
+                }
+
+                // Revoke any previous tokens for this email
+                passwordResetTokenRepository.deleteByEmail(normalised);
+
+                // Generate a secure opaque token
+                String rawToken = UUID.randomUUID().toString().replace("-", "") +
+                                  UUID.randomUUID().toString().replace("-", "");
+
+                PasswordResetToken resetToken = PasswordResetToken.builder()
+                                .token(rawToken)
+                                .email(normalised)
+                                .expiresAt(LocalDateTime.now().plusMinutes(60))
+                                .used(false)
+                                .build();
+                passwordResetTokenRepository.save(resetToken);
+
+                // Build the reset link
+                String resetLink = frontendUrl + "/reset-password?token=" + rawToken;
+
+                // Build the branded HTML email
+                String htmlBody = buildResetPasswordEmailHtml(resetLink);
+                emailService.sendHtmlEmail(
+                                normalised,
+                                "[Nexus-AID] Réinitialisation de votre mot de passe",
+                                htmlBody
+                );
+                log.info("Password reset link sent to {}", normalised);
+        }
+
+        /**
+         * Validates a reset token and sets the new password.
+         * Throws {@link RuntimeException} with a user-facing message on any error.
+         */
+        @Transactional
+        public void resetPassword(String rawToken, String newPassword) {
+                // Validate password strength first
+                validatePasswordStrength(newPassword);
+
+                PasswordResetToken resetToken = passwordResetTokenRepository
+                                .findByToken(rawToken)
+                                .orElseThrow(() -> new RuntimeException("Lien de réinitialisation invalide ou expiré."));
+
+                if (resetToken.isUsed()) {
+                        throw new RuntimeException("Ce lien a déjà été utilisé. Veuillez faire une nouvelle demande.");
+                }
+
+                if (resetToken.getExpiresAt().isBefore(LocalDateTime.now())) {
+                        passwordResetTokenRepository.delete(resetToken);
+                        throw new RuntimeException("Lien de réinitialisation expiré. Veuillez faire une nouvelle demande.");
+                }
+
+                User user = userRepository.findByEmail(resetToken.getEmail())
+                                .orElseThrow(() -> new RuntimeException("Compte introuvable."));
+
+                // Update password
+                user.setPassword(passwordEncoder.encode(newPassword));
+                userRepository.save(user);
+
+                // Invalidate token
+                resetToken.setUsed(true);
+                passwordResetTokenRepository.save(resetToken);
+
+                log.info("Password successfully reset for user {}", user.getEmail());
+        }
+
+        /**
+         * Builds the branded HTML email body for password reset.
+         */
+        private String buildResetPasswordEmailHtml(String resetLink) {
+                return "<!DOCTYPE html>" +
+                "<html lang='fr'>" +
+                "<head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>" +
+                "<title>Réinitialisation du mot de passe - Nexus-AID</title></head>" +
+                "<body style='margin:0;padding:0;background:#f5f6f8;font-family:Inter,Arial,sans-serif;'>" +
+                "<table width='100%' cellpadding='0' cellspacing='0' style='background:#f5f6f8;padding:40px 0;'>" +
+                "<tr><td align='center'>" +
+                "<table width='600' cellpadding='0' cellspacing='0' style='background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);'>" +
+                // Header
+                "<tr><td style='background:linear-gradient(135deg,#C8102E 0%,#8B0000 100%);padding:40px 48px;'>" +
+                "<table cellpadding='0' cellspacing='0' width='100%'><tr>" +
+                "<td><span style='color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.5px;'>❤ Nexus-AID</span>" +
+                "<br><span style='color:rgba(255,255,255,0.75);font-size:13px;'>Croissant-Rouge Tunisien</span></td>" +
+                "</tr></table></td></tr>" +
+                // Body
+                "<tr><td style='padding:48px;'>" +
+                "<h1 style='margin:0 0 16px;font-size:26px;font-weight:700;color:#1a1a2e;'>Réinitialisation du mot de passe</h1>" +
+                "<p style='color:#6b7280;font-size:15px;line-height:1.7;margin:0 0 32px;'>" +
+                "Vous avez demandé la réinitialisation de votre mot de passe pour votre compte Nexus-AID. " +
+                "Cliquez sur le bouton ci-dessous pour choisir un nouveau mot de passe.</p>" +
+                // CTA Button
+                "<table cellpadding='0' cellspacing='0' width='100%'><tr><td align='center' style='padding:8px 0 40px;'>" +
+                "<a href='" + resetLink + "' style='display:inline-block;padding:16px 40px;background:#C8102E;" +
+                "color:#ffffff;font-size:16px;font-weight:600;text-decoration:none;border-radius:12px;" +
+                "box-shadow:0 4px 16px rgba(200,16,46,0.35);'>" +
+                "Réinitialiser mon mot de passe</a>" +
+                "</td></tr></table>" +
+                // Security notice
+                "<div style='background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:16px 20px;margin-bottom:32px;'>" +
+                "<p style='margin:0;color:#991b1b;font-size:13px;line-height:1.6;'>" +
+                "⏰ <strong>Ce lien est valable 60 minutes.</strong> Si vous n'avez pas fait cette demande, ignorez cet email — votre mot de passe reste inchangé." +
+                "</p></div>" +
+                // Fallback link
+                "<p style='color:#9ca3af;font-size:12px;word-break:break-all;'>" +
+                "Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :<br>" +
+                "<a href='" + resetLink + "' style='color:#C8102E;'>" + resetLink + "</a></p>" +
+                "</td></tr>" +
+                // Footer
+                "<tr><td style='background:#f9fafb;border-top:1px solid #f3f4f6;padding:24px 48px;'>" +
+                "<p style='margin:0;color:#9ca3af;font-size:12px;text-align:center;'>" +
+                "© 2025 Croissant-Rouge Tunisien — Plateforme Nexus-AID<br>" +
+                "Cet email est automatique, merci de ne pas y répondre.</p>" +
+                "</td></tr>" +
+                "</table></td></tr></table></body></html>";
         }
 }

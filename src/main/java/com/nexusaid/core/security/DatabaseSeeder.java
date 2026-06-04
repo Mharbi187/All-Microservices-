@@ -25,9 +25,23 @@ import com.nexusaid.core.repository.donations.DonationReceiptRepository;
 import com.nexusaid.core.repository.DonorRepository;
 import com.nexusaid.core.repository.UserRepository;
 
+import com.nexusaid.core.entity.domains.vff.VictimCase;
+import com.nexusaid.core.entity.domains.vff.VictimSupportPath;
+import com.nexusaid.core.entity.domains.vff.ProtectionCampaign;
+import com.nexusaid.core.entity.domains.vff.Shelter;
+import com.nexusaid.core.entity.domains.vff.Partner;
+import com.nexusaid.core.repository.domains.vff.VictimCaseRepository;
+import com.nexusaid.core.repository.domains.vff.VictimSupportPathRepository;
+import com.nexusaid.core.repository.domains.vff.ProtectionCampaignRepository;
+import com.nexusaid.core.repository.domains.vff.ShelterRepository;
+import com.nexusaid.core.repository.domains.vff.PartnerRepository;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 
 @Configuration
 @RequiredArgsConstructor
@@ -227,5 +241,145 @@ public class DatabaseSeeder {
         r.setValidationNote(note);
         r.setCreatedAt(LocalDateTime.now());
         repo.save(r);
+    }
+
+    @Bean
+    public CommandLineRunner seedVffData(
+            VictimCaseRepository caseRepository,
+            VictimSupportPathRepository supportPathRepository,
+            ProtectionCampaignRepository campaignRepository,
+            VolunteerRepository volunteerRepository,
+            ShelterRepository shelterRepository,
+            PartnerRepository partnerRepository) {
+        return args -> {
+            System.out.println("Starting Database Seeding for VFF domain...");
+
+            List<Volunteer> volunteers = volunteerRepository.findAll();
+            UUID volunteerId = volunteers.isEmpty() ? UUID.randomUUID() : volunteers.get(0).getId();
+
+            // 1. Create Victim Cases & Support Paths
+            if (caseRepository.count() < 3) {
+                System.out.println("Seeding VFF Victim Cases...");
+                VictimCase case1 = createVictimCase(34, "FEMME", "Woman", "PHYSIQUE", LocalDate.now().minusDays(15), "CRITICAL", true, true, volunteerId, "VFF-884210", caseRepository);
+                VictimCase case2 = createVictimCase(22, "FEMME", "Woman", "PSYCHOLOGIQUE", LocalDate.now().minusDays(20), "HIGH", true, true, volunteerId, "VFF-310495", caseRepository);
+                VictimCase case3 = createVictimCase(10, "ENFANT_F", "Child", "ENFANT", LocalDate.now().minusDays(5), "CRITICAL", true, true, volunteerId, "VFF-723019", caseRepository);
+                VictimCase case4 = createVictimCase(28, "FEMME", "Woman", "ECONOMIQUE", LocalDate.now().minusDays(30), "MEDIUM", true, true, volunteerId, "VFF-105284", caseRepository);
+                VictimCase case5 = createVictimCase(45, "FEMME", "Woman", "SEXUELLE", LocalDate.now().minusDays(2), "CRITICAL", true, true, volunteerId, "VFF-902148", caseRepository);
+                VictimCase case6 = createVictimCase(16, "ENFANT_M", "Child", "MARIAGE", LocalDate.now().minusDays(45), "HIGH", true, true, volunteerId, "VFF-663201", caseRepository);
+
+                createSupportPath(case1.getId(), "ACCOMMODATED", true, "COURT-2026-098", 
+                    Map.of("doctor", "Dr. Sonia Belhaj", "details", "Consultation d'urgence. Certificat médical rédigé (15 jours d'ITT).", "status", "COMPLETED"),
+                    Map.of("therapist", "Mme. Ines Chaari", "sessionsCount", 3, "notes", "Soutien psychologique hebdomadaire en cours. État d'anxiété sévère en régression."),
+                    Map.of("lawyer", "Me. Kamel Ben Amor", "status", "Complaint filed", "details", "Plainte déposée auprès du procureur de Tunis."),
+                    Map.of("center", "Centre Amel - Tunis", "arrivalDate", "2026-05-17", "allocatedBeds", "Room 4"),
+                    supportPathRepository);
+
+                createSupportPath(case2.getId(), "LEGAL_ACTION", true, "COURT-2026-102",
+                    Map.of("doctor", "Hôpital La Rabta", "details", "Suivi de routine. Pas de blessures physiques directes.", "status", "COMPLETED"),
+                    Map.of("therapist", "Association ATFD", "sessionsCount", 5, "notes", "Grande détresse émotionnelle. Suivie de très près."),
+                    Map.of("lawyer", "Me. Selma Hedi", "status", "Trial pending", "details", "Audience de conciliation fixée."),
+                    Map.of("center", "Non hébergée", "arrivalDate", "—", "allocatedBeds", "—"),
+                    supportPathRepository);
+
+                createSupportPath(case3.getId(), "ACCOMMODATED", true, "COURT-2026-044",
+                    Map.of("doctor", "Pédiatre d'urgence", "details", "Traitement des traumatismes légers.", "status", "COMPLETED"),
+                    Map.of("therapist", "Mme. Fatma Jlassi", "sessionsCount", 2, "notes", "Séances de thérapie par le jeu. Enfant très craintive."),
+                    Map.of("lawyer", "Délégué de Protection de l'Enfance", "status", "Active placement", "details", "Ordonnance de garde provisoire obtenue."),
+                    Map.of("center", "Centre de la Femme et de l'Enfant - Tunis", "arrivalDate", "2026-05-27", "allocatedBeds", "Chambre 2"),
+                    supportPathRepository);
+
+                createSupportPath(case4.getId(), "RECOVERED", false, "—",
+                    Map.of("doctor", "—", "details", "Aucun soin nécessaire", "status", "NONE"),
+                    Map.of("therapist", "—", "sessionsCount", 0, "notes", "Aucun suivi nécessaire"),
+                    Map.of("lawyer", "—", "status", "None", "details", "—"),
+                    Map.of("center", "Non hébergée", "arrivalDate", "—", "allocatedBeds", "—"),
+                    supportPathRepository);
+
+                createSupportPath(case5.getId(), "REPORTED", true, "—",
+                    Map.of("doctor", "Urgences gynécologiques", "details", "Examen médico-légal complet effectué. Prélèvements conservés.", "status", "COMPLETED"),
+                    Map.of("therapist", "Mme. Ines Chaari", "sessionsCount", 1, "notes", "État de choc post-traumatique aigu. Séance d'urgence réalisée."),
+                    Map.of("lawyer", "Me. Kamel Ben Amor", "status", "Preparing filing", "details", "Rédaction de la plainte en cours."),
+                    Map.of("center", "Centre Amel - Tunis", "arrivalDate", "2026-05-30", "allocatedBeds", "Chambre d'urgence 1"),
+                    supportPathRepository);
+            }
+
+            // 3. Create Protection Campaigns
+            if (campaignRepository.count() == 0) {
+                System.out.println("Seeding VFF Protection Campaigns...");
+                createCampaign("Tous Unis contre la Violence", "Femmes", "Violence conjugale", "Maison de la Culture, Tunis", LocalDate.now().minusDays(10), 120, List.of("Brochures", "Affiches"), campaignRepository);
+                createCampaign("Sécurité des Enfants dans le Milieu Scolaire", "Parents & Enseignants", "Maltraitance infantile", "Comité Régional Sfax", LocalDate.now().plusDays(15), 0, List.of("Présentation PPT", "Livrets de sensibilisation"), campaignRepository);
+                createCampaign("Sensibilisation contre le Mariage des Mineurs", "Jeunes & Familles", "Mariage précoce", "Palais des Congrès, Sousse", LocalDate.now().plusDays(25), 0, List.of("Kakemonos", "Dépliant juridique"), campaignRepository);
+            }
+
+            // 4. Create Shelters
+            if (shelterRepository.count() == 0) {
+                System.out.println("Seeding VFF Shelters...");
+                shelterRepository.save(new Shelter(null, "Centre Amel - Tunis", "Av. de la République, Tunis", "Dr. Sonia Belhaj", "71 890 456", 30, 8, "Tunis", List.of("Hébergement", "Soutien psychologique", "Aide juridique")));
+                shelterRepository.save(new Shelter(null, "Centre Espoir - Sfax", "Rue Ibn Khaldoun, Sfax", "Mme. Fatma Jlassi", "74 231 789", 20, 3, "Sfax", List.of("Hébergement", "Accompagnement social")));
+                shelterRepository.save(new Shelter(null, "Refuge Soleil - Sousse", "Av. Kheireddine, Sousse", "Mme. Ines Chaari", "73 209 100", 15, 0, "Sousse", List.of("Hébergement d'urgence")));
+            }
+
+            // 5. Create Partners
+            if (partnerRepository.count() < 5) {
+                System.out.println("Seeding VFF Partners...");
+                partnerRepository.save(new Partner(null, "police", "Commissariat Central de Tunis", "Tunis", "71 340 000", "Av. Habib Bourguiba, Tunis", 36.7992, 10.1802));
+                partnerRepository.save(new Partner(null, "hospital", "Hôpital La Rabta", "Tunis", "71 562 444", "Rue Jebel Lakhdar, Tunis", 36.8113, 10.1695));
+                partnerRepository.save(new Partner(null, "center", "Centre de la Femme et de l'Enfant - Tunis", "Tunis", "71 774 222", "Cité El Khadra, Tunis", 36.8346, 10.2138));
+                partnerRepository.save(new Partner(null, "protection", "Délégation de Protection de l'Enfance", "Tunis", "71 890 100", "Av. du Président Bourguiba", 36.8018, 10.1786));
+                partnerRepository.save(new Partner(null, "association", "Association Femmes Tunisiennes (ATFD)", "Tunis", "71 892 784", "Rue Chia, Bab Bnet, Tunis", 36.7950, 10.1720));
+                partnerRepository.save(new Partner(null, "police", "Commissariat de Sfax", "Sfax", "74 225 000", "Av. Hédi Chaker, Sfax", 34.7406, 10.7603));
+                partnerRepository.save(new Partner(null, "hospital", "CHU Hédi Chaker - Sfax", "Sfax", "74 241 733", "Av. du Maghreb Arabe, Sfax", 34.7498, 10.7628));
+                partnerRepository.save(new Partner(null, "center", "Centre d'Hébergement Sousse", "Sousse", "73 225 400", "Av. Mohamed V, Sousse", 35.8256, 10.6369));
+                partnerRepository.save(new Partner(null, "hospital", "CHU Farhat Hached - Sousse", "Sousse", "73 221 411", "Av. Farhat Hached, Sousse", 35.8347, 10.6362));
+            }
+
+            System.out.println("VFF Data Seeding Complete!");
+        };
+    }
+
+    private VictimCase createVictimCase(int age, String gender, String type, String incident, LocalDate date, String level, boolean confidential, boolean restricted, UUID volId, String ref, VictimCaseRepository repo) {
+        VictimCase c = new VictimCase();
+        c.setCaseReference(ref);
+        c.setVictimAge(age);
+        c.setVictimGender(gender);
+        c.setVictimType(type);
+        c.setIncidentType(incident);
+        c.setIncidentDate(date);
+        c.setRiskLevel(level);
+        c.setConfidential(confidential);
+        c.setAccessRestricted(restricted);
+        c.setAssignedVolunteerId(volId);
+        c.setEncryptionKey(UUID.randomUUID().toString());
+        return repo.save(c);
+    }
+
+    private void createSupportPath(UUID caseId, String stage, boolean police, String courtRef, Map<String, Object> medical, Map<String, Object> psycho, Map<String, Object> legal, Map<String, Object> shelter, VictimSupportPathRepository repo) {
+        VictimSupportPath p = new VictimSupportPath();
+        p.setVictimCaseId(caseId);
+        p.setCurrentStage(stage);
+        p.setPoliceReport(police);
+        p.setCourtCaseRef(courtRef);
+        p.setMedicalFollowUp(medical);
+        p.setPsychologicalFollowUp(psycho);
+        p.setLegalFollowUp(legal);
+        p.setShelterInfo(shelter);
+        p.setUpdatedAt(LocalDateTime.now());
+        repo.save(p);
+    }
+
+    private void createCampaign(String title, String audience, String topic, String location, LocalDate date, int participants, List<String> materials, ProtectionCampaignRepository repo) {
+        ProtectionCampaign c = new ProtectionCampaign();
+        c.setTitle(title);
+        c.setTargetAudience(audience);
+        c.setTopic(topic);
+        c.setLocation(location);
+        c.setDate(date);
+        c.setParticipantsCount(participants);
+        c.setMaterialsUsed(materials);
+        c.setDescription("Campagne de sensibilisation sur : " + topic);
+        c.setStartDate(date.toString());
+        c.setEndDate(date.plusDays(2).toString());
+        c.setStatus("ACTIVE");
+        repo.save(c);
     }
 }

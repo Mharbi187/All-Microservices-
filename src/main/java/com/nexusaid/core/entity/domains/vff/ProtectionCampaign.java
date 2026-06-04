@@ -40,4 +40,14 @@ public class ProtectionCampaign {
     @Type(JsonBinaryType.class)
     @Column(name = "materials_used", columnDefinition = "jsonb")
     private List<String> materialsUsed;
+
+    private String description;
+
+    @Column(name = "start_date")
+    private String startDate;
+
+    @Column(name = "end_date")
+    private String endDate;
+
+    private String status;
 }

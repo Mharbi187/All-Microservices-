@@ -3,6 +3,8 @@ package com.nexusaid.core.controller.domains.vff;
 import com.nexusaid.core.entity.domains.vff.ProtectionCampaign;
 import com.nexusaid.core.entity.domains.vff.VictimCase;
 import com.nexusaid.core.entity.domains.vff.VictimSupportPath;
+import com.nexusaid.core.entity.domains.vff.Shelter;
+import com.nexusaid.core.entity.domains.vff.Partner;
 import com.nexusaid.core.security.JwtService;
 import com.nexusaid.core.service.domains.vff.VffService;
 import lombok.RequiredArgsConstructor;
@@ -77,5 +79,33 @@ public class VffController {
     @PreAuthorize("hasAnyRole('PRESIDENT', 'RESP_VFF')")
     public ResponseEntity<List<ProtectionCampaign>> getAllCampaigns() {
         return ResponseEntity.ok(vffService.getAllCampaigns());
+    }
+
+    // ----- Shelters -----
+
+    @PostMapping("/shelters")
+    @PreAuthorize("hasAnyRole('PRESIDENT', 'RESP_VFF')")
+    public ResponseEntity<Shelter> createShelter(@RequestBody Shelter shelter) {
+        return ResponseEntity.ok(vffService.createShelter(shelter));
+    }
+
+    @GetMapping("/shelters")
+    @PreAuthorize("hasAnyRole('PRESIDENT', 'RESP_VFF')")
+    public ResponseEntity<List<Shelter>> getAllShelters() {
+        return ResponseEntity.ok(vffService.getAllShelters());
+    }
+
+    // ----- Partners -----
+
+    @PostMapping("/partners")
+    @PreAuthorize("hasAnyRole('PRESIDENT', 'RESP_VFF')")
+    public ResponseEntity<Partner> createPartner(@RequestBody Partner partner) {
+        return ResponseEntity.ok(vffService.createPartner(partner));
+    }
+
+    @GetMapping("/partners")
+    @PreAuthorize("hasAnyRole('PRESIDENT', 'RESP_VFF')")
+    public ResponseEntity<List<Partner>> getAllPartners() {
+        return ResponseEntity.ok(vffService.getAllPartners());
     }
 }

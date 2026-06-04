@@ -34,12 +34,15 @@ public class MicroProject {
     @Column(name = "lead_volunteer_id", nullable = false)
     private UUID leadVolunteerId;
 
+    @Column(name = "committee_id")
+    private UUID committeeId;
+
     @Type(JsonBinaryType.class)
     @Column(columnDefinition = "jsonb")
     private List<UUID> participants;
 
     @Column(nullable = false)
-    private String status; // PROPOSED, ACTIVE, COMPLETED
+    private String status; // PENDING_VALIDATION, APPROVED, REJECTED, ACTIVE, COMPLETED
 
     @Column(name = "start_date")
     private LocalDate startDate;

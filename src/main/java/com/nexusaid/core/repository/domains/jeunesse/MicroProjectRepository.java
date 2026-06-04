@@ -11,4 +11,8 @@ import java.util.UUID;
 public interface MicroProjectRepository extends JpaRepository<MicroProject, UUID> {
     List<MicroProject> findByLeadVolunteerId(UUID leadVolunteerId);
     List<MicroProject> findByStatus(String status);
+    List<MicroProject> findByCommitteeId(UUID committeeId);
+    List<MicroProject> findByCommitteeIdAndStatus(UUID committeeId, String status);
+    List<MicroProject> findByCommitteeIdIn(List<UUID> committeeIds);
+    List<MicroProject> findByCommitteeIdInAndStatus(List<UUID> committeeIds, String status);
 }

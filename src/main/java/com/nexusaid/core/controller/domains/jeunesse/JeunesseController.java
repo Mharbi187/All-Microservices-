@@ -1,12 +1,18 @@
+
+
+
+
 package com.nexusaid.core.controller.domains.jeunesse;
 
 import com.nexusaid.core.entity.domains.jeunesse.*;
 import com.nexusaid.core.security.JwtService;
+import com.nexusaid.core.security.UserDetailsImpl;
 import com.nexusaid.core.service.domains.jeunesse.JeunesseService;
 import com.nexusaid.core.service.domains.jeunesse.RecommendationAiService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -48,8 +54,9 @@ public class JeunesseController {
 
     @GetMapping("/forms")
     @PreAuthorize("hasAnyRole('PRESIDENT', 'RESP_JEUNESSE', 'ADMIN')")
-    public ResponseEntity<List<YouthIntegrationForm>> getAllForms() {
-        return ResponseEntity.ok(jeunesseService.getAllForms());
+    public ResponseEntity<List<YouthIntegrationForm>> getAllForms(
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        return ResponseEntity.ok(jeunesseService.getAllFormsFiltered(userDetails.getUser().getId()));
     }
 
     @GetMapping("/forms/{formId}/recommendation")
@@ -79,8 +86,62 @@ public class JeunesseController {
 
     @GetMapping("/projects")
     @PreAuthorize("hasAnyRole('PRESIDENT', 'RESP_JEUNESSE', 'VOLUNTEER', 'ADMIN')")
-    public ResponseEntity<List<MicroProject>> getAllProjects() {
-        return ResponseEntity.ok(jeunesseService.getAllProjects());
+    public ResponseEntity<List<MicroProject>> getAllProjects(
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        return ResponseEntity.ok(jeunesseService.getProjectsFiltered(userDetails.getUser().getId()));
+    }
+
+    @PostMapping("/projects/{projectId}/validate")
+    @PreAuthorize("hasAnyRole('PRESIDENT', 'ADMIN')")
+    public ResponseEntity<MicroProject> validateProject(
+            @PathVariable UUID projectId,
+            @RequestParam boolean approve,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        return ResponseEntity.ok(jeunesseService.validateProject(projectId, approve, userDetails.getUser().getId()));
+    }
+
+    // ----- General Recommendations -----
+
+    @GetMapping("/recommendations")
+    @PreAuthorize("hasAnyRole('PRESIDENT', 'RESP_JEUNESSE', 'VOLUNTEER', 'ADMIN')")
+    public ResponseEntity<List<YouthRecommendation>> getRecommendations(
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        return ResponseEntity.ok(jeunesseService.getRecommendationsFiltered(userDetails.getUser().getId()));
+    }
+
+    @PostMapping("/recommendations/publish")
+    @PreAuthorize("hasAnyRole('RESP_JEUNESSE', 'ADMIN')")
+    public ResponseEntity<YouthRecommendation> publishRecommendation(
+            @RequestBody YouthRecommendation recommendation,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        return ResponseEntity.ok(jeunesseService.publishGeneralRecommendation(recommendation, userDetails.getUser().getId()));
+    }
+
+    @PutMapping("/recommendations/{id}")
+    @PreAuthorize("hasAnyRole('RESP_JEUNESSE', 'ADMIN')")
+    public ResponseEntity<YouthRecommendation> updateRecommendation(
+            @PathVariable UUID id,
+            @RequestBody YouthRecommendation recommendation,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        return ResponseEntity.ok(jeunesseService.updateRecommendation(id, recommendation, userDetails.getUser().getId()));
+    }
+
+    @DeleteMapping("/recommendations/{id}")
+    @PreAuthorize("hasAnyRole('RESP_JEUNESSE', 'ADMIN')")
+    public ResponseEntity<Void> deleteRecommendation(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        jeunesseService.deleteRecommendation(id, userDetails.getUser().getId());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/recommendations/{recId}/validate")
+    @PreAuthorize("hasAnyRole('PRESIDENT', 'ADMIN')")
+    public ResponseEntity<YouthRecommendation> validateRecommendation(
+            @PathVariable UUID recId,
+            @RequestParam boolean approve,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        return ResponseEntity.ok(jeunesseService.validateRecommendation(recId, approve, userDetails.getUser().getId()));
     }
 
     // ----- Dynamic Templates & Builder -----
@@ -93,8 +154,9 @@ public class JeunesseController {
 
     @GetMapping("/templates")
     @PreAuthorize("hasAnyRole('PRESIDENT', 'RESP_JEUNESSE', 'VOLUNTEER', 'ADMIN')")
-    public ResponseEntity<List<YouthFormTemplate>> getAllTemplates() {
-        return ResponseEntity.ok(jeunesseService.getAllTemplates());
+    public ResponseEntity<List<YouthFormTemplate>> getAllTemplates(
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        return ResponseEntity.ok(jeunesseService.getTemplatesFiltered(userDetails.getUser().getId()));
     }
 
     // ----- Dynamic Responses -----
@@ -139,7 +201,8 @@ public class JeunesseController {
 
     @GetMapping("/stats")
     @PreAuthorize("hasAnyRole('PRESIDENT', 'RESP_JEUNESSE', 'ADMIN')")
-    public ResponseEntity<Map<String, Object>> getStats() {
-        return ResponseEntity.ok(jeunesseService.getYouthStats());
+    public ResponseEntity<Map<String, Object>> getStats(
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        return ResponseEntity.ok(jeunesseService.getYouthStatsFiltered(userDetails.getUser().getId()));
     }
 }

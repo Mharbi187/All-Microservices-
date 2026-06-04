@@ -55,4 +55,15 @@ public class NotificationService {
         dto.setCreatedAt(n.getCreatedAt());
         return dto;
     }
+
+    @Transactional
+    public void sendNotification(com.nexusaid.core.entity.User user, String type, String title, String message, String link) {
+        DonorNotification notification = new DonorNotification();
+        notification.setUser(user);
+        notification.setType(type);
+        notification.setTitle(title);
+        notification.setMessage(message);
+        notification.setLink(link);
+        repository.save(notification);
+    }
 }

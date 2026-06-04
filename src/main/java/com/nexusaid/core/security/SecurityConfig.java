@@ -49,6 +49,8 @@ public class SecurityConfig {
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/management/committees").permitAll()
                         // Lecture publique des actualités publiées (page d'accueil)
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/news/public").permitAll()
+                        // Lecture publique de la configuration de la page d'accueil
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/homepage/config").permitAll()
                         .requestMatchers("/api/v1/security/**").authenticated()
                         .requestMatchers("/api/v1/onboarding/**").authenticated()
                         .anyRequest().authenticated())

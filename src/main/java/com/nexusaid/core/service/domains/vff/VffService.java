@@ -3,9 +3,13 @@ package com.nexusaid.core.service.domains.vff;
 import com.nexusaid.core.entity.domains.vff.ProtectionCampaign;
 import com.nexusaid.core.entity.domains.vff.VictimCase;
 import com.nexusaid.core.entity.domains.vff.VictimSupportPath;
+import com.nexusaid.core.entity.domains.vff.Shelter;
+import com.nexusaid.core.entity.domains.vff.Partner;
 import com.nexusaid.core.repository.domains.vff.ProtectionCampaignRepository;
 import com.nexusaid.core.repository.domains.vff.VictimCaseRepository;
 import com.nexusaid.core.repository.domains.vff.VictimSupportPathRepository;
+import com.nexusaid.core.repository.domains.vff.ShelterRepository;
+import com.nexusaid.core.repository.domains.vff.PartnerRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +26,8 @@ public class VffService {
     private final VictimCaseRepository victimCaseRepository;
     private final VictimSupportPathRepository supportPathRepository;
     private final ProtectionCampaignRepository campaignRepository;
+    private final ShelterRepository shelterRepository;
+    private final PartnerRepository partnerRepository;
 
     @Transactional
     public VictimCase reportVictimCase(VictimCase victimCase, UUID volunteerId) {
@@ -81,5 +87,27 @@ public class VffService {
     @Transactional(readOnly = true)
     public List<ProtectionCampaign> getAllCampaigns() {
         return campaignRepository.findAll();
+    }
+
+    // ----- Shelters -----
+    @Transactional
+    public Shelter createShelter(Shelter shelter) {
+        return shelterRepository.save(shelter);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Shelter> getAllShelters() {
+        return shelterRepository.findAll();
+    }
+
+    // ----- Partners -----
+    @Transactional
+    public Partner createPartner(Partner partner) {
+        return partnerRepository.save(partner);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Partner> getAllPartners() {
+        return partnerRepository.findAll();
     }
 }

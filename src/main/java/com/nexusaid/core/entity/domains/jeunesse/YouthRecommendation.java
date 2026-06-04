@@ -22,8 +22,11 @@ public class YouthRecommendation {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID id;
 
-    @Column(name = "form_id", nullable = false)
+    @Column(name = "form_id", nullable = true)
     private UUID formId; // Links back to YouthIntegrationForm
+
+    @Column(name = "committee_id")
+    private UUID committeeId; // For general published recommendations
 
     @Column(name = "title")
     private String title;
@@ -35,13 +38,13 @@ public class YouthRecommendation {
     private String category;
 
     @Column(name = "target")
-    private String target;
+    private String target; // e.g. LOCAL, REGIONAL, NATIONAL
 
     @Column(name = "priority")
     private String priority;
 
     @Column(name = "status")
-    private String status;
+    private String status; // PENDING_VALIDATION, APPROVED, REJECTED, ACTIVE
 
     @Column(name = "date_creation")
     private LocalDateTime dateCreation;

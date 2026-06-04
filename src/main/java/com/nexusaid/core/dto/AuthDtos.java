@@ -97,4 +97,24 @@ public class AuthDtos {
         private String refreshToken;
         private String message;
     }
+
+    @Data
+    @Builder
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class ForgotPasswordRequest {
+        /** The email address to send the reset link to. */
+        private String email;
+    }
+
+    @Data
+    @Builder
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class ResetPasswordRequest {
+        /** The opaque reset token received by email. */
+        private String token;
+        /** The new password chosen by the user. */
+        private String newPassword;
+    }
 }

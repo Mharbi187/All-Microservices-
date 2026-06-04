@@ -185,6 +185,7 @@ public class VolunteerOnboardingController {
             dto.put("type", c.getType().name());
             dto.put("region", c.getRegion());
             dto.put("status", c.getStatus().name());
+            dto.put("parentRegion", c.getParentCommittee() != null ? c.getParentCommittee().getRegion() : null);
             return dto;
         }).toList();
         return ResponseEntity.ok(dtos);
