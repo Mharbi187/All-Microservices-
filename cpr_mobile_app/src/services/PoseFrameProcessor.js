@@ -13,14 +13,10 @@ import { backendAPI } from './BackendAPIService';
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 
 const FRAME_CONFIG = {
-    // Frame capture interval (ms) — Try 60ms (~16 FPS) to allow maximum throughput without artificial slowing.
-    // The "isProcessing" backpressure will naturally clamp it to your device's physical limits.
-    CAPTURE_INTERVAL_MS: 60,
-
-    // Photo quality for base64 encoding (0-1) — 0.1 minimizes bridge payload weight
+    CAPTURE_INTERVAL_MS: 60,        // Base interval (~16 FPS)
+    ADAPTIVE_MAX_INTERVAL_MS: 500,  // Max slowdown (2 FPS) under thermal pressure
+    ADAPTIVE_LATENCY_THRESHOLD_MS: 2000, // Avg latency above this triggers throttle
     CAPTURE_QUALITY: 0.1,
-
-    // Max time to wait for backend response before skipping
     BACKEND_TIMEOUT_MS: 6000,
 };
 
@@ -44,6 +40,9 @@ class PoseFrameProcessor {
         this.avgLatencyMs = 0;
         this.lastProcessTime = 0;
         this.consecutiveErrors = 0;
+
+        // Adaptive frame rate state
+        this.currentInterval = FRAME_CONFIG.CAPTURE_INTERVAL_MS;
     }
 
     /**
@@ -149,6 +148,27 @@ class PoseFrameProcessor {
             // ── 3. Update latency stats ──
             this.framesProcessed++;
             this.avgLatencyMs = ((this.framesProcessed - 1) * this.avgLatencyMs + latency) / this.framesProcessed;
+
+            // Adaptive frame rate: slow down if backend is struggling
+            if (this.avgLatencyMs > FRAME_CONFIG.ADAPTIVE_LATENCY_THRESHOLD_MS) {
+                this.currentInterval = Math.min(
+                    this.currentInterval * 1.5,
+                    FRAME_CONFIG.ADAPTIVE_MAX_INTERVAL_MS
+                );
+                // Restart interval at new rate
+                if (this.intervalId) {
+                    clearInterval(this.intervalId);
+                    this.intervalId = setInterval(() => this._processNextFrame(), this.currentInterval);
+                    console.log(`[FrameProcessor] Throttled to ${Math.round(this.currentInterval)}ms`);
+                }
+            } else if (this.currentInterval > FRAME_CONFIG.CAPTURE_INTERVAL_MS) {
+                // Recovery — restore base interval
+                this.currentInterval = FRAME_CONFIG.CAPTURE_INTERVAL_MS;
+                if (this.intervalId) {
+                    clearInterval(this.intervalId);
+                    this.intervalId = setInterval(() => this._processNextFrame(), this.currentInterval);
+                }
+            }
 
             if (backendResponse.success) {
                 this.consecutiveErrors = 0;

@@ -145,6 +145,8 @@ services:
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - DISASTER_DETECTION_URL=http://disaster-detection:8000
       - DISASTER_DETECTION_WS_URL=ws://disaster-detection:8000
+      - CPR_BACKEND_URL=http://nexus-aid-cpr:8000
+      - CPR_BACKEND_WS_URL=ws://nexus-aid-cpr:8000
       - FRONTEND_URL=http://nexus-aid-frontend:80
       - JWT_PUBLIC_KEY=${JWT_PUBLIC_KEY}
       - JWT_PUBLIC_KEY_PATH=${JWT_PUBLIC_KEY_PATH}
@@ -153,6 +155,23 @@ services:
       - config-server
       - core-service
       - admin-service
+      - nexus-aid-cpr
+    networks:
+      - nexusaid-network
+
+  nexus-aid-cpr:
+    build:
+      context: ./app-mobile
+      dockerfile: Dockerfile
+    container_name: nexusaid-cpr
+    ports:
+      - "8005:8000"
+    environment:
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - JWT_PUBLIC_KEY=${JWT_PUBLIC_KEY}
+    depends_on:
+      - eureka-server
+      - config-server
     networks:
       - nexusaid-network
 

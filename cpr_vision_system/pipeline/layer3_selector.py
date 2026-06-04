@@ -24,21 +24,42 @@ class PairSelector:
 
     HORIZONTAL_ASPECT_RATIO = 1.5   # width/height threshold for lying-down detection
 
-    def select(self, persons: List[dict]) -> Optional[dict]:
+    def select(self, persons: List[dict], expected_rescuers: int = 2) -> Optional[dict]:
         """
         Identify the rescuer and victim from tracked persons.
 
         Args:
             persons: List of tracked person dicts from Layer 2.
                      Each dict: {x1, y1, x2, y2, track_id, confidence}
+            expected_rescuers: If 1, allows returning a single person as the rescuer.
 
         Returns:
-            {"rescuer": dict, "victim": dict}  or  None if <2 persons.
+            {"rescuer": dict, "victim": dict}  or  None if conditions not met.
         """
-        if len(persons) < 2:
+        if len(persons) == 0:
             return None
 
-        # Compute aspect ratio (width / height) for each person
+        # Handle Single-Rescuer Edge Case
+        if len(persons) == 1:
+            if expected_rescuers >= 2:
+                return None
+            else:
+                rescuer = persons[0]
+                # Synthesize a dummy victim bounding box directly below the rescuer
+                # This prevents subsequent layers (like classification) from crashing
+                h = rescuer["y2"] - rescuer["y1"]
+                victim = {
+                    "x1": rescuer["x1"],
+                    "y1": rescuer["y2"],
+                    "x2": rescuer["x2"],
+                    "y2": rescuer["y2"] + (h * 0.4),
+                    "track_id": -999,
+                    "aspect_ratio": 2.0,
+                    "confidence": 1.0,
+                }
+                return {"rescuer": rescuer, "victim": victim}
+
+        # Handle 2+ Persons (Standard Dual Rescuer/Victim Mode)
         for p in persons:
             w = p["x2"] - p["x1"]
             h = p["y2"] - p["y1"]

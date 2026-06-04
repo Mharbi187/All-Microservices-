@@ -1,0 +1,56 @@
+{
+    "models": [
+        {
+            "name": "yolov8n-pose-cpr",
+            "version": "1.0.0",
+            "framework": "ultralytics/tflite",
+            "target_os": "mobile",
+            "features": [
+                "pose_estimation",
+                "keypoints"
+            ],
+            "input_shape": [
+                1,
+                128,
+                128,
+                3
+            ],
+            "output_shape": [
+                1,
+                56,
+                8400
+            ],
+            "checksum_sha256": "placeholder_generate_sha256_here_during_ci",
+            "metrics_thresholds": {
+                "mAP50": 0.85,
+                "mAP50-95": 0.60
+            }
+        },
+        {
+            "name": "cpr-victim-classifier",
+            "version": "1.0.1",
+            "framework": "keras/tflite",
+            "target_os": "mobile",
+            "features": [
+                "classification:adult/child/infant"
+            ],
+            "input_shape": [
+                1,
+                224,
+                224,
+                3
+            ],
+            "output_shape": [
+                1,
+                3
+            ],
+            "checksum_sha256": "placeholder_generate_sha256_here_during_ci",
+            "metrics_thresholds": {
+                "accuracy": 0.95,
+                "f1_score": 0.92
+            }
+        }
+    ],
+    "last_updated": "2026-06-04",
+    "owner": "Croissant Rouge Tunisien"
+}

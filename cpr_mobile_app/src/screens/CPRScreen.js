@@ -29,6 +29,7 @@ import { backendAPI } from '../services/BackendAPIService';
 import { cprRouter } from '../services/CPRAnalysisRouter';
 import { rulesEngine } from '../services/RulesEngine';
 import { useAuth } from '../contexts/AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Components
 import MetricsDisplay from '../components/MetricsDisplay';
@@ -88,6 +89,21 @@ export default function CPRScreen({ route, navigation }) {
     // CPR session
     const [isActive, setIsActive] = useState(false);
     const [victimType, setVictimType] = useState('adult');
+
+    // User settings
+    const [voiceEnabled, setVoiceEnabled] = useState(true);
+    const [hapticsEnabled, setHapticsEnabled] = useState(true);
+    const [language, setLanguage] = useState('fr');
+
+    useEffect(() => {
+        // Load persisted user settings
+        AsyncStorage.multiGet(['voiceEnabled', 'hapticsEnabled', 'language']).then(pairs => {
+            const s = Object.fromEntries(pairs.map(([k, v]) => [k, v]));
+            if (s.voiceEnabled !== null) setVoiceEnabled(s.voiceEnabled !== 'false');
+            if (s.hapticsEnabled !== null) setHapticsEnabled(s.hapticsEnabled !== 'false');
+            if (s.language) setLanguage(s.language);
+        });
+    }, []);
     const [metrics, setMetrics] = useState(null);
 
     // Timer
@@ -155,19 +171,50 @@ export default function CPRScreen({ route, navigation }) {
     // ──────────────────────────────────────────────────────────────────────────
 
     const startCPR = async () => {
-        // Only create a backend session when Online
         if (!isOffline) {
-            const result = await backendAPI.createSession(victimType.toUpperCase(), rescuerCount);
-            if (!result.success) {
-                Alert.alert('Erreur', 'Impossible de créer la session: ' + (result.error || ''));
-                return;
-            }
+            // Explicit privacy/consent message for Online processing
+            Alert.alert(
+                'Consentement de confidentialité',
+                "Vos images caméra (60ms intervales) seront transmises au serveur cloud de la Croix-Rouge Tunisienne pour l'inférence. Poursuivre ?",
+                [
+                    { text: 'Annuler', style: 'cancel' },
+                    { text: 'Accepter', onPress: () => _proceedStartOnline() }
+                ]
+            );
+        } else {
+            // Edge AI (TFLite) doesn't need cloud privacy consent
+            _proceedStartOffline();
         }
+    };
 
+    const _proceedStartOnline = async () => {
+        const result = await backendAPI.createSession(victimType.toUpperCase(), rescuerCount);
+        if (!result.success) {
+            Alert.alert('Erreur', 'Impossible de créer la session: ' + (result.error || ''));
+            return;
+        }
+        _initPipeline();
+    };
+
+    const _proceedStartOffline = async () => {
+        _initPipeline();
+    };
+
+    const _initPipeline = () => {
         setMetrics(null);
         setElapsedTime(0);
         setIsActive(true);
         setPhase('ACTIVE');
+
+        // Configure the offline rules engine with current victim type + rescuer count
+        if (isOffline && cprRouter.localProcessor) {
+            cprRouter.localProcessor.rulesEngine?.configure?.({
+                victimType,
+                rescuerCount,
+                language,
+                isModelLoaded: cprRouter.localProcessor.isModelLoaded,
+            });
+        }
 
         // Configure router (it internally routes to the right processor)
         cprRouter.setCameraRef(cameraRef);
@@ -185,10 +232,10 @@ export default function CPRScreen({ route, navigation }) {
             setElapsedTime(prev => prev + 1);
         }, 1000);
 
-        speak(rulesEngine.language === 'ar'
+        speak(language === 'ar'
             ? 'بدأت المساعدة. ضع يديك وابدأ الضغط'
-            : isOffline ? 'Mode hors-ligne activé. Démarrez les compressions.'
-                : 'Assistance démarrée. Placez vos mains et commencez');
+            : isOffline ? 'Mode Edge AI activé. Démarrez les compressions.'
+                : 'Assistance en ligne démarrée. Placez vos mains et commencez');
     };
 
     const stopCPR = async () => {
@@ -225,23 +272,25 @@ export default function CPRScreen({ route, navigation }) {
     const handleMetricsUpdate = useCallback((newMetrics) => {
         setMetrics(newMetrics);
 
-        // Haptic feedback on each new compression
-        if (Platform.OS !== 'web' && newMetrics?.metrics && newMetrics.metrics.compression_count > 0) {
+        // Haptic feedback — only if enabled in settings
+        if (hapticsEnabled && Platform.OS !== 'web' && newMetrics?.metrics?.compression_count > 0) {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => { });
         }
 
-        // Voice guidance — throttled to avoid overlapping
-        const now = Date.now();
-        if (now - lastSpeechRef.current > 4000) {
-            const msg = pickVoiceMessage(newMetrics);
-            if (msg && msg !== lastSpokenMsgRef.current) {
-                const lang = rulesEngine.language === 'ar' ? 'ar-SA' : 'fr-FR';
-                Speech.speak(msg, { language: lang, pitch: 1.0, rate: 1.1 });
-                lastSpeechRef.current = now;
-                lastSpokenMsgRef.current = msg;
+        // Voice guidance — only if enabled in settings, throttled
+        if (voiceEnabled) {
+            const now = Date.now();
+            if (now - lastSpeechRef.current > 4000) {
+                const msg = pickVoiceMessage(newMetrics);
+                if (msg && msg !== lastSpokenMsgRef.current) {
+                    const lang = language === 'ar' ? 'ar-SA' : language === 'en' ? 'en-US' : 'fr-FR';
+                    Speech.speak(msg, { language: lang, pitch: 1.0, rate: 1.1 });
+                    lastSpeechRef.current = now;
+                    lastSpokenMsgRef.current = msg;
+                }
             }
         }
-    }, []);
+    }, [voiceEnabled, hapticsEnabled, language]);
 
     const handleConnectionUpdate = useCallback((status) => {
         setConnectionStatus(status);
@@ -258,22 +307,20 @@ export default function CPRScreen({ route, navigation }) {
     const pickVoiceMessage = (m) => {
         if (!m || !m.ui_commands || m.ui_commands.length === 0) return null;
 
-        // Priority 1: Pick the first (most critical) command from the backend array
-        const cmd = m.ui_commands[0];
+        // Priority 1: Pick the CRITICAL or HIGH severity command first
+        const cmd = m.ui_commands.find(c => c.severity === 'CRITICAL' || c.severity === 'HIGH')
+            || m.ui_commands[0];
+        if (!cmd) return null;
 
-        // Ensure proper fallback hierarchy based on rule definitions
-        const lang = rulesEngine.language || 'fr';
-
-        if (lang === 'ar' && cmd.text_ar) return cmd.text_ar;
-        if (lang === 'fr' && cmd.text_fr) return cmd.text_fr;
-
-        // Final fallback logic
+        if (language === 'ar' && cmd.text_ar) return cmd.text_ar;
+        if (language === 'fr' && cmd.text_fr) return cmd.text_fr;
+        if (language === 'en' && cmd.text_en) return cmd.text_en;
         return cmd.text_fr || cmd.text_en;
     };
 
     const speak = (text) => {
-        if (!text) return;
-        const lang = rulesEngine.language === 'ar' ? 'ar-SA' : 'fr-FR';
+        if (!voiceEnabled || !text) return;
+        const lang = language === 'ar' ? 'ar-SA' : language === 'en' ? 'en-US' : 'fr-FR';
         Speech.speak(text, { language: lang, pitch: 1.0, rate: 1.1 });
     };
 

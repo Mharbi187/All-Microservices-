@@ -5,8 +5,11 @@
  * Envoie les frames de la caméra et reçoit les métriques en temps réel.
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import Constants from 'expo-constants';
+
+const APP_VERSION = Constants.expoConfig?.version || '1.0.0';
+const MODEL_VERSION = '1.0.0';
 
 const debuggerHost = Constants.expoConfig?.hostUri;
 const hostIp = debuggerHost ? debuggerHost.split(':')[0] : '10.0.2.2';
@@ -63,14 +66,18 @@ class BackendAPIService {
     }
 
     /**
-     * Set up the WebSocket session
+     * Set up the WebSocket session and pass along context from the UI.
      */
     async createSession(victimType = 'ADULT', rescuerCount = 1) {
-        // Our new backend automatically creates the pipeline when WS connects!
-        // So we just generate a session ID and connect the WS.
         this.sessionId = `session_${Date.now()}`;
         this.victimType = victimType;
         this.rescuerCount = rescuerCount;
+        // SecureStore for keychain-level JWT protection
+        try {
+            this.token = await SecureStore.getItemAsync('jwt_token');
+        } catch {
+            this.token = null;
+        }
 
         return this._connect();
     }
@@ -160,8 +167,20 @@ class BackendAPIService {
             this.resolversQueue.push(resWrapper);
 
             try {
-                // Option A: Message 1 (JSON Metadata)
-                this.ws.send(JSON.stringify({ ts: Date.now() }));
+                // Option A: Message 1 (JSON Metadata) — includes JWT + session context
+                const meta = {
+                    ts: Date.now(),
+                    victim_type: this.victimType || 'ADULT',
+                    rescuer_count: this.rescuerCount || 1,
+                    mode: 'online',
+                    app_version: APP_VERSION,
+                    model_version: MODEL_VERSION,
+                };
+                // Attach JWT token for server-side authentication on every frame
+                if (this.token) {
+                    meta.token = this.token;
+                }
+                this.ws.send(JSON.stringify(meta));
 
                 // Option A: Message 2 (Base64 JPEG Text Frame)
                 this.ws.send(base64Frame);

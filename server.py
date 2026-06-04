@@ -17,6 +17,8 @@ import json
 import traceback
 import os
 import base64
+import logging
+import jwt
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -25,12 +27,32 @@ import time
 
 from cpr_vision_system.pipeline import CPRPipeline
 
+# Structured audit logger (no frame data, no raw tokens)
+audit_log = logging.getLogger("cpr.audit")
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(name)s] %(levelname)s %(message)s"
+)
+
+# Constants for security
+MAX_PAYLOAD_SIZE = 1024 * 1024 * 2 # 2 MB max per frame
+
+JWT_PUBLIC_KEY = os.environ.get("JWT_PUBLIC_KEY", "")
+
 # ==============================================================================
 # 🎮 DEMO SIMULATION MODE
-# Set to True to play a scripted 40-second CPR scenario, bypassing the camera.
-# Perfect for presentations where lighting/camera angles are unreliable.
+# Set to True ONLY for controlled presentations. Production must be False.
+# The CI/CD pipeline blocks deployment when this flag is True.
 # ==============================================================================
-SIMULATION_MODE = True
+SIMULATION_MODE = False
+
+# ❌ Release gate: refuse to start if simulation mode is on in production
+_ENV = os.environ.get("APP_ENV", "production")
+if SIMULATION_MODE and _ENV == "production":
+    raise RuntimeError(
+        "[RELEASE GATE] SIMULATION_MODE=True is not allowed in a production environment. "
+        "Set APP_ENV=development to override for demos."
+    )
 
 def _get_simulation_payload(start_time: float) -> dict:
     elapsed = time.time() - start_time
@@ -92,9 +114,10 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   
+    allow_origins=os.environ.get("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000").split(","),
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_credentials=True,
 )
 
 
@@ -111,15 +134,20 @@ async def cpr_session(ws: WebSocket, session_id: str):
     CPR session WebSocket endpoint.
 
     Two-message protocol per frame (Option A):
-      1. Client sends a JSON text frame:  {"ts": <capture_timestamp_ms>}
+      1. Client sends a JSON text frame:  {"ts": <capture_timestamp_ms>, "token": "<jwt>"}
       2. Client sends a text frame:       <Base64 JPEG String>
     Server responds with a JSON text frame containing CPR feedback.
-
-    Each connection owns its own CPRPipeline instance.
-    No shared global state. No global locks.
     """
     await ws.accept()
     pipeline = CPRPipeline(session_id=session_id)
+    is_authenticated = False
+    
+    # Session context — updated per-frame from mobile client
+    session_context = {
+        "victim_type": "ADULT",
+        "rescuer_count": 1,
+        "mode": "online",
+    }
 
     try:
         while True:
@@ -130,9 +158,42 @@ async def cpr_session(ws: WebSocket, session_id: str):
             except json.JSONDecodeError:
                 meta = {}
 
+            # JWT Authentication on the first frame
+            if not is_authenticated:
+                token = meta.get("token")
+                if not token or not JWT_PUBLIC_KEY:
+                    audit_log.warning("[AUTH] Rejected unauthenticated session: %s", session_id)
+                    await ws.send_json({"status": "ERROR", "error": "UNAUTHORIZED"})
+                    await ws.close(code=4003)
+                    return
+                try:
+                    pub_key = JWT_PUBLIC_KEY.replace('\\n', '\n')
+                    claims = jwt.decode(token, pub_key, algorithms=["RS256"])
+                    is_authenticated = True
+                    audit_log.info("[AUTH] Session authenticated: %s sub=%s", session_id, claims.get("sub", "?"))
+                except Exception as e:
+                    audit_log.warning("[AUTH] Invalid token for session %s: %s", session_id, str(e))
+                    await ws.send_json({"status": "ERROR", "error": "INVALID_TOKEN"})
+                    await ws.close(code=4003)
+                    return
+
+            # Update session context from client metadata (every frame)
+            session_context["victim_type"] = meta.get("victim_type", session_context["victim_type"])
+            session_context["rescuer_count"] = int(meta.get("rescuer_count", session_context["rescuer_count"]))
+            session_context["mode"] = meta.get("mode", session_context["mode"])
+
             # ── Step 2: Receive Base64 text frame ─────────────────────
             raw_b64 = await ws.receive_text()
-            raw_frame = base64.b64decode(raw_b64)
+            
+            if len(raw_b64) > MAX_PAYLOAD_SIZE:
+                 await ws.send_json({"status": "ERROR", "error": "PAYLOAD_TOO_LARGE"})
+                 continue
+
+            try:
+                raw_frame = base64.b64decode(raw_b64)
+            except Exception:
+                await ws.send_json({"status": "ERROR", "error": "MALFORMED_BASE64"})
+                continue
 
             # ── Step 3: Process through the 6-layer pipeline ──────────────
             try:
@@ -140,15 +201,16 @@ async def cpr_session(ws: WebSocket, session_id: str):
                     # Setup simulation timer securely on first frame
                     if not hasattr(ws, "sim_start_time"):
                         ws.sim_start_time = time.time()
-                    
-                    # We still run process() so the pipeline doesn't break, but we discard its result
                     await pipeline.process(raw_frame, meta)
                     result = _get_simulation_payload(ws.sim_start_time)
                 else:
-                    result = await pipeline.process(raw_frame, meta)
+                    # Pass full session context to pipeline so it can adapt rules
+                    result = await pipeline.process(raw_frame, {**meta, **session_context})
             except Exception:
                 result = {
                     "status": "ERROR",
+                    "error_code": "PIPELINE_FAILURE",
+                    "message": "An internal error occurred during frame processing. Try reconnecting.",
                     "detail": traceback.format_exc(limit=3),
                 }
 
@@ -156,10 +218,10 @@ async def cpr_session(ws: WebSocket, session_id: str):
             await ws.send_json(result)
 
     except WebSocketDisconnect:
-        # Normal disconnect — release MediaPipe resources
+        audit_log.info("[SESSION] Disconnected: %s frames_processed=%s", session_id, 'n/a')
         pipeline.cleanup()
 
-    except Exception as exc:
-        # Unexpected error — still clean up
+    except Exception:
+        audit_log.error("[SESSION] Unexpected error in session %s", session_id, exc_info=True)
         pipeline.cleanup()
         raise

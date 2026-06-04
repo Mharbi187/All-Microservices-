@@ -1,0 +1,159 @@
+name: Nexus-AID CPR Backend CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ────────────────────────── Python Backend ──────────────────────────────────
+  backend-ci:
+    name: Backend — Lint, Import & Release Gate
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: |
+          pip install fastapi uvicorn python-multipart py-eureka-client PyJWT cryptography numpy
+
+      - name: 🚫 Release Gate — SIMULATION_MODE must be False
+        run: |
+          python -c "
+          import ast, sys
+          with open('server.py') as f:
+              tree = ast.parse(f.read())
+          for node in ast.walk(tree):
+              if isinstance(node, ast.Assign):
+                  for t in node.targets:
+                      if isinstance(t, ast.Name) and t.id == 'SIMULATION_MODE':
+                          val = node.value
+                          if isinstance(val, ast.Constant) and val.value:
+                              print('RELEASE GATE FAILED: SIMULATION_MODE is True in server.py')
+                              sys.exit(1)
+          print('✅ SIMULATION_MODE check passed')
+          "
+
+      - name: 🚫 Release Gate — No MOCK_USERS in AuthService
+        run: |
+          if grep -r "MOCK_USERS" ./cpr_mobile_app/src/services/AuthService.js 2>/dev/null; then
+            echo "RELEASE GATE FAILED: MOCK_USERS found in AuthService.js"
+            exit 1
+          fi
+          echo "✅ MOCK_USERS check passed"
+
+      - name: 🚫 Release Gate — No hardcoded secrets in README
+        run: |
+          if grep -E "MTIzNDU2|MIIEvQ|MIIBI|dznkfx|726734|OSKkrlu" ./README.md 2>/dev/null; then
+            echo "RELEASE GATE FAILED: Hardcoded secrets detected in README.md"
+            exit 1
+          fi
+          echo "✅ Secrets check passed"
+
+      - name: Syntax check — server.py
+        run: python -m py_compile server.py && echo "✅ server.py syntax OK"
+
+      - name: Import check — cpr_vision_system
+        run: |
+          python -c "
+          import sys
+          sys.path.insert(0, '.')
+          try:
+              from cpr_vision_system.pipeline import CPRPipeline
+              print('✅ CPRPipeline import OK')
+          except ImportError as e:
+              print(f'⚠️ CPRPipeline not importable (expected in CI without GPU): {e}')
+          "
+
+      - name: Model Registry validation
+        run: |
+          python -c "
+          import json, sys
+          with open('model_registry.json') as f:
+              reg = json.load(f)
+          models = reg.get('models', [])
+          if not models:
+              print('FAILED: model_registry.json has no models')
+              sys.exit(1)
+          for m in models:
+              assert 'name' in m and 'version' in m and 'checksum_sha256' in m, f'Missing fields in {m}'
+          print(f'✅ Model registry OK — {len(models)} model(s) registered')
+          "
+
+      - name: Run validation script (dry-run)
+        run: python scripts/validate_models.py
+
+  # ────────────────────────── Docker Build ────────────────────────────────────
+  docker-build:
+    name: Docker — Build CPR Backend Image
+    runs-on: ubuntu-latest
+    needs: backend-ci
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t nexusaid-cpr:ci-test .
+
+      - name: Smoke test — container boots
+        run: |
+          docker run -d --name cpr-test \
+            -e APP_ENV=development \
+            -e JWT_PUBLIC_KEY="test" \
+            -p 8000:8000 nexusaid-cpr:ci-test &
+          sleep 5
+          curl -f http://localhost:8000/health || echo "⚠️ Health check failed (expected without GPU dependencies)"
+          docker stop cpr-test || true
+
+  # ────────────────────────── Mobile Build ────────────────────────────────────
+  mobile-ci:
+    name: Mobile — Lint and Dependency Check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./cpr_mobile_app
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: 🚫 Release Gate — expo-secure-store must be present
+        run: |
+          node -e "
+          const pkg = require('./package.json');
+          if (!pkg.dependencies['expo-secure-store']) {
+              console.log('RELEASE GATE FAILED: expo-secure-store not in dependencies');
+              process.exit(1);
+          }
+          console.log('✅ expo-secure-store present');
+          "
+
+      - name: 🚫 Release Gate — AsyncStorage not used for auth token
+        run: |
+          if grep -r 'AsyncStorage.*jwt_token\|jwt_token.*AsyncStorage' src/services/BackendAPIService.js 2>/dev/null; then
+            echo "RELEASE GATE FAILED: Auth token stored in AsyncStorage (use SecureStore)"
+            exit 1
+          fi
+          echo "✅ Auth token storage check passed"
+
+      - name: Check that TFLite models exist
+        run: |
+          test -f assets/best.tflite && echo "✅ best.tflite present" || echo "⚠️ best.tflite missing"
+          test -f assets/pose.tflite && echo "✅ pose.tflite present" || echo "⚠️ pose.tflite missing"

@@ -75,10 +75,13 @@ class CPRPipeline:
 
         # ── Layer 2: Tracking ─────────────────────────────────────────────
         tracked = self.tracker.update(boxes, frame.shape)
-        # ── Debug: print detection/tracking counts ──
-        if len(tracked) < 2:
-            print(f"[Pipeline] YOLO detected {len(boxes)} person(s), tracker returned {len(tracked)} → VICTIM_NOT_VISIBLE")
-        if len(tracked) < 2:
+        
+        rescuer_count = int(meta.get("rescuer_count", 1))
+
+        if len(tracked) == 0:
+            return {"status": "NO_PERSON_DETECTED"}
+            
+        if len(tracked) < 2 and rescuer_count >= 2:
             return {"status": "VICTIM_NOT_VISIBLE"}
 
         # RESCUER_LOST check (if we already know the rescuer's track_id)
@@ -89,7 +92,7 @@ class CPRPipeline:
                 return {"status": "RESCUER_LOST"}
 
         # ── Layer 3: Pair Selection ───────────────────────────────────────
-        pair = self.selector.select(tracked)
+        pair = self.selector.select(tracked, expected_rescuers=rescuer_count)
         if pair is None:
             return {"status": "VICTIM_NOT_VISIBLE"}
 

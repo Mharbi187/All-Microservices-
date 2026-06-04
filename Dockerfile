@@ -10,13 +10,12 @@ RUN pip install --no-cache-dir \
     py-eureka-client==0.11.13 \
     python-multipart
 
-# Copy just the server entry point
-COPY server.py .
+# Copy the actual vision system and all Python files
+COPY . .
 
-# Create a stub for the vision system so the import doesn't crash at startup
-RUN mkdir -p cpr_vision_system && \
-    echo "class CPRPipeline:\n    def __init__(self, session_id=None): pass\n    async def process(self, frame, meta): return {'status': 'STUB'}\n    def cleanup(self): pass" > cpr_vision_system/pipeline.py && \
-    touch cpr_vision_system/__init__.py
+# IMPORTANT: Ensure the vision system dependencies like mediapipe and ultralytics are met.
+# OpenCV Headless is needed to avoid libGL dependencies inside standard slim containers.
+RUN pip install opencv-python-headless mediapipe ultralytics PyJWT cryptography
 
 EXPOSE 8000
 
