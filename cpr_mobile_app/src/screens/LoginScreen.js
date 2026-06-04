@@ -24,7 +24,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 export default function LoginScreen({ navigation }) {
     const { login } = useAuth();
-    const [matricule, setMatricule] = useState('');
+    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPass, setShowPass] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -42,7 +42,7 @@ export default function LoginScreen({ navigation }) {
     };
 
     const handleLogin = async () => {
-        if (!matricule.trim() || !password.trim()) {
+        if (!email.trim() || !password.trim()) {
             setError('Veuillez remplir tous les champs.');
             shake();
             return;
@@ -50,7 +50,7 @@ export default function LoginScreen({ navigation }) {
         setError('');
         setLoading(true);
         try {
-            const result = await login(matricule.trim(), password);
+            const result = await login(email.trim(), password);
             if (!result.success) {
                 setError(result.error || 'Identifiants incorrects.');
                 shake();
@@ -64,10 +64,10 @@ export default function LoginScreen({ navigation }) {
     };
 
     const TEST_ACCOUNTS = [
-        { label: 'NDRT', mat: 'CRT001' },
-        { label: 'RDRT', mat: 'CRT002' },
-        { label: 'Secouriste', mat: 'CRT003' },
-        { label: 'Chef Équipe', mat: 'CRT004' },
+        { label: 'Président National', mat: 'president.national@crt.tn' },
+        { label: 'Président Tunis', mat: 'president.tunis@crt.tn' },
+        { label: 'Resp. Secourisme', mat: 'sec.ariana@crt.tn' },
+        { label: 'Président Local', mat: 'president.ariana@crt.tn' },
     ];
 
     return (
@@ -104,7 +104,7 @@ export default function LoginScreen({ navigation }) {
                     >
                         <Text style={styles.cardTitle}>Connexion</Text>
                         <Text style={styles.cardSub}>
-                            Entrez votre matricule CRT et votre mot de passe
+                            Entrez votre adresse email CRT et votre mot de passe
                         </Text>
 
                         {error ? (
@@ -114,18 +114,19 @@ export default function LoginScreen({ navigation }) {
                             </View>
                         ) : null}
 
-                        {/* Matricule */}
+                        {/* Email */}
                         <View style={styles.fieldGroup}>
-                            <Text style={styles.fieldLabel}>Matricule CRT</Text>
+                            <Text style={styles.fieldLabel}>Adresse Email CRT</Text>
                             <View style={styles.inputWrap}>
-                                <Feather name="credit-card" size={18} color="#9CA3AF" style={styles.inputIcon} />
+                                <Feather name="mail" size={18} color="#9CA3AF" style={styles.inputIcon} />
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="ex: CRT001"
+                                    placeholder="ex: president.tunis@crt.tn"
                                     placeholderTextColor="#9CA3AF"
-                                    value={matricule}
-                                    onChangeText={setMatricule}
-                                    autoCapitalize="characters"
+                                    value={email}
+                                    onChangeText={setEmail}
+                                    autoCapitalize="none"
+                                    keyboardType="email-address"
                                     autoCorrect={false}
                                     returnKeyType="next"
                                 />
@@ -186,7 +187,7 @@ export default function LoginScreen({ navigation }) {
                     <View style={styles.testSection}>
                         <View style={styles.testTitleRow}>
                             <Feather name="info" size={13} color="#065F46" style={{ marginRight: 6 }} />
-                            <Text style={styles.testTitle}>Comptes de démonstration (mdp: 1234)</Text>
+                            <Text style={styles.testTitle}>Comptes de démonstration (mdp: pass)</Text>
                         </View>
                         <View style={styles.testGrid}>
                             {TEST_ACCOUNTS.map((a) => (
@@ -194,8 +195,8 @@ export default function LoginScreen({ navigation }) {
                                     key={a.mat}
                                     style={styles.testChip}
                                     onPress={() => {
-                                        setMatricule(a.mat);
-                                        setPassword('1234');
+                                        setEmail(a.mat);
+                                        setPassword('pass');
                                     }}
                                 >
                                     <Text style={styles.testChipLabel}>{a.label}</Text>

@@ -26,8 +26,9 @@ import { Feather } from '@expo/vector-icons';
 
 // Services
 import { backendAPI } from '../services/BackendAPIService';
-import { poseFrameProcessor } from '../services/PoseFrameProcessor';
+import { cprRouter } from '../services/CPRAnalysisRouter';
 import { rulesEngine } from '../services/RulesEngine';
+import { useAuth } from '../contexts/AuthContext';
 
 // Components
 import MetricsDisplay from '../components/MetricsDisplay';
@@ -70,6 +71,8 @@ const VICTIM_LABELS = {
 
 export default function CPRScreen({ route, navigation }) {
     const { rescuerCount = 1 } = route.params || {};
+    const { user } = useAuth(); // null = guest/offline, object = logged-in user
+    const isOffline = !user;   // ← THE KEY FLAG
 
     // Camera
     const [permission, requestPermission] = useCameraPermissions();
@@ -100,16 +103,25 @@ export default function CPRScreen({ route, navigation }) {
     // ──────────────────────────────────────────────────────────────────────────
 
     useEffect(() => {
-        connectToServer();
+        // Initialize the router so it knows which processor to use
+        cprRouter.initializeRouting().then(() => {
+            if (isOffline) {
+                // Skip server connection entirely for guests — go straight to READY
+                setPhase('READY');
+                setConnectionStatus({ connected: true, mode: 'offline' });
+            } else {
+                connectToServer();
+            }
+        });
         return () => cleanup();
-    }, []);
+    }, [isOffline]);
 
     const cleanup = () => {
-        poseFrameProcessor.stop();
-        poseFrameProcessor.reset();
+        cprRouter.stop();
+        cprRouter.reset();
         if (timerRef.current) clearInterval(timerRef.current);
         Speech.stop();
-        if (backendAPI.hasActiveSession()) {
+        if (!isOffline && backendAPI.hasActiveSession()) {
             backendAPI.endSession();
         }
     };
@@ -143,11 +155,13 @@ export default function CPRScreen({ route, navigation }) {
     // ──────────────────────────────────────────────────────────────────────────
 
     const startCPR = async () => {
-        // Create backend session
-        const result = await backendAPI.createSession(victimType.toUpperCase(), rescuerCount);
-        if (!result.success) {
-            Alert.alert('Erreur', 'Impossible de créer la session: ' + (result.error || ''));
-            return;
+        // Only create a backend session when Online
+        if (!isOffline) {
+            const result = await backendAPI.createSession(victimType.toUpperCase(), rescuerCount);
+            if (!result.success) {
+                Alert.alert('Erreur', 'Impossible de créer la session: ' + (result.error || ''));
+                return;
+            }
         }
 
         setMetrics(null);
@@ -155,42 +169,42 @@ export default function CPRScreen({ route, navigation }) {
         setIsActive(true);
         setPhase('ACTIVE');
 
-        // Configure frame processor
-        poseFrameProcessor.setCameraRef(cameraRef);
-        poseFrameProcessor.setCallbacks({
+        // Configure router (it internally routes to the right processor)
+        cprRouter.setCameraRef(cameraRef);
+        cprRouter.setCallbacks({
             onMetricsUpdate: handleMetricsUpdate,
             onConnectionStatus: handleConnectionUpdate,
             onError: handlePipelineError,
         });
 
-        // Start real-time processing
-        poseFrameProcessor.start();
+        // Start the correct processor via router
+        cprRouter.start();
 
         // Start timer
         timerRef.current = setInterval(() => {
             setElapsedTime(prev => prev + 1);
         }, 1000);
 
-        // Voice announcement
         speak(rulesEngine.language === 'ar'
             ? 'بدأت المساعدة. ضع يديك وابدأ الضغط'
-            : 'Assistance démarrée. Placez vos mains et commencez');
+            : isOffline ? 'Mode hors-ligne activé. Démarrez les compressions.'
+                : 'Assistance démarrée. Placez vos mains et commencez');
     };
 
     const stopCPR = async () => {
-        poseFrameProcessor.stop();
+        cprRouter.stop();
         if (timerRef.current) clearInterval(timerRef.current);
         Speech.stop();
 
-        // Wait briefly for any inflight frame processing to complete
         await new Promise(r => setTimeout(r, 300));
 
-        const stats = poseFrameProcessor.getStats();
+        const stats = cprRouter.getStats();
         setIsActive(false);
         setPhase('READY');
 
-        // End backend session (safe now — no more inflight frames)
-        await backendAPI.endSession();
+        if (!isOffline && backendAPI.hasActiveSession()) {
+            await backendAPI.endSession();
+        }
 
         // Show summary
         Alert.alert(
@@ -347,9 +361,11 @@ export default function CPRScreen({ route, navigation }) {
                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                             <View style={[styles.dot, { backgroundColor: connectionStatus?.connected ? '#A7F3D0' : '#FECACA' }]} />
                             <Text style={styles.statusText}>
-                                {connectionStatus?.connected
-                                    ? ` CONNECTÉ ${connectionStatus.latencyMs ? `${connectionStatus.latencyMs}ms` : ''}`
-                                    : ' DÉCONNECTÉ'}
+                                {isOffline
+                                    ? ' MODE HORS-LIGNE (TFLite)'
+                                    : connectionStatus?.connected
+                                        ? ` CONNECTÉ ${connectionStatus.latencyMs ? `${connectionStatus.latencyMs}ms` : ''}`
+                                        : ' DÉCONNECTÉ'}
                             </Text>
                         </View>
                     </View>
