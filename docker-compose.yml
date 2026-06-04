@@ -108,6 +108,9 @@ services:
       - CORE_SERVICE_URL=http://core-service:8080
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - JWT_PUBLIC_KEY=${JWT_PUBLIC_KEY}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
+      - AES_MASTER_KEY=${AES_MASTER_KEY}
     depends_on:
       - postgres
       - eureka-server
@@ -125,8 +128,12 @@ services:
       - CORE_SERVICE_URL=http://core-service:8080
       - JWT_PUBLIC_KEY=${JWT_PUBLIC_KEY}
       - JWT_PUBLIC_KEY_FILE=${JWT_PUBLIC_KEY_PATH}
+      - EUREKA_SERVER_URL=http://eureka-server:8761/eureka
+      - DATABASE_URL=postgresql://${SPRING_DATASOURCE_USERNAME}:${SPRING_DATASOURCE_PASSWORD}@postgres:5432/nexusaiddb
     depends_on:
       - rabbitmq
+      - eureka-server
+      - postgres
     networks:
       - nexusaid-network
     volumes:
@@ -141,13 +148,41 @@ services:
       - CORE_SERVICE_URL=http://core-service:8080
       - JWT_PUBLIC_KEY=${JWT_PUBLIC_KEY}
       - JWT_PUBLIC_KEY_FILE=${JWT_PUBLIC_KEY_PATH}
+      - EUREKA_SERVER_URL=http://eureka-server:8761/eureka
+      - DATABASE_URL=postgresql://${SPRING_DATASOURCE_USERNAME}:${SPRING_DATASOURCE_PASSWORD}@postgres:5432/nexusaiddb
     depends_on:
       - rabbitmq
       - disaster-detection
+      - eureka-server
+      - postgres
     networks:
       - nexusaid-network
     volumes:
       - disaster-cache:/app/data/cache
+
+  pdf-service:
+    build: ../pdf-service-branch
+    container_name: nexusaid-pdf-service
+    ports:
+      - "3001:3001"
+    environment:
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka/apps/
+    depends_on:
+      - eureka-server
+    networks:
+      - nexusaid-network
+
+  cpr-assistant:
+    build: ../app-mobile
+    container_name: nexusaid-cpr-assistant
+    ports:
+      - "8002:8000"
+    environment:
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka
+    depends_on:
+      - eureka-server
+    networks:
+      - nexusaid-network
 
   api-gateway:
     build: ../api-gateway
