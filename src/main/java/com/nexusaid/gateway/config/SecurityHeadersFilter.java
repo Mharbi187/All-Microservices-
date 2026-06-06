@@ -56,7 +56,7 @@ public class SecurityHeadersFilter implements GlobalFilter, Ordered {
                     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
                     "font-src 'self' https://fonts.gstatic.com; " +
                     "img-src 'self' data: https: blob:; " +
-                    "connect-src 'self'; " +
+                    "connect-src 'self' https://nominatim.openstreetmap.org https://*.tile.openstreetmap.org https://unpkg.com; " +
                     "frame-src 'self'; " +
                     "object-src 'none'; " +
                     "base-uri 'self'");

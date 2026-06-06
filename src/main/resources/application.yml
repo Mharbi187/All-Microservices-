@@ -113,6 +113,11 @@ spring:
           predicates:
             - Path=/api/v1/secourisme/**
 
+        - id: core-catastrophe
+          uri: lb://core-service
+          predicates:
+            - Path=/api/v1/catastrophe/**
+
         - id: core-sync
           uri: lb://core-service
           predicates:
