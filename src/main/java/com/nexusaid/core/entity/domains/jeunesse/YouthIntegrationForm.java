@@ -44,6 +44,9 @@ public class YouthIntegrationForm {
     @Column(name = "submitted_at")
     private LocalDateTime submittedAt;
 
+    @Transient
+    private String volunteerName;
+
     @PrePersist
     protected void onCreate() {
         submittedAt = LocalDateTime.now();

@@ -27,8 +27,8 @@ public class NewsController {
 
     /** Authenticated endpoint — returns news visible to the current user */
     @GetMapping
-    public ResponseEntity<List<NewsDTO>> getNews() {
-        return ResponseEntity.ok(newsService.getVisibleNews());
+    public ResponseEntity<List<NewsDTO>> getNews(@RequestParam(required = false) String category) {
+        return ResponseEntity.ok(newsService.getVisibleNews(category));
     }
 
     @PostMapping

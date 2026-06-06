@@ -1,4 +1,4 @@
-﻿cd 'core-service'
+cd 'core-service'
 Get-Content '..\.env' -ErrorAction SilentlyContinue | Where-Object { $_.Trim() -match '^[^#]' -and $_.Trim() -match '=' } | ForEach-Object {
     $name, $val = $_.Split('=', 2)
     $cleanVal = $val.Trim().Trim('"').Replace('\n', "
@@ -15,4 +15,6 @@ Get-Content '..\.env' -ErrorAction SilentlyContinue | Where-Object { $_.Trim() -
 [Environment]::SetEnvironmentVariable('SPRING_RABBITMQ_PASSWORD', [Environment]::GetEnvironmentVariable('RABBITMQ_PASS', 'Process'), 'Process')
 [Environment]::SetEnvironmentVariable('SPRING_DATASOURCE_URL', 'jdbc:postgresql://localhost:5432/nexusaiddb', 'Process')
 mvn spring-boot:run
+# En cas d'erreur de commande globale mvn, vous pouvez aussi lancer :
+# .\mvnw.cmd spring-boot:run
 

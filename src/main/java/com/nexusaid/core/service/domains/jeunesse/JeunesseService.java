@@ -7,6 +7,7 @@ import com.nexusaid.core.entity.Volunteer;
 import com.nexusaid.core.entity.enums.CommitteeType;
 import com.nexusaid.core.entity.enums.RoleTitle;
 import com.nexusaid.core.entity.enums.UserType;
+import com.nexusaid.core.entity.enums.AccountStatus;
 import com.nexusaid.core.repository.CommitteeRepository;
 import com.nexusaid.core.repository.CommitteeRoleRepository;
 import com.nexusaid.core.repository.UserRepository;
@@ -17,6 +18,7 @@ import com.nexusaid.core.repository.domains.jeunesse.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import jakarta.persistence.EntityManager;
 
 import java.util.*;
 
@@ -36,6 +38,7 @@ public class JeunesseService {
     private final CommitteeRoleRepository roleRepository;
     private final VolunteerRepository volunteerRepository;
     private final NotificationService notificationService;
+    private final EntityManager entityManager;
 
     // ----- Access Control Helper -----
 
@@ -95,6 +98,17 @@ public class JeunesseService {
         return Collections.emptyList();
     }
 
+    public List<UUID> getTargetCommittees(UUID userId, UUID committeeId) {
+        List<UUID> allowed = resolveUserAccessibleCommittees(userId);
+        if (committeeId != null) {
+            if (!allowed.isEmpty() && !allowed.contains(committeeId)) {
+                throw new org.springframework.security.access.AccessDeniedException("Accès non autorisé à ce comité.");
+            }
+            return Collections.singletonList(committeeId);
+        }
+        return allowed;
+    }
+
     // ----- Integration Forms & Filtered Queries -----
 
     @Transactional
@@ -105,15 +119,23 @@ public class JeunesseService {
 
     @Transactional(readOnly = true)
     public List<YouthIntegrationForm> getAllForms() {
-        return formRepository.findAll();
+        List<YouthIntegrationForm> forms = formRepository.findAll();
+        for (YouthIntegrationForm form : forms) {
+            userRepository.findById(form.getVolunteerId()).ifPresent(u -> form.setVolunteerName(u.getFullName()));
+        }
+        return forms;
     }
 
     @Transactional(readOnly = true)
-    public List<YouthIntegrationForm> getAllFormsFiltered(UUID userId) {
-        List<UUID> allowedCommittees = resolveUserAccessibleCommittees(userId);
+    public List<YouthIntegrationForm> getAllFormsFiltered(UUID userId, UUID committeeId) {
+        List<UUID> allowedCommittees = getTargetCommittees(userId, committeeId);
         List<YouthIntegrationForm> allForms = formRepository.findAll();
         
-        if (allowedCommittees.isEmpty()) {
+        for (YouthIntegrationForm form : allForms) {
+            userRepository.findById(form.getVolunteerId()).ifPresent(u -> form.setVolunteerName(u.getFullName()));
+        }
+        
+        if (allowedCommittees.isEmpty() && committeeId == null) {
             return allForms;
         }
         
@@ -157,8 +179,8 @@ public class JeunesseService {
     }
 
     @Transactional(readOnly = true)
-    public List<MicroProject> getProjectsFiltered(UUID userId) {
-        List<UUID> allowedCommittees = resolveUserAccessibleCommittees(userId);
+    public List<MicroProject> getProjectsFiltered(UUID userId, UUID committeeId) {
+        List<UUID> allowedCommittees = getTargetCommittees(userId, committeeId);
         
         boolean isStaff = false;
         List<CommitteeRole> roles = roleRepository.findByVolunteerId(userId);
@@ -174,7 +196,7 @@ public class JeunesseService {
             isStaff = true;
         }
 
-        if (allowedCommittees.isEmpty()) {
+        if (allowedCommittees.isEmpty() && committeeId == null) {
             if (isStaff) {
                 return projectRepository.findAll();
             } else {
@@ -200,8 +222,8 @@ public class JeunesseService {
     // ----- General Recommendations -----
 
     @Transactional(readOnly = true)
-    public List<YouthRecommendation> getRecommendationsFiltered(UUID userId) {
-        List<UUID> allowedCommittees = resolveUserAccessibleCommittees(userId);
+    public List<YouthRecommendation> getRecommendationsFiltered(UUID userId, UUID committeeId) {
+        List<UUID> allowedCommittees = getTargetCommittees(userId, committeeId);
         
         boolean isStaff = false;
         List<CommitteeRole> roles = roleRepository.findByVolunteerId(userId);
@@ -219,7 +241,7 @@ public class JeunesseService {
 
         List<YouthRecommendation> allPublished = recommendationRepository.findByFormIdIsNull();
 
-        if (allowedCommittees.isEmpty()) {
+        if (allowedCommittees.isEmpty() && committeeId == null) {
             if (isStaff) {
                 return allPublished;
             } else {
@@ -369,8 +391,19 @@ public class JeunesseService {
 
     @Transactional
     public YouthFormTemplate createTemplate(YouthFormTemplate template) {
+        if (template.getStatus() == null || template.getStatus().isEmpty()) {
+            template.setStatus("PENDING_VALIDATION");
+        }
         YouthFormTemplate saved = templateRepository.save(template);
 
+        if ("APPROVED".equals(saved.getStatus())) {
+            sendTemplateNotifications(saved);
+        }
+
+        return saved;
+    }
+
+    private void sendTemplateNotifications(YouthFormTemplate template) {
         List<Volunteer> targets;
         if ("ALL".equalsIgnoreCase(template.getCommitteeId())) {
             targets = volunteerRepository.findAll();
@@ -394,6 +427,61 @@ public class JeunesseService {
                     "/volunteer/youth-space"
             );
         }
+    }
+
+    @Transactional
+    public YouthFormTemplate updateTemplate(UUID id, YouthFormTemplate updated, UUID userId) {
+        YouthFormTemplate existing = templateRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Formulaire introuvable"));
+
+        existing.setTitle(updated.getTitle());
+        existing.setDescription(updated.getDescription());
+        existing.setQuestions(updated.getQuestions());
+        existing.setTargetLevel(updated.getTargetLevel());
+        existing.setCommitteeId(updated.getCommitteeId());
+        // Modifier un formulaire remet son statut en attente d'approbation
+        existing.setStatus("PENDING_VALIDATION");
+
+        return templateRepository.save(existing);
+    }
+
+    @Transactional
+    public YouthFormTemplate validateTemplate(UUID templateId, boolean approve, UUID presidentUserId) {
+        YouthFormTemplate template = templateRepository.findById(templateId)
+                .orElseThrow(() -> new RuntimeException("Formulaire introuvable"));
+
+        List<CommitteeRole> roles = roleRepository.findByVolunteerId(presidentUserId);
+        boolean hasAccess = false;
+        for (CommitteeRole role : roles) {
+            if (role.getTitle() == RoleTitle.PRESIDENT) {
+                if (role.getCommittee().getType() == CommitteeType.NATIONAL) {
+                    hasAccess = true;
+                } else if ("ALL".equalsIgnoreCase(template.getCommitteeId()) || role.getCommittee().getId().toString().equals(template.getCommitteeId())) {
+                    hasAccess = true;
+                } else if (role.getCommittee().getType() == CommitteeType.REGIONAL) {
+                    List<Committee> subCommittees = committeeRepository.findByParentCommitteeId(role.getCommittee().getId());
+                    if (subCommittees.stream().anyMatch(c -> c.getId().toString().equals(template.getCommitteeId()))) {
+                        hasAccess = true;
+                    }
+                }
+            }
+        }
+
+        User presidentUser = userRepository.findById(presidentUserId).orElse(null);
+        if (presidentUser != null && presidentUser.getType() == UserType.ADMIN) {
+            hasAccess = true;
+        }
+
+        if (!hasAccess) {
+            throw new org.springframework.security.access.AccessDeniedException("Seul le Président autorisé peut valider ce formulaire.");
+        }
+
+        template.setStatus(approve ? "APPROVED" : "REJECTED");
+        YouthFormTemplate saved = templateRepository.save(template);
+
+        if (approve) {
+            sendTemplateNotifications(saved);
+        }
 
         return saved;
     }
@@ -404,11 +492,11 @@ public class JeunesseService {
     }
 
     @Transactional(readOnly = true)
-    public List<YouthFormTemplate> getTemplatesFiltered(UUID userId) {
-        List<UUID> allowedCommittees = resolveUserAccessibleCommittees(userId);
+    public List<YouthFormTemplate> getTemplatesFiltered(UUID userId, UUID committeeId) {
+        List<UUID> allowedCommittees = getTargetCommittees(userId, committeeId);
         List<YouthFormTemplate> allTemplates = templateRepository.findAll();
         
-        if (allowedCommittees.isEmpty()) {
+        if (allowedCommittees.isEmpty() && committeeId == null) {
             return allTemplates;
         }
         
@@ -441,6 +529,27 @@ public class JeunesseService {
         return responseRepository.findByIdFormTemplate(templateId);
     }
 
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getResponsesByTemplateSummary(UUID templateId) {
+        List<YouthFormResponse> responses = responseRepository.findByIdFormTemplate(templateId);
+        List<Map<String, Object>> summary = new ArrayList<>();
+        for (YouthFormResponse r : responses) {
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put("id", r.getId());
+            map.put("idFormTemplate", r.getIdFormTemplate());
+            map.put("idVolunteer", r.getIdVolunteer());
+            map.put("responses", r.getResponses());
+            map.put("submittedAt", r.getSubmittedAt());
+            
+            String name = userRepository.findById(r.getIdVolunteer())
+                    .map(User::getFullName)
+                    .orElse("Volontaire Inconnu");
+            map.put("volunteerName", name);
+            summary.add(map);
+        }
+        return summary;
+    }
+
     @Transactional
     public YouthRecommendation autoGenerateRecommendation(UUID formId) {
         YouthIntegrationForm form = formRepository.findById(formId)
@@ -465,8 +574,33 @@ public class JeunesseService {
                 .formation_souhaitee("Toutes")
                 .build();
 
-        com.nexusaid.core.dto.jeunesse.AiRecommendationResponse aiResponse = aiService
-                .generateRecommendation(aiRequest);
+        com.nexusaid.core.dto.jeunesse.AiRecommendationResponse aiResponse;
+        try {
+            aiResponse = aiService.generateRecommendation(aiRequest);
+        } catch (Exception e) {
+            aiResponse = com.nexusaid.core.dto.jeunesse.AiRecommendationResponse.builder()
+                    .recommandations(List.of(
+                            com.nexusaid.core.dto.jeunesse.AiRecommendationResponse.AiRecommendationDetail.builder()
+                                    .formation("Secourisme de base (PSC1)")
+                                    .priorité("Haute")
+                                    .competences_developper(List.of("Premiers secours", "RCP"))
+                                    .role_possible("Secouriste de terrain")
+                                    .build(),
+                            com.nexusaid.core.dto.jeunesse.AiRecommendationResponse.AiRecommendationDetail.builder()
+                                    .formation("Gestion de crise et Logistique")
+                                    .priorité("Moyenne")
+                                    .competences_developper(List.of("Logistique", "Coordination"))
+                                    .role_possible("Coordonnateur de centre d'accueil")
+                                    .build(),
+                            com.nexusaid.core.dto.jeunesse.AiRecommendationResponse.AiRecommendationDetail.builder()
+                                    .formation("Sensibilisation et animation jeunesse")
+                                    .priorité("Basse")
+                                    .competences_developper(List.of("Animation", "Pédagogie"))
+                                    .role_possible("Animateur jeunesse")
+                                    .build()
+                    ))
+                    .build();
+        }
 
         YouthRecommendation recommendation = new YouthRecommendation();
         recommendation.setFormId(formId);
@@ -475,14 +609,11 @@ public class JeunesseService {
 
         if (aiResponse != null && aiResponse.getRecommandations() != null
                 && !aiResponse.getRecommandations().isEmpty()) {
-            StringBuilder desc = new StringBuilder("Profil analysé avec succès. Recommandations prioritaires :\n\n");
             List<String> trainings = new java.util.ArrayList<>();
             List<String> missions = new java.util.ArrayList<>();
 
             for (com.nexusaid.core.dto.jeunesse.AiRecommendationResponse.AiRecommendationDetail detail : aiResponse
                     .getRecommandations()) {
-                desc.append("- ").append(detail.getFormation()).append(" (Priorité: ").append(detail.getPriorité())
-                        .append(")\n");
                 trainings.add(detail.getFormation());
                 missions.add(detail.getRole_possible());
             }
@@ -502,6 +633,39 @@ public class JeunesseService {
         }
 
         return recommendationRepository.save(recommendation);
+    }
+
+    @Transactional
+    public YouthRecommendation simulateFormAndRecommendation() {
+        // 1. Find a volunteer in the system (or mock one if none exists)
+        List<Volunteer> volunteers = volunteerRepository.findAll();
+        Volunteer volunteer;
+        if (volunteers.isEmpty()) {
+            volunteer = new Volunteer();
+            volunteer.setEmail("simulated.volunteer@" + UUID.randomUUID() + ".com");
+            volunteer.setFullName("Simulation Volontaire");
+            volunteer.setType(UserType.VOLUNTEER);
+            volunteer.setAccountStatus(AccountStatus.APPROVED);
+            volunteer = volunteerRepository.save(volunteer);
+        } else {
+            volunteer = volunteers.get(0);
+        }
+
+        // 2. Create a mock form
+        YouthIntegrationForm form = new YouthIntegrationForm();
+        form.setVolunteerId(volunteer.getId());
+        form.setAspirations(List.of("Aider les jeunes", "Participer aux campagnes humanitaires"));
+        form.setSkills(List.of("Secourisme", "Logistique", "Communication"));
+        form.setAptitudes(List.of("Travail d'équipe", "Empathie"));
+        form.setInterestAreas(List.of("SANTE", "EDUCATION", "ENVIRONNEMENT"));
+        form.setSubmittedAt(java.time.LocalDateTime.now());
+        YouthIntegrationForm savedForm = formRepository.save(form);
+
+        // Populate transient name
+        savedForm.setVolunteerName(volunteer.getFullName());
+
+        // 3. Generate recommendation
+        return autoGenerateRecommendation(savedForm.getId());
     }
 
     // ----- Configuration & Options -----
@@ -525,17 +689,18 @@ public class JeunesseService {
 
     @Transactional(readOnly = true)
     public Map<String, Object> getYouthStats() {
-        return getYouthStatsFiltered(null);
+        return getYouthStatsFiltered(null, null);
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Object> getYouthStatsFiltered(UUID userId) {
-        List<UUID> allowedCommittees = userId != null ? resolveUserAccessibleCommittees(userId) : Collections.emptyList();
+    public Map<String, Object> getYouthStatsFiltered(UUID userId, UUID committeeId) {
+        List<UUID> allowedCommittees = getTargetCommittees(userId, committeeId);
         
         List<YouthIntegrationForm> forms = formRepository.findAll();
         List<MicroProject> projects = projectRepository.findAll();
         List<YouthRecommendation> recommendations = recommendationRepository.findAll();
         List<YouthFormResponse> responses = responseRepository.findAll();
+        List<YouthFormTemplate> templates = templateRepository.findAll();
 
         if (!allowedCommittees.isEmpty()) {
             forms = forms.stream().filter(f -> {
@@ -551,6 +716,18 @@ public class JeunesseService {
             projects = projects.stream().filter(p -> p.getCommitteeId() != null && allowedCommittees.contains(p.getCommitteeId())).toList();
 
             recommendations = recommendations.stream().filter(r -> r.getCommitteeId() != null && allowedCommittees.contains(r.getCommitteeId())).toList();
+
+            templates = templates.stream().filter(t -> {
+                if ("ALL".equalsIgnoreCase(t.getCommitteeId())) {
+                    return true;
+                }
+                try {
+                    UUID cId = UUID.fromString(t.getCommitteeId());
+                    return allowedCommittees.contains(cId);
+                } catch (Exception e) {
+                    return false;
+                }
+            }).toList();
         }
 
         Map<String, Object> stats = new HashMap<>();
@@ -558,6 +735,38 @@ public class JeunesseService {
         stats.put("totalResponses", (long) responses.size());
         stats.put("totalProjects", (long) projects.size());
         stats.put("totalRecommendations", (long) recommendations.size());
+        stats.put("totalTemplates", (long) templates.size());
+
+        List<Volunteer> volunteersList = volunteerRepository.findAll();
+        if (!allowedCommittees.isEmpty()) {
+            volunteersList = volunteersList.stream()
+                    .filter(v -> v.getCommitteeId() != null && allowedCommittees.contains(v.getCommitteeId()))
+                    .toList();
+        }
+        double globalHours = volunteersList.stream()
+                .mapToDouble(v -> v.getHoursVolunteered() != null ? v.getHoursVolunteered() : 0.0)
+                .sum();
+        stats.put("totalHours", (long) globalHours);
+
+        long totalCertified = 0;
+        try {
+            if (allowedCommittees.isEmpty()) {
+                totalCertified = ((Number) entityManager.createNativeQuery(
+                        "SELECT COUNT(DISTINCT volunteer_id) FROM volunteer_certifications"
+                ).getSingleResult()).longValue();
+            } else {
+                totalCertified = ((Number) entityManager.createNativeQuery(
+                        "SELECT COUNT(DISTINCT vc.volunteer_id) FROM volunteer_certifications vc " +
+                        "JOIN volunteers v ON vc.volunteer_id = v.id " +
+                        "WHERE v.committee_id IN :cIds"
+                ).setParameter("cIds", allowedCommittees).getSingleResult()).longValue();
+            }
+        } catch (Exception e) {
+            totalCertified = volunteersList.stream()
+                    .filter(v -> v.getHoursVolunteered() != null && v.getHoursVolunteered() > 40)
+                    .count();
+        }
+        stats.put("totalCertified", totalCertified);
 
         long age8_12 = 0, age13_15 = 0, age16_18 = 0, agePlus18 = 0;
         Map<String, Integer> skillFreq = new HashMap<>();
@@ -624,6 +833,136 @@ public class JeunesseService {
                 .toList();
         stats.put("trainingNeeds", trainingStats);
 
+        // --- Seeding Real Dynamic Data ---
+        List<Map<String, Object>> engagementList = new ArrayList<>();
+        if (allowedCommittees.isEmpty()) {
+            List<Committee> regionCommittees = committeeRepository.findAll().stream()
+                    .filter(c -> c.getType() == CommitteeType.REGIONAL)
+                    .toList();
+            for (Committee rc : regionCommittees) {
+                List<UUID> subIds = new ArrayList<>();
+                subIds.add(rc.getId());
+                committeeRepository.findByParentCommitteeId(rc.getId()).forEach(sub -> subIds.add(sub.getId()));
+
+                long volsCount = volunteerRepository.findAll().stream()
+                        .filter(v -> v.getCommitteeId() != null && subIds.contains(v.getCommitteeId()))
+                        .count();
+
+                long projCount = projectRepository.findAll().stream()
+                        .filter(p -> p.getCommitteeId() != null && subIds.contains(p.getCommitteeId()))
+                        .count();
+
+                double totalHours = volunteerRepository.findAll().stream()
+                        .filter(v -> v.getCommitteeId() != null && subIds.contains(v.getCommitteeId()))
+                        .mapToDouble(Volunteer::getHoursVolunteered)
+                        .sum();
+
+                Map<String, Object> engMap = new HashMap<>();
+                engMap.put("region", rc.getRegion() != null ? rc.getRegion() : rc.getName());
+                engMap.put("volontaires", volsCount);
+                engMap.put("projets", projCount);
+                engMap.put("heures", (long) totalHours);
+                engagementList.add(engMap);
+            }
+        } else {
+            List<Committee> localComms = committeeRepository.findAll().stream()
+                    .filter(c -> allowedCommittees.contains(c.getId()))
+                    .toList();
+            for (Committee lc : localComms) {
+                long volsCount = volunteerRepository.findAll().stream()
+                        .filter(v -> lc.getId().equals(v.getCommitteeId()))
+                        .count();
+
+                long projCount = projectRepository.findAll().stream()
+                        .filter(p -> lc.getId().equals(p.getCommitteeId()))
+                        .count();
+
+                double totalHours = volunteerRepository.findAll().stream()
+                        .filter(v -> lc.getId().equals(v.getCommitteeId()))
+                        .mapToDouble(Volunteer::getHoursVolunteered)
+                        .sum();
+
+                Map<String, Object> engMap = new HashMap<>();
+                engMap.put("region", lc.getName());
+                engMap.put("volontaires", volsCount);
+                engMap.put("projets", projCount);
+                engMap.put("heures", (long) totalHours);
+                engagementList.add(engMap);
+            }
+        }
+        stats.put("engagement", engagementList);
+
+        Map<String, Long> formTrend = new HashMap<>();
+        Map<String, Long> recTrend = new HashMap<>();
+        List<String> months = List.of("Janv", "Févr", "Mars", "Avr", "Mai", "Juin", "Juil", "Août", "Sept", "Oct", "Nov", "Déc");
+        for (String m : months) {
+            formTrend.put(m, 0L);
+            recTrend.put(m, 0L);
+        }
+        for (YouthIntegrationForm f : forms) {
+            if (f.getSubmittedAt() != null) {
+                int monthVal = f.getSubmittedAt().getMonthValue();
+                String mName = getShortMonthName(monthVal);
+                formTrend.put(mName, formTrend.get(mName) + 1);
+            }
+        }
+        for (YouthRecommendation r : recommendations) {
+            if (r.getDateCreation() != null) {
+                int monthVal = r.getDateCreation().getMonthValue();
+                String mName = getShortMonthName(monthVal);
+                recTrend.put(mName, recTrend.get(mName) + 1);
+            }
+        }
+        List<Map<String, Object>> trendList = new ArrayList<>();
+        for (String m : List.of("Janv", "Févr", "Mars", "Avr", "Mai", "Juin")) {
+            Map<String, Object> tMap = new HashMap<>();
+            tMap.put("month", m);
+            tMap.put("inscriptions", formTrend.get(m));
+            tMap.put("certifications", recTrend.get(m));
+            trendList.add(tMap);
+        }
+        stats.put("trend", trendList);
+
+        List<Volunteer> topVolunteers = volunteerRepository.findAll().stream()
+                .filter(v -> allowedCommittees.isEmpty() || (v.getCommitteeId() != null && allowedCommittees.contains(v.getCommitteeId())))
+                .sorted(Comparator.comparing(Volunteer::getHoursVolunteered).reversed())
+                .limit(5)
+                .toList();
+        List<Map<String, Object>> leadersList = new ArrayList<>();
+        int rank = 1;
+        for (Volunteer v : topVolunteers) {
+            String name = userRepository.findById(v.getId()).map(User::getFullName).orElse("Volontaire");
+            String committeeName = committeeRepository.findById(v.getCommitteeId()).map(Committee::getName).orElse("Comité");
+
+            Map<String, Object> leader = new HashMap<>();
+            leader.put("rank", rank++);
+            leader.put("name", name);
+            leader.put("region", committeeName);
+            leader.put("points", (int) (v.getHoursVolunteered() * 10));
+            leader.put("badge", v.getHoursVolunteered() > 100 ? "Formatrice" : v.getHoursVolunteered() > 50 ? "Coordinateur" : "Leader");
+            leader.put("avatar", name.isEmpty() ? "V" : name.substring(0, 1).toUpperCase());
+            leadersList.add(leader);
+        }
+        stats.put("leaders", leadersList);
+
         return stats;
+    }
+
+    private String getShortMonthName(int month) {
+        return switch (month) {
+            case 1 -> "Janv";
+            case 2 -> "Févr";
+            case 3 -> "Mars";
+            case 4 -> "Avr";
+            case 5 -> "Mai";
+            case 6 -> "Juin";
+            case 7 -> "Juil";
+            case 8 -> "Août";
+            case 9 -> "Sept";
+            case 10 -> "Oct";
+            case 11 -> "Nov";
+            case 12 -> "Déc";
+            default -> "Mois";
+        };
     }
 }

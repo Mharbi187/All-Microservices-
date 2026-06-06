@@ -9,6 +9,7 @@ import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
@@ -25,4 +26,8 @@ public class Trainer extends Volunteer {
     @Column(name = "audit_history", columnDefinition = "jsonb")
     @JdbcTypeCode(SqlTypes.JSON)
     private String auditHistory;
+
+    @Column(name = "promoted_at")
+    private LocalDateTime promotedAt;
 }
+

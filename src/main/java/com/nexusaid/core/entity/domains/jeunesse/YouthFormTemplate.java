@@ -37,6 +37,10 @@ public class YouthFormTemplate {
     @Column(name = "committee_id")
     private String committeeId;
 
+    @Column(name = "status", nullable = false)
+    @Builder.Default
+    private String status = "APPROVED"; // PENDING_VALIDATION, APPROVED, REJECTED
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 

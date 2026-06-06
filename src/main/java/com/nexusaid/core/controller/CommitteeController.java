@@ -112,7 +112,7 @@ public class CommitteeController {
 
     @GetMapping("/audit-logs")
     @PreAuthorize("hasAnyRole('PRESIDENT', 'ADMIN')")
-    public ResponseEntity<List<HierarchyAuditLog>> getAuditLogs(
+    public ResponseEntity<List<HierarchyDtos.AuditLogResponse>> getAuditLogs(
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
         return ResponseEntity.ok(committeeService.getHierarchicalAuditLogs(userDetails.getUser().getId()));
     }

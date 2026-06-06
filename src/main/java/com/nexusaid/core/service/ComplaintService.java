@@ -15,4 +15,5 @@ public interface ComplaintService {
     ComplaintDto updateComplaintStatus(UUID complaintId, ComplaintStatusUpdateDto updateDto);
     ComplaintDto addResponse(UUID complaintId, String message);
     ComplaintDto getComplaintById(UUID complaintId);
+    ComplaintDto viewComplaint(UUID complaintId);
 }

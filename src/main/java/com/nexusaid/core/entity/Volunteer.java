@@ -41,4 +41,8 @@ public class Volunteer extends User {
     // Optional: committee_id to easily track which committee they belong to initially
     @Column(name = "committee_id")
     private java.util.UUID committeeId;
+
+    @Column(name = "blood_type")
+    private String bloodType;
 }
+

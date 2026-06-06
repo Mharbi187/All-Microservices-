@@ -11,7 +11,10 @@ import java.util.UUID;
 
 public interface CalendarEventRepository extends JpaRepository<CalendarEvent, UUID> {
     
-    @Query("SELECT c FROM CalendarEvent c WHERE (c.committee.id = :committeeId OR c.committee IS NULL) AND c.endDate >= :now ORDER BY c.startDate ASC")
+    @Query("SELECT c FROM CalendarEvent c WHERE ((c.committee.id = :committeeId) " +
+           "OR c.targetScope = com.nexusaid.core.entity.enums.CommitteeType.NATIONAL " +
+           "OR (c.targetScope = com.nexusaid.core.entity.enums.CommitteeType.REGIONAL AND c.committee.region = (SELECT co.region FROM Committee co WHERE co.id = :committeeId)) " +
+           "OR c.committee IS NULL) AND c.endDate >= :now ORDER BY c.startDate ASC")
     List<CalendarEvent> findUpcomingEvents(@Param("committeeId") UUID committeeId, @Param("now") OffsetDateTime now);
 
     @Query("SELECT c FROM CalendarEvent c ORDER BY c.startDate DESC")

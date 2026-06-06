@@ -68,10 +68,12 @@ public class CommitteeService {
                     dto.put("type", c.getType());
                     dto.put("region", c.getRegion());
                     dto.put("status", c.getStatus());
+                    dto.put("parentId", c.getParentCommittee() != null ? c.getParentCommittee().getId() : null);
                     return dto;
                 })
                 .collect(Collectors.toList());
     }
+
 
     // =========================================================================
     // CREATE COMMITTEE — avec validations CRT
@@ -310,14 +312,40 @@ public class CommitteeService {
     /**
      * Audit Trail Hiérarchique
      */
-    public List<HierarchyAuditLog> getHierarchicalAuditLogs(UUID auditRequesterId) {
+    public List<HierarchyDtos.AuditLogResponse> getHierarchicalAuditLogs(UUID auditRequesterId) {
         List<UUID> visibleCommittees = getVisibleCommitteeIds(auditRequesterId);
 
         if (visibleCommittees.isEmpty()) {
             return new ArrayList<>();
         }
 
-        return auditLogRepository.findByTargetCommitteeIdInOrderByTimestampDesc(visibleCommittees);
+        List<HierarchyAuditLog> logs = auditLogRepository.findByTargetCommitteeIdInOrderByTimestampDesc(visibleCommittees);
+
+        return logs.stream().map(log -> {
+            String performedByName = userRepository.findById(log.getPerformedBy())
+                    .map(User::getFullName).orElse("Système");
+            
+            String committeeName = log.getTargetCommitteeId() != null ? 
+                    committeeRepository.findById(log.getTargetCommitteeId())
+                            .map(Committee::getName).orElse(null) : null;
+                            
+            String volunteerName = log.getTargetVolunteerId() != null ? 
+                    userRepository.findById(log.getTargetVolunteerId())
+                            .map(User::getFullName).orElse(null) : null;
+
+            return HierarchyDtos.AuditLogResponse.builder()
+                    .id(log.getId())
+                    .action(log.getAction())
+                    .performedBy(log.getPerformedBy())
+                    .performedByName(performedByName)
+                    .targetCommitteeId(log.getTargetCommitteeId())
+                    .targetCommitteeName(committeeName)
+                    .targetVolunteerId(log.getTargetVolunteerId())
+                    .targetVolunteerName(volunteerName)
+                    .reason(log.getReason())
+                    .timestamp(log.getTimestamp())
+                    .build();
+        }).collect(Collectors.toList());
     }
 
     private List<UUID> getVisibleCommitteeIds(UUID requestingUserId) {

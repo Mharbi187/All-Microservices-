@@ -13,4 +13,6 @@ public interface ComplaintRepository extends JpaRepository<Complaint, UUID> {
     List<Complaint> findBySubmitterIdOrderByCreatedAtDesc(UUID submitterId);
     List<Complaint> findByTargetCommitteeIdOrderByCreatedAtDesc(UUID targetCommitteeId);
     List<Complaint> findByTargetCommitteeIdAndStatusOrderByCreatedAtDesc(UUID targetCommitteeId, ComplaintStatus status);
+    List<Complaint> findByTargetCommitteeIdInOrderByCreatedAtDesc(List<UUID> targetCommitteeIds);
 }
+

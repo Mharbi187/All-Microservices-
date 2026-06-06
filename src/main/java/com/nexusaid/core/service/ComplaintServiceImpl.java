@@ -8,10 +8,13 @@ import com.nexusaid.core.dto.complaint.ComplaintStatusUpdateDto;
 import com.nexusaid.core.entity.*;
 import com.nexusaid.core.entity.enums.ComplaintStatus;
 import com.nexusaid.core.entity.enums.ComplaintVisibility;
+import com.nexusaid.core.entity.enums.CommitteeType;
 import com.nexusaid.core.repository.CommitteeRepository;
+import com.nexusaid.core.repository.CommitteeRoleRepository;
 import com.nexusaid.core.repository.ComplaintAttachmentRepository;
 import com.nexusaid.core.repository.ComplaintRepository;
 import com.nexusaid.core.repository.ComplaintResponseRepository;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,8 +34,12 @@ public class ComplaintServiceImpl implements ComplaintService {
     private final ComplaintAttachmentRepository attachmentRepository;
     private final ComplaintResponseRepository responseRepository;
     private final CommitteeRepository committeeRepository;
+    private final CommitteeRoleRepository committeeRoleRepository;
     private final AuthService authService;
     private final CloudinaryService cloudinaryService;
+    private final EmailService emailService;
+    private final NotificationService notificationService;
+
 
     @Override
     @Transactional
@@ -99,11 +106,24 @@ public class ComplaintServiceImpl implements ComplaintService {
         // Here we'd verify if the current user is a PRESIDENT, SG, or VP of this committee.
         // For brevity and based on existing auth, we assume @PreAuthorize handles access
         User currentUser = authService.getCurrentUser();
-        return complaintRepository.findByTargetCommitteeIdOrderByCreatedAtDesc(committeeId)
+        Committee committee = committeeRepository.findById(committeeId)
+                .orElseThrow(() -> new RuntimeException("Committee not found"));
+
+        List<UUID> targetCommitteeIds = new java.util.ArrayList<>();
+        targetCommitteeIds.add(committeeId);
+
+        if (committee.getType() == CommitteeType.REGIONAL) {
+            for (Committee sub : committee.getSubCommittees()) {
+                targetCommitteeIds.add(sub.getId());
+            }
+        }
+
+        return complaintRepository.findByTargetCommitteeIdInOrderByCreatedAtDesc(targetCommitteeIds)
                 .stream()
                 .map(c -> mapToDto(c, currentUser.getId()))
                 .collect(Collectors.toList());
     }
+
 
     @Override
     @Transactional(readOnly = true)
@@ -116,20 +136,59 @@ public class ComplaintServiceImpl implements ComplaintService {
                 .collect(Collectors.toList());
     }
 
+    private String translateStatus(ComplaintStatus status) {
+        if (status == null) return "Inconnu";
+        switch (status) {
+            case EN_ATTENTE: return "En attente";
+            case EN_COURS: return "En cours";
+            case RESOLU: return "Résolu";
+            case REJETE: return "Rejeté";
+            default: return status.name();
+        }
+    }
+
     @Override
     @Transactional
     public ComplaintDto updateComplaintStatus(UUID complaintId, ComplaintStatusUpdateDto updateDto) {
         Complaint complaint = complaintRepository.findById(complaintId)
                 .orElseThrow(() -> new RuntimeException("Complaint not found"));
                 
-        complaint.setStatus(updateDto.getStatus());
+        ComplaintStatus oldStatus = complaint.getStatus();
+        ComplaintStatus newStatus = updateDto.getStatus();
+        
+        complaint.setStatus(newStatus);
         complaintRepository.save(complaint);
+        
+        User currentUser = authService.getCurrentUser();
+        
+        if (complaint.getSubmitter() != null && oldStatus != newStatus) {
+            String managerName = complaint.getVisibility() == ComplaintVisibility.ANONYMOUS 
+                    ? "Un responsable" 
+                    : currentUser.getFullName();
+
+            emailService.sendComplaintStatusChangedEmail(
+                complaint.getSubmitter().getEmail(),
+                complaint.getSubmitter().getFullName(),
+                complaint.getSubject(),
+                translateStatus(oldStatus),
+                translateStatus(newStatus)
+            );
+            
+            notificationService.sendNotification(
+                complaint.getSubmitter(),
+                "COMPLAINT_STATUS_CHANGED",
+                "Statut de réclamation mis à jour",
+                "Le statut de votre réclamation '" + complaint.getSubject() + "' a été changé de " 
+                    + translateStatus(oldStatus) + " à " + translateStatus(newStatus) + " par " + managerName + ".",
+                "/volunteer/complaints"
+            );
+        }
         
         if (updateDto.getResponseMessage() != null && !updateDto.getResponseMessage().isEmpty()) {
             addResponse(complaintId, updateDto.getResponseMessage());
         }
 
-        return mapToDto(complaint, authService.getCurrentUser().getId());
+        return mapToDto(complaint, currentUser.getId());
     }
 
     @Override
@@ -148,6 +207,30 @@ public class ComplaintServiceImpl implements ComplaintService {
         responseRepository.save(response);
         complaint.getResponses().add(response);
         
+        // Notify submitter if responder is not the submitter
+        boolean isSubmitter = complaint.getSubmitter() != null && complaint.getSubmitter().getId().equals(currentUser.getId());
+        if (!isSubmitter && complaint.getSubmitter() != null) {
+            String responderName = complaint.getVisibility() == ComplaintVisibility.ANONYMOUS 
+                    ? "Un responsable" 
+                    : currentUser.getFullName();
+                    
+            emailService.sendComplaintResponseEmail(
+                complaint.getSubmitter().getEmail(),
+                complaint.getSubmitter().getFullName(),
+                complaint.getSubject(),
+                responderName,
+                message
+            );
+            
+            notificationService.sendNotification(
+                complaint.getSubmitter(),
+                "COMPLAINT_RESPONSE",
+                "Nouvelle réponse à votre réclamation",
+                "Une nouvelle réponse a été ajoutée à votre réclamation '" + complaint.getSubject() + "' par " + responderName + ".",
+                "/volunteer/complaints"
+            );
+        }
+        
         return mapToDto(complaint, currentUser.getId());
     }
 
@@ -159,10 +242,58 @@ public class ComplaintServiceImpl implements ComplaintService {
         return mapToDto(complaint, authService.getCurrentUser().getId());
     }
 
+    @Override
+    @Transactional
+    public ComplaintDto viewComplaint(UUID complaintId) {
+        Complaint complaint = complaintRepository.findById(complaintId)
+                .orElseThrow(() -> new RuntimeException("Complaint not found"));
+        User currentUser = authService.getCurrentUser();
+        
+        boolean isSubmitter = complaint.getSubmitter() != null && complaint.getSubmitter().getId().equals(currentUser.getId());
+        if (!isSubmitter && complaint.getSubmitter() != null) {
+            String currentStatusStr = complaint.getStatus().name();
+            if (complaint.getLastNotifiedStatus() == null || !complaint.getLastNotifiedStatus().equals(currentStatusStr)) {
+                complaint.setLastNotifiedStatus(currentStatusStr);
+                complaintRepository.save(complaint);
+                
+                String viewerName = complaint.getVisibility() == ComplaintVisibility.ANONYMOUS 
+                        ? "Un responsable" 
+                        : currentUser.getFullName();
+                
+                emailService.sendComplaintViewedEmail(
+                    complaint.getSubmitter().getEmail(),
+                    complaint.getSubmitter().getFullName(),
+                    complaint.getSubject(),
+                    viewerName
+                );
+                
+                notificationService.sendNotification(
+                    complaint.getSubmitter(),
+                    "COMPLAINT_VIEWED",
+                    "Réclamation consultée",
+                    "Votre réclamation '" + complaint.getSubject() + "' a été consultée par " + viewerName + ".",
+                    "/volunteer/complaints"
+                );
+            }
+        }
+        
+        return mapToDto(complaint, currentUser.getId());
+    }
+
     private ComplaintDto mapToDto(Complaint complaint, UUID currentUserId) {
         boolean isAnonymous = complaint.getVisibility() == ComplaintVisibility.ANONYMOUS;
         boolean isSubmitter = complaint.getSubmitter() != null && complaint.getSubmitter().getId().equals(currentUserId);
         
+        String submitterType = "VOLONTAIRE";
+        if (complaint.getSubmitter() != null) {
+            boolean hasApprovedRole = committeeRoleRepository.findByVolunteerId(complaint.getSubmitter().getId())
+                    .stream()
+                    .anyMatch(r -> r.getStatus() == com.nexusaid.core.entity.enums.CommitteeRoleStatus.APPROVED);
+            if (hasApprovedRole) {
+                submitterType = "RESPONSABLE";
+            }
+        }
+
         List<ComplaintAttachmentDto> attachmentDtos = complaint.getAttachments().stream().map(a ->
                 ComplaintAttachmentDto.builder()
                         .id(a.getId())
@@ -196,6 +327,7 @@ public class ComplaintServiceImpl implements ComplaintService {
                 // Hide submitter unless it's visible or the current user is the submitter
                 .submitterId(isAnonymous && !isSubmitter ? null : (complaint.getSubmitter() != null ? complaint.getSubmitter().getId() : null))
                 .submitterName(isAnonymous && !isSubmitter ? "Anonymous" : (complaint.getSubmitter() != null ? complaint.getSubmitter().getFullName() : "Anonymous"))
+                .submitterType(submitterType)
                 .attachments(attachmentDtos)
                 .responses(responseDtos)
                 .build();

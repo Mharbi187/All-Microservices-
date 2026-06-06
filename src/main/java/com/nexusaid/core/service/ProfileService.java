@@ -1,5 +1,7 @@
 package com.nexusaid.core.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nexusaid.core.dto.HierarchyDtos;
 import com.nexusaid.core.entity.Committee;
 import com.nexusaid.core.entity.CommitteeRole;
@@ -16,11 +18,17 @@ import com.nexusaid.core.repository.CommitteeRoleRepository;
 import com.nexusaid.core.repository.TrainerRepository;
 import com.nexusaid.core.repository.UserRepository;
 import com.nexusaid.core.repository.VolunteerRepository;
+import jakarta.persistence.EntityManager;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -38,6 +46,9 @@ public class ProfileService {
     private final CommitteeRoleRepository committeeRoleRepository;
     private final CommitteeRepository committeeRepository;
     private final CloudinaryService cloudinaryService;
+    private final EntityManager entityManager;
+    private final EmailService emailService;
+    private final NotificationService notificationService;
 
     public List<Volunteer> getPendingVolunteersForCommittee(UUID committeeId, UUID requestingUserId) {
         verifyPresidentAccess(committeeId, requestingUserId);
@@ -90,43 +101,107 @@ public class ProfileService {
 
         verifyPresidentAccess(volunteer.getCommitteeId(), requestingUserId);
 
-        // Native SQL delete is required because changing the discriminator
-        // value/inheritance
-        // type on an existing row cleanly in JPA is notoriously difficult without
-        // custom queries.
-        // We delete from volunteers, and re-insert into trainers.
-        volunteerRepository.delete(volunteer);
-        volunteerRepository.flush();
+        String domains = expertiseDomains != null ? expertiseDomains : "[]";
 
-        Trainer trainer = new Trainer();
-        trainer.setId(volunteer.getId()); // keep same ID
-        trainer.setEmail(volunteer.getEmail());
-        trainer.setPassword(volunteer.getPassword());
-        trainer.setFullName(volunteer.getFullName());
-        trainer.setCin(volunteer.getCin());
-        trainer.setPhone(volunteer.getPhone());
-        trainer.setType(UserType.TRAINER);
-        trainer.setAccountStatus(volunteer.getAccountStatus());
-        trainer.setMatricule(volunteer.getMatricule());
-        trainer.setSkills(volunteer.getSkills());
-        trainer.setDateAdhesion(volunteer.getDateAdhesion());
-        trainer.setHoursVolunteered(volunteer.getHoursVolunteered());
-        trainer.setTrainingProgress(volunteer.getTrainingProgress());
-        trainer.setCommitteeId(volunteer.getCommitteeId());
+        // Upsert into trainers join-table
+        int updated = entityManager.createNativeQuery(
+                "UPDATE trainers SET expertise_domains = CAST(:domains AS jsonb), promoted_at = NOW() WHERE id = :id")
+                .setParameter("domains", domains)
+                .setParameter("id", volunteerId)
+                .executeUpdate();
 
-        // Trainer specifics
-        trainer.setExpertiseDomains(expertiseDomains);
+        if (updated == 0) {
+            entityManager.createNativeQuery(
+                    "INSERT INTO trainers (id, expertise_domains, promoted_at) VALUES (:id, CAST(:domains AS jsonb), NOW())")
+                    .setParameter("id", volunteerId)
+                    .setParameter("domains", domains)
+                    .executeUpdate();
+        }
 
-        return trainerRepository.save(trainer);
+        // Also update user_type in users table to TRAINER so that user.getType() returns TRAINER
+        entityManager.createNativeQuery(
+                "UPDATE users SET user_type = 'TRAINER' WHERE id = :id")
+                .setParameter("id", volunteerId)
+                .executeUpdate();
+
+        entityManager.flush();
+        entityManager.clear();
+
+        Trainer trainer = trainerRepository.findById(volunteerId)
+                .orElseThrow(() -> new IllegalStateException("Trainer not found after promotion"));
+
+        // Parse domains list for email
+        List<String> domainList = new ArrayList<>();
+        try {
+            domainList = new com.fasterxml.jackson.databind.ObjectMapper()
+                    .readValue(domains, new com.fasterxml.jackson.core.type.TypeReference<List<String>>() {});
+        } catch (Exception ignored) {}
+
+        // Send promotion email
+        final List<String> finalDomains = domainList;
+        emailService.sendTrainerPromotionEmail(trainer.getEmail(), trainer.getFullName(), finalDomains);
+
+        // Send platform notification
+        User trainerUser = userRepository.findById(volunteerId).orElse(null);
+        if (trainerUser != null) {
+            notificationService.sendNotification(
+                    trainerUser,
+                    "TRAINER_PROMOTED",
+                    "🎓 Félicitations — Vous êtes maintenant Formateur !",
+                    "Vous avez été promu(e) formateur avec les domaines : " + String.join(", ", finalDomains),
+                    "/volunteers"
+            );
+        }
+
+        return trainer;
     }
 
-    private void verifyPresidentAccess(UUID committeeId, UUID requestingUserId) {
+    /**
+     * Access check for trainer management actions (President, VP, RespJeunesse, Admin).
+     * Used by TrainerService. VP is included (unlike verifyPresidentAccess).
+     */
+    public void verifyManagerAccess(UUID committeeId, UUID requestingUserId) {
         User user = userRepository.findById(requestingUserId)
                 .orElseThrow(() -> new AccessDeniedException("User not found"));
 
-        // Rule 0: Super Admins or National President (if isPresidentOfAncestor handles
-        // it) have 360° access
-        // Actually, let's explicitly trust ADMIN for 360°
+        if (user.getType() == UserType.ADMIN) return;
+
+        List<CommitteeRole> approvedRoles = committeeRoleRepository.findByVolunteerId(requestingUserId)
+                .stream()
+                .filter(r -> r.getStatus() == CommitteeRoleStatus.APPROVED)
+                .toList();
+
+        // National role → access all
+        boolean isNational = approvedRoles.stream()
+                .anyMatch(r -> r.getCommittee().getType() == CommitteeType.NATIONAL);
+        if (isNational) return;
+
+        // Direct PRESIDENT, VP, or RESP_JEUNESSE of this committee
+        boolean directAccess = approvedRoles.stream()
+                .filter(r -> r.getCommittee().getId().equals(committeeId))
+                .anyMatch(r -> r.getTitle() == RoleTitle.PRESIDENT
+                        || r.getTitle() == RoleTitle.VICE_PRESIDENT
+                        || r.getTitle() == RoleTitle.RESP_JEUNESSE);
+        if (directAccess) return;
+
+        // Regional ancestor access
+        boolean regionalAccess = approvedRoles.stream()
+                .filter(r -> r.getCommittee().getType() == CommitteeType.REGIONAL)
+                .anyMatch(r -> {
+                    List<Committee> subs = committeeRepository.findByParentCommitteeId(r.getCommittee().getId());
+                    return subs.stream().anyMatch(sub -> sub.getId().equals(committeeId));
+                });
+        if (regionalAccess) return;
+
+        throw new AccessDeniedException(
+                "Accès refusé : vous n'avez pas les droits pour gérer les formateurs de ce comité.");
+    }
+
+    public void verifyPresidentAccess(UUID committeeId, UUID requestingUserId) {
+        User user = userRepository.findById(requestingUserId)
+                .orElseThrow(() -> new AccessDeniedException("User not found"));
+
+        // Rule 0: Super Admins have 360° access
         if (user.getType() == UserType.ADMIN)
             return;
 
@@ -140,11 +215,29 @@ public class ProfileService {
         if (isAncestorPresident)
             return;
 
-        // Rule 2: RESP_JEUNESSE (and potentially other responsibles) restricted to OWN
-        // committee only
-        boolean isResponsible = committeeRoleRepository.existsByCommitteeIdAndTitleAndVolunteerId(
-                committeeId, RoleTitle.RESP_JEUNESSE, requestingUserId);
-        if (isResponsible)
+        // Rule 2: RESP_JEUNESSE (direct or hierarchical ancestor)
+        List<CommitteeRole> approvedRoles = committeeRoleRepository.findByVolunteerId(requestingUserId)
+                .stream()
+                .filter(r -> r.getStatus() == CommitteeRoleStatus.APPROVED)
+                .toList();
+
+        boolean isRespJeunesseOfDirectOrParent = approvedRoles.stream()
+                .filter(r -> r.getTitle() == RoleTitle.RESP_JEUNESSE)
+                .anyMatch(r -> {
+                    if (r.getCommittee().getId().equals(committeeId)) {
+                        return true;
+                    }
+                    if (r.getCommittee().getType() == CommitteeType.REGIONAL) {
+                        List<Committee> subCommittees = committeeRepository.findByParentCommitteeId(r.getCommittee().getId());
+                        return subCommittees.stream().anyMatch(sub -> sub.getId().equals(committeeId));
+                    }
+                    if (r.getCommittee().getType() == CommitteeType.NATIONAL) {
+                        return true;
+                    }
+                    return false;
+                });
+
+        if (isRespJeunesseOfDirectOrParent)
             return;
 
         // Check if user is National President (another way to be sure)
@@ -157,8 +250,9 @@ public class ProfileService {
             return;
 
         throw new AccessDeniedException(
-                "Only the PRESIDENT (hierarchical) or the RESP_JEUNESSE (of this committee) can perform this action.");
+                "Seul le PRÉSIDENT (hiérarchique) ou le RESP_JEUNESSE (de ce comité) peut effectuer cette action.");
     }
+
 
     /**
      * Checks if the user is a President of any ancestor committee.
@@ -191,13 +285,12 @@ public class ProfileService {
             return committeeRepository.findAll().stream().map(Committee::getId).toList();
         }
 
-        List<CommitteeRole> presidentRoles = committeeRoleRepository.findByVolunteerId(requestingUserId)
+        List<CommitteeRole> approvedRoles = committeeRoleRepository.findByVolunteerId(requestingUserId)
                 .stream()
-                .filter(r -> r.getTitle() == RoleTitle.PRESIDENT)
+                .filter(r -> r.getStatus() == CommitteeRoleStatus.APPROVED)
                 .toList();
 
-        if (presidentRoles.isEmpty()) {
-            // Non-president: can only see their own committee
+        if (approvedRoles.isEmpty()) {
             Volunteer v = volunteerRepository.findById(requestingUserId).orElse(null);
             if (v != null && v.getCommitteeId() != null) {
                 return List.of(v.getCommitteeId());
@@ -205,27 +298,33 @@ public class ProfileService {
             return List.of();
         }
 
-        boolean isNational = presidentRoles.stream()
+        boolean isNational = approvedRoles.stream()
                 .anyMatch(r -> r.getCommittee().getType() == CommitteeType.NATIONAL);
-        boolean isRegional = presidentRoles.stream()
+        boolean isRegional = approvedRoles.stream()
                 .anyMatch(r -> r.getCommittee().getType() == CommitteeType.REGIONAL);
 
         if (isNational) {
             return committeeRepository.findAll().stream().map(Committee::getId).toList();
         } else if (isRegional) {
             List<UUID> ids = new ArrayList<>();
-            for (CommitteeRole pr : presidentRoles) {
-                ids.add(pr.getCommittee().getId());
-                committeeRepository.findByParentCommitteeId(pr.getCommittee().getId())
-                        .forEach(c -> ids.add(c.getId()));
+            for (CommitteeRole role : approvedRoles) {
+                if (role.getCommittee().getType() == CommitteeType.REGIONAL) {
+                    ids.add(role.getCommittee().getId());
+                    committeeRepository.findByParentCommitteeId(role.getCommittee().getId())
+                            .forEach(c -> ids.add(c.getId()));
+                } else {
+                    ids.add(role.getCommittee().getId());
+                }
             }
-            return ids;
+            return ids.stream().distinct().toList();
         } else {
-            return presidentRoles.stream()
+            return approvedRoles.stream()
                     .map(r -> r.getCommittee().getId())
+                    .distinct()
                     .toList();
         }
     }
+
 
     /**
      * Returns ALL volunteers visible to the requesting user
@@ -306,7 +405,9 @@ public class ProfileService {
         profile.put("id", user.getId());
         profile.put("fullName", user.getFullName());
         profile.put("email", user.getEmail());
-        profile.put("userType", user.getType().name());
+        Trainer trainerEntity = trainerRepository.findById(userId).orElse(null);
+        boolean isTrainer = trainerEntity != null;
+        profile.put("userType", isTrainer ? "TRAINER" : user.getType().name());
         profile.put("accountStatus", user.getAccountStatus().name());
         profile.put("avatar", user.getAvatar());
         profile.put("roles", rolesList);
@@ -320,6 +421,14 @@ public class ProfileService {
             profile.put("matricule", v.getMatricule());
             profile.put("cin", v.getCin());
             profile.put("committeeId", v.getCommitteeId());
+            profile.put("bloodType", v.getBloodType());
+        }
+
+        // Trainer-specific extra fields (expertise domains)
+        if (isTrainer && trainerEntity.getExpertiseDomains() != null) {
+            profile.put("trainerDomains", trainerEntity.getExpertiseDomains());
+        } else if (isTrainer) {
+            profile.put("trainerDomains", "[]");
         }
 
         // Always expose firstLoginCompleted so the frontend can gate the onboarding
@@ -377,5 +486,43 @@ public class ProfileService {
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
         user.setFirstLoginCompleted(true);
         userRepository.save(user);
+    }
+
+    @Transactional
+    public void updateVolunteerDetails(UUID volunteerId, Map<String, Object> updates, UUID requestingUserId) {
+        Volunteer volunteer = volunteerRepository.findById(volunteerId)
+                .orElseThrow(() -> new IllegalArgumentException("Volunteer not found"));
+
+        if (volunteer.getCommitteeId() == null) {
+            throw new IllegalArgumentException("Volunteer does not belong to any committee");
+        }
+
+        verifyPresidentAccess(volunteer.getCommitteeId(), requestingUserId);
+
+        if (updates.containsKey("skills")) {
+            Object skillsVal = updates.get("skills");
+            if (skillsVal instanceof List<?> skillsList) {
+                volunteer.setSkills(skillsList.stream()
+                        .map(Object::toString)
+                        .collect(Collectors.toList()));
+            } else if (skillsVal instanceof String skillsStr) {
+                try {
+                    List<String> list = new com.fasterxml.jackson.databind.ObjectMapper()
+                            .readValue(skillsStr, new com.fasterxml.jackson.core.type.TypeReference<List<String>>() {});
+                    volunteer.setSkills(list);
+                } catch (Exception e) {
+                    volunteer.setSkills(java.util.Arrays.stream(skillsStr.split(","))
+                            .map(String::trim)
+                            .filter(s -> !s.isEmpty())
+                            .collect(Collectors.toList()));
+                }
+            }
+        }
+
+        if (updates.containsKey("bloodType")) {
+            volunteer.setBloodType((String) updates.get("bloodType"));
+        }
+
+        volunteerRepository.save(volunteer);
     }
 }

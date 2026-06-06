@@ -43,6 +43,12 @@ public class JeunesseController {
         return ResponseEntity.ok(jeunesseService.autoGenerateRecommendation(formId));
     }
 
+    @PostMapping("/forms/simulate")
+    @PreAuthorize("hasAnyRole('PRESIDENT', 'RESP_JEUNESSE', 'ADMIN')")
+    public ResponseEntity<YouthRecommendation> simulateFormAndRecommendation() {
+        return ResponseEntity.ok(jeunesseService.simulateFormAndRecommendation());
+    }
+
     @PostMapping("/forms")
     @PreAuthorize("hasRole('VOLUNTEER') or hasRole('ADMIN')")
     public ResponseEntity<YouthIntegrationForm> submitForm(
@@ -55,8 +61,9 @@ public class JeunesseController {
     @GetMapping("/forms")
     @PreAuthorize("hasAnyRole('PRESIDENT', 'RESP_JEUNESSE', 'ADMIN')")
     public ResponseEntity<List<YouthIntegrationForm>> getAllForms(
-            @AuthenticationPrincipal UserDetailsImpl userDetails) {
-        return ResponseEntity.ok(jeunesseService.getAllFormsFiltered(userDetails.getUser().getId()));
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @RequestParam(required = false) UUID committeeId) {
+        return ResponseEntity.ok(jeunesseService.getAllFormsFiltered(userDetails.getUser().getId(), committeeId));
     }
 
     @GetMapping("/forms/{formId}/recommendation")
@@ -87,8 +94,9 @@ public class JeunesseController {
     @GetMapping("/projects")
     @PreAuthorize("hasAnyRole('PRESIDENT', 'RESP_JEUNESSE', 'VOLUNTEER', 'ADMIN')")
     public ResponseEntity<List<MicroProject>> getAllProjects(
-            @AuthenticationPrincipal UserDetailsImpl userDetails) {
-        return ResponseEntity.ok(jeunesseService.getProjectsFiltered(userDetails.getUser().getId()));
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @RequestParam(required = false) UUID committeeId) {
+        return ResponseEntity.ok(jeunesseService.getProjectsFiltered(userDetails.getUser().getId(), committeeId));
     }
 
     @PostMapping("/projects/{projectId}/validate")
@@ -105,8 +113,9 @@ public class JeunesseController {
     @GetMapping("/recommendations")
     @PreAuthorize("hasAnyRole('PRESIDENT', 'RESP_JEUNESSE', 'VOLUNTEER', 'ADMIN')")
     public ResponseEntity<List<YouthRecommendation>> getRecommendations(
-            @AuthenticationPrincipal UserDetailsImpl userDetails) {
-        return ResponseEntity.ok(jeunesseService.getRecommendationsFiltered(userDetails.getUser().getId()));
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @RequestParam(required = false) UUID committeeId) {
+        return ResponseEntity.ok(jeunesseService.getRecommendationsFiltered(userDetails.getUser().getId(), committeeId));
     }
 
     @PostMapping("/recommendations/publish")
@@ -155,8 +164,27 @@ public class JeunesseController {
     @GetMapping("/templates")
     @PreAuthorize("hasAnyRole('PRESIDENT', 'RESP_JEUNESSE', 'VOLUNTEER', 'ADMIN')")
     public ResponseEntity<List<YouthFormTemplate>> getAllTemplates(
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @RequestParam(required = false) UUID committeeId) {
+        return ResponseEntity.ok(jeunesseService.getTemplatesFiltered(userDetails.getUser().getId(), committeeId));
+    }
+
+    @PutMapping("/templates/{id}")
+    @PreAuthorize("hasAnyRole('PRESIDENT', 'RESP_JEUNESSE', 'ADMIN')")
+    public ResponseEntity<YouthFormTemplate> updateTemplate(
+            @PathVariable UUID id,
+            @RequestBody YouthFormTemplate template,
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
-        return ResponseEntity.ok(jeunesseService.getTemplatesFiltered(userDetails.getUser().getId()));
+        return ResponseEntity.ok(jeunesseService.updateTemplate(id, template, userDetails.getUser().getId()));
+    }
+
+    @PostMapping("/templates/{id}/validate")
+    @PreAuthorize("hasAnyRole('PRESIDENT', 'ADMIN')")
+    public ResponseEntity<YouthFormTemplate> validateTemplate(
+            @PathVariable UUID id,
+            @RequestParam boolean approve,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        return ResponseEntity.ok(jeunesseService.validateTemplate(id, approve, userDetails.getUser().getId()));
     }
 
     // ----- Dynamic Responses -----
@@ -172,8 +200,8 @@ public class JeunesseController {
 
     @GetMapping("/templates/{templateId}/responses")
     @PreAuthorize("hasAnyRole('PRESIDENT', 'RESP_JEUNESSE', 'ADMIN')")
-    public ResponseEntity<List<YouthFormResponse>> getResponsesByTemplate(@PathVariable UUID templateId) {
-        return ResponseEntity.ok(jeunesseService.getResponsesByTemplate(templateId));
+    public ResponseEntity<List<Map<String, Object>>> getResponsesByTemplate(@PathVariable UUID templateId) {
+        return ResponseEntity.ok(jeunesseService.getResponsesByTemplateSummary(templateId));
     }
 
     // ----- Configuration & Options -----
@@ -202,7 +230,8 @@ public class JeunesseController {
     @GetMapping("/stats")
     @PreAuthorize("hasAnyRole('PRESIDENT', 'RESP_JEUNESSE', 'ADMIN')")
     public ResponseEntity<Map<String, Object>> getStats(
-            @AuthenticationPrincipal UserDetailsImpl userDetails) {
-        return ResponseEntity.ok(jeunesseService.getYouthStatsFiltered(userDetails.getUser().getId()));
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @RequestParam(required = false) UUID committeeId) {
+        return ResponseEntity.ok(jeunesseService.getYouthStatsFiltered(userDetails.getUser().getId(), committeeId));
     }
 }

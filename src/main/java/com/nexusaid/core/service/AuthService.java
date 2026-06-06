@@ -94,6 +94,11 @@ public class AuthService {
                                         })
                                         .distinct()
                                         .collect(Collectors.toList());
+                        if (user instanceof Trainer || user.getType() == UserType.TRAINER) {
+                                if (!roleTitles.contains("TRAINER")) {
+                                        roleTitles.add("TRAINER");
+                                }
+                        }
                         claims.put("roles", roleTitles);
                 } else {
                         claims.put("roles", List.of());
@@ -103,6 +108,9 @@ public class AuthService {
 
         @Transactional
         public AuthResponse register(RegisterRequest request, String ipAddress, String userAgent) {
+                if (request.getEmail() != null) {
+                        request.setEmail(request.getEmail().trim());
+                }
 
                 // ── Validate CAPTCHA for registration (always required) ──
                 if (captchaService.isEnabled() && request.getCaptchaToken() != null
@@ -218,6 +226,9 @@ public class AuthService {
         }
 
         public AuthResponse login(LoginRequest request, String ipAddress, String userAgent) {
+                if (request.getEmail() != null) {
+                        request.setEmail(request.getEmail().trim());
+                }
 
                 String email = request.getEmail();
 

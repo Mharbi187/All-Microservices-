@@ -67,4 +67,20 @@ public class HierarchyDtos {
         private int mandateDurationYears;
         private List<String> warnings;
     }
+    @Data
+    @Builder
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class AuditLogResponse {
+        private UUID id;
+        private String action;
+        private UUID performedBy;
+        private String performedByName;
+        private UUID targetCommitteeId;
+        private String targetCommitteeName;
+        private UUID targetVolunteerId;
+        private String targetVolunteerName;
+        private String reason;
+        private java.time.LocalDateTime timestamp;
+    }
 }

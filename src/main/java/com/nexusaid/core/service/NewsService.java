@@ -45,7 +45,7 @@ public class NewsService {
     }
 
     @Transactional(readOnly = true)
-    public List<NewsDTO> getVisibleNews() {
+    public List<NewsDTO> getVisibleNews(String category) {
         User currentUser = authService.getCurrentUser();
         UUID committeeId = null;
 
@@ -61,6 +61,12 @@ public class NewsService {
             newsItems = newsRepository.findVisibleNews(committeeId);
         } else {
             newsItems = newsRepository.findAllOrdered();
+        }
+
+        if (category != null && !category.trim().isEmpty()) {
+            newsItems = newsItems.stream()
+                    .filter(n -> category.equalsIgnoreCase(n.getCategory()))
+                    .collect(Collectors.toList());
         }
 
         return newsItems.stream()

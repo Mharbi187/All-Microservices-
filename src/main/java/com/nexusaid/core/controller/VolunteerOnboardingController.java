@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -173,6 +174,7 @@ public class VolunteerOnboardingController {
 
     /** Tous les comités actifs — DTO léger pour la page d'inscription (sans token) */
     @GetMapping("/public/committees/all")
+    @Transactional(readOnly = true)
     public ResponseEntity<List<Map<String, Object>>> getAllActiveCommittees() {
         List<Committee> all = committeeRepository.findAll().stream()
                 .filter(c -> c.getStatus() == CommitteeStatus.ACTIVE

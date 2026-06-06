@@ -10,7 +10,10 @@ import java.util.UUID;
 
 public interface NewsRepository extends JpaRepository<NewsItem, UUID> {
     
-    @Query("SELECT n FROM NewsItem n WHERE n.committee.id = :committeeId OR n.category = 'NATIONAL' ORDER BY n.publishedAt DESC")
+    @Query("SELECT n FROM NewsItem n WHERE n.committee.id = :committeeId " +
+           "OR n.targetScope = com.nexusaid.core.entity.enums.CommitteeType.NATIONAL " +
+           "OR (n.targetScope = com.nexusaid.core.entity.enums.CommitteeType.REGIONAL AND n.committee.region = (SELECT c.region FROM Committee c WHERE c.id = :committeeId)) " +
+           "ORDER BY n.publishedAt DESC")
     List<NewsItem> findVisibleNews(@Param("committeeId") UUID committeeId);
 
     @Query("SELECT n FROM NewsItem n ORDER BY n.publishedAt DESC")

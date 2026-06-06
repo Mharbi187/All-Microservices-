@@ -59,6 +59,14 @@ public class Complaint {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    /**
+     * Tracks the last status for which the submitter was notified via email+in-app.
+     * Logic: send notification only once per (complaint, status) pair.
+     * Statuses: EN_ATTENTE → EN_COURS → RESOLU (REJETE also triggers notification).
+     */
+    @Column(name = "last_notified_status", length = 20)
+    private String lastNotifiedStatus;
+
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();

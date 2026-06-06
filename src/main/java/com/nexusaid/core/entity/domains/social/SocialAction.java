@@ -36,7 +36,7 @@ public class SocialAction {
     @Column(name = "aid_provided", columnDefinition = "jsonb")
     private Map<String, Object> aidProvided;
 
-    private int quantity;
+    private Integer quantity;
 
     @Column(length = 300)
     private String title;
@@ -51,10 +51,10 @@ public class SocialAction {
     private String actionChiefName;
 
     @Column(name = "volunteers_needed")
-    private boolean volunteersNeeded;
+    private Boolean volunteersNeeded;
 
     @Column(name = "volunteers_count")
-    private int volunteersCount;
+    private Integer volunteersCount;
 
     @Type(JsonBinaryType.class)
     @Column(name = "files_urls", columnDefinition = "jsonb")

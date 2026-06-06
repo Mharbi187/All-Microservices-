@@ -35,6 +35,18 @@ public class UserDetailsImpl implements UserDetails {
         // Base role from UserType (VOLUNTEER, DONOR, etc.)
         authorities.add(new SimpleGrantedAuthority("ROLE_" + user.getType().name()));
 
+        // Grant both ROLE_TRAINER and ROLE_VOLUNTEER if the user is a trainer
+        if (user instanceof com.nexusaid.core.entity.Trainer || user.getType() == com.nexusaid.core.entity.enums.UserType.TRAINER) {
+            SimpleGrantedAuthority trainerAuth = new SimpleGrantedAuthority("ROLE_TRAINER");
+            SimpleGrantedAuthority volunteerAuth = new SimpleGrantedAuthority("ROLE_VOLUNTEER");
+            if (!authorities.contains(trainerAuth)) {
+                authorities.add(trainerAuth);
+            }
+            if (!authorities.contains(volunteerAuth)) {
+                authorities.add(volunteerAuth);
+            }
+        }
+
         // Add CommitteeRole titles as additional authorities (PRESIDENT, RESP_SECOURISME, etc.)
         for (CommitteeRole role : committeeRoles) {
             authorities.add(new SimpleGrantedAuthority("ROLE_" + role.getTitle().name()));

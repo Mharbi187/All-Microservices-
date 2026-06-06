@@ -74,7 +74,7 @@ public class HealthAction {
 
     // --- Volontaires ---
     @Column(name = "volunteers_needed")
-    private boolean volunteersNeeded;
+    private Boolean volunteersNeeded;
 
     @Column(name = "volunteers_count")
     private int volunteersCount;

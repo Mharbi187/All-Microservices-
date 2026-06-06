@@ -71,4 +71,10 @@ public class ComplaintController {
             @RequestBody Map<String, String> payload) {
         return ResponseEntity.ok(complaintService.addResponse(id, payload.get("message")));
     }
+
+    @GetMapping("/{id}/view")
+    @PreAuthorize("hasAnyRole('PRESIDENT', 'VICE_PRESIDENT', 'SECRETAIRE_GENERAL', 'PRESIDENT_NATIONAL', 'VICE_PRESIDENT_NATIONAL', 'PRESIDENT_REGIONAL', 'VICE_PRESIDENT_REGIONAL', 'PRESIDENT_LOCAL', 'VICE_PRESIDENT_LOCAL')")
+    public ResponseEntity<ComplaintDto> viewComplaint(@PathVariable UUID id) {
+        return ResponseEntity.ok(complaintService.viewComplaint(id));
+    }
 }

@@ -22,6 +22,8 @@ public class ComplaintDto {
     // Submitter Info (will be null if visibility is ANONYMOUS and requester is not the submitter)
     private UUID submitterId;
     private String submitterName;
+    private String submitterType;
+
 
     // Target Committee Info
     private UUID targetCommitteeId;
