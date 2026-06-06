@@ -20,14 +20,15 @@ import {
     SendOutlined, CopyOutlined, SaveOutlined,
     InfoCircleOutlined, FilterOutlined, AreaChartOutlined,
     EditOutlined, LikeOutlined, DislikeOutlined, CheckOutlined, CloseOutlined,
-    ProjectOutlined, BulbOutlined
+    ProjectOutlined, BulbOutlined, EnvironmentOutlined, ClusterOutlined
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
 
 import jeunesseService from '@/services/jeunesseService';
-import type { YouthIntegrationFormDTO, YouthRecommendationDTO, YouthFormTemplateDTO, MicroProjectDTO } from '@/types';
+import committeeService from '@/services/committeeService';
+import type { YouthIntegrationFormDTO, YouthRecommendationDTO, YouthFormTemplateDTO, MicroProjectDTO, Committee } from '@/types';
 import { useUIStore, useAuthStore } from '@/stores';
 
 // New Components
@@ -78,26 +79,39 @@ const JeunessePage: React.FC = () => {
     const [projectForm] = Form.useForm();
     const [recForm] = Form.useForm();
     const [submitting, setSubmitting] = useState(false);
+    const [simulating, setSimulating] = useState(false);
     const [selectedProjectDetails, setSelectedProjectDetails] = useState<MicroProjectDTO | null>(null);
     const [isProjectDetailsOpen, setIsProjectDetailsOpen] = useState(false);
 
     const user = useAuthStore((s) => s.user);
     const userRoles = user?.roles || [];
-    const userRole = userRoles[0] || 'RESP_JEUNESSE';
-    const userLevel = userRole.includes('NATIONAL') ? 'NATIONAL' : userRole.includes('REGIONAL') ? 'REGIONAL' : 'LOCAL';
-    const [selectedCommittee, setSelectedCommittee] = useState<string>(user?.committeeId || 'ALL');
+    const userLevel = userRoles.some(r => r.includes('NATIONAL')) ? 'NATIONAL' : userRoles.some(r => r.includes('REGIONAL')) ? 'REGIONAL' : 'LOCAL';
+    const [selectedCommittee, setSelectedCommittee] = useState<string>(
+        userLevel === 'LOCAL' ? (user?.committeeId || '') : 'ALL'
+    );
+    const [allCommittees, setAllCommittees] = useState<Committee[]>([]);
+
+    useEffect(() => {
+        if (userLevel === 'LOCAL' && user?.committeeId && selectedCommittee !== user.committeeId) {
+            setSelectedCommittee(user.committeeId);
+        }
+    }, [user?.committeeId, userLevel, selectedCommittee]);
 
     const isPresident = userRoles.some(role => role.includes('PRESIDENT'));
     const isRespJeunesse = userRoles.some(role => role.includes('RESP_JEUNESSE'));
+    const isVicePresident = userRoles.some(role => role.includes('VICE_PRESIDENT'));
 
     // UI State
     const [isRecModalOpen, setIsRecModalOpen] = useState(false);
     const [isBuilderOpen, setIsBuilderOpen] = useState(false);
+    const [editingTemplate, setEditingTemplate] = useState<any>(null);
     const [selectedForm, setSelectedForm] = useState<any>(null);
     const [drawerVisible, setDrawerVisible] = useState(false);
     const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
     const [templateResponses, setTemplateResponses] = useState<any[]>([]);
     const [responsesLoading, setResponsesLoading] = useState(false);
+    const [selectedDetailedResponse, setSelectedDetailedResponse] = useState<any>(null);
+    const [isResponseDetailsOpen, setIsResponseDetailsOpen] = useState(false);
     const [autoRecLoading, setAutoRecLoading] = useState<Record<string, boolean>>({});
     const [domainOptions, setDomainOptions] = useState<any[]>([]);
 
@@ -114,13 +128,14 @@ const JeunessePage: React.FC = () => {
     const loadData = useCallback(async () => {
         setLoading(true);
         setStatsLoading(true);
+        const apiCommId = (selectedCommittee === 'ALL' || !selectedCommittee) ? undefined : selectedCommittee;
         try {
             const [f, t, opts, proj, recs] = await Promise.all([
-                jeunesseService.getForms().catch(() => []),
-                jeunesseService.getTemplates().catch(() => []),
+                jeunesseService.getForms(apiCommId).catch(() => []),
+                jeunesseService.getTemplates(apiCommId).catch(() => []),
                 jeunesseService.getOptions().catch(() => []),
-                jeunesseService.getProjects().catch(() => []),
-                jeunesseService.getRecommendations().catch(() => []),
+                jeunesseService.getProjects(apiCommId).catch(() => []),
+                jeunesseService.getRecommendations(apiCommId).catch(() => []),
             ]);
             setForms(Array.isArray(f) ? f : []);
             setDomainOptions(Array.isArray(opts) ? opts : []);
@@ -139,7 +154,7 @@ const JeunessePage: React.FC = () => {
             );
             setTemplates(enriched);
 
-            jeunesseService.getStats()
+            jeunesseService.getStats(apiCommId)
                 .then(setStats)
                 .catch(console.error)
                 .finally(() => setStatsLoading(false));
@@ -157,9 +172,36 @@ const JeunessePage: React.FC = () => {
         } finally {
             setLoading(false);
         }
+    }, [selectedCommittee]);
+
+    useEffect(() => {
+        loadData();
+    }, [loadData]);
+
+    useEffect(() => {
+        committeeService.getAll()
+            .then(setAllCommittees)
+            .catch(err => console.error("Error loading committees:", err));
     }, []);
 
-    useEffect(() => { loadData(); }, [loadData]);
+    const getSelectableCommittees = (): Committee[] => {
+        if (userLevel === 'NATIONAL') {
+            return allCommittees;
+        }
+        if (userLevel === 'REGIONAL') {
+            const myId = user?.committeeId;
+            if (!myId) return [];
+            return allCommittees.filter(c => c.id === myId || c.parentId === myId);
+        }
+        const myId = user?.committeeId;
+        if (!myId) return [];
+        return allCommittees.filter(c => c.id === myId);
+    };
+
+    const handleEditTemplate = (tmpl: any) => {
+        setEditingTemplate(tmpl);
+        setIsBuilderOpen(true);
+    };
 
     const handleViewResponses = async (template: any) => {
         setSelectedTemplate(template);
@@ -189,6 +231,26 @@ const JeunessePage: React.FC = () => {
             notification.error({ message: 'Erreur d\'Analyse', description: 'Échec de la génération IA.' });
         } finally {
             setAutoRecLoading(prev => ({ ...prev, [formId]: false }));
+        }
+    };
+
+    const handleSimulateResponse = async () => {
+        setSimulating(true);
+        try {
+            const rec = await jeunesseService.simulateFormAndRecommendation();
+            notification.success({
+                message: 'Simulation Réussie',
+                description: `Une réponse fictive a été insérée, et une recommandation IA a été générée pour: ${rec.title || 'Profil Volontaire'}.`,
+                icon: <RobotOutlined style={{ color: '#e01c2e' }} />
+            });
+            loadData();
+        } catch (error) {
+            notification.error({
+                message: 'Erreur de Simulation',
+                description: 'Impossible de générer la simulation.'
+            });
+        } finally {
+            setSimulating(false);
         }
     };
 
@@ -297,6 +359,228 @@ const JeunessePage: React.FC = () => {
         }
     };
 
+    const handleValidateTemplate = async (templateId: string, approve: boolean) => {
+        try {
+            await jeunesseService.validateTemplate(templateId, approve);
+            notification.success({
+                message: approve ? 'Formulaire Validé' : 'Formulaire Rejeté',
+                description: `Le modèle de formulaire a été ${approve ? 'approuvé' : 'rejeté'} avec succès.`,
+                placement: 'topRight'
+            });
+            loadData();
+        } catch {
+            notification.error({ message: 'Erreur', description: 'Échec de la validation du formulaire.' });
+        }
+    };
+
+    const responseColumns = [
+        {
+            title: 'Volontaire',
+            dataIndex: 'volunteerName',
+            key: 'volunteerName',
+            render: (n: string) => (
+                <Space>
+                    <Avatar size="small" style={{ background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)' }}>{n?.[0] || 'V'}</Avatar>
+                    <Text strong>{n || 'Volontaire Inconnu'}</Text>
+                </Space>
+            )
+        },
+        {
+            title: 'Date de soumission',
+            dataIndex: 'submittedAt',
+            key: 'submittedAt',
+            render: (d: string) => <Text type="secondary">{d ? new Date(d).toLocaleString() : '—'}</Text>
+        },
+        {
+            title: 'Action',
+            key: 'action',
+            align: 'right' as const,
+            render: (_: any, record: any) => (
+                <Button size="small" icon={<EyeOutlined />} onClick={() => handleViewDetailedResponse(record)}>Voir</Button>
+            )
+        }
+    ];
+
+    const handleViewDetailedResponse = (record: any) => {
+        setSelectedDetailedResponse(record);
+        setIsResponseDetailsOpen(true);
+    };
+
+    const getLevelBadge = (level: string) => {
+        switch (level) {
+            case 'NATIONAL':
+                return {
+                    icon: <GlobalOutlined style={{ color: '#d4af37' }} />,
+                    color: '#e01c2e',
+                    label: 'National'
+                };
+            case 'REGIONAL':
+                return {
+                    icon: <EnvironmentOutlined style={{ color: '#c0c0c0' }} />,
+                    color: '#1d4ed8',
+                    label: 'Régional'
+                };
+            case 'LOCAL':
+            default:
+                return {
+                    icon: <ClusterOutlined style={{ color: '#cd7f32' }} />,
+                    color: '#16a34a',
+                    label: 'Local'
+                };
+        }
+    };
+
+    const levelBadge = getLevelBadge(userLevel);
+
+    const renderTemplateStats = () => {
+        if (!selectedTemplate || templateResponses.length === 0) {
+            return <Empty description="Aucune réponse pour ce formulaire afin de générer des statistiques." />;
+        }
+
+        let questionsList: any[] = [];
+        try {
+            questionsList = JSON.parse(selectedTemplate.questions);
+        } catch (e) {
+            console.error("Error parsing questions:", e);
+            return <Text type="danger">Erreur lors de l'analyse du formulaire.</Text>;
+        }
+
+        const totalResp = templateResponses.length;
+
+        return (
+            <div style={{ padding: '8px 0' }}>
+                <div style={{ textAlign: 'center', marginBottom: 24, padding: 16, background: 'rgba(59, 130, 246, 0.05)', borderRadius: 16 }}>
+                    <Text type="secondary" style={{ fontSize: 13 }}>Total des soumissions</Text>
+                    <Title level={3} style={{ margin: 0, color: '#1d4ed8', fontWeight: 800 }}>{totalResp} Réponse{totalResp > 1 ? 's' : ''}</Title>
+                </div>
+
+                <List
+                    dataSource={questionsList}
+                    renderItem={(q: any, idx: number) => {
+                        const answers = templateResponses.map(r => {
+                            try {
+                                const map = typeof r.responses === 'string' ? JSON.parse(r.responses) : r.responses;
+                                return map[q.id];
+                            } catch {
+                                return null;
+                            }
+                        }).filter(a => a !== null && a !== undefined && a !== '');
+
+                        if (['RADIO', 'CHECKBOX', 'BOOLEAN'].includes(q.type)) {
+                            const counts: Record<string, number> = {};
+                            let totalAnswersCount = 0;
+                            
+                            answers.forEach(a => {
+                                if (Array.isArray(a)) {
+                                    a.forEach(val => {
+                                        counts[val] = (counts[val] || 0) + 1;
+                                        totalAnswersCount++;
+                                    });
+                                } else {
+                                    const val = typeof a === 'boolean' ? (a ? 'Oui' : 'Non') : String(a);
+                                    counts[val] = (counts[val] || 0) + 1;
+                                    totalAnswersCount++;
+                                }
+                            });
+
+                            const options = q.type === 'BOOLEAN' 
+                                ? ['Oui', 'Non'] 
+                                : (q.options || []);
+
+                            options.forEach((opt: string) => {
+                                if (!counts[opt]) counts[opt] = 0;
+                            });
+
+                            return (
+                                <List.Item style={{ display: 'block', padding: '24px 0', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+                                    <div style={{ marginBottom: 12 }}>
+                                        <Text strong>{idx + 1}. {q.label}</Text>
+                                        <Tag color="blue" style={{ marginLeft: 8 }}>{q.type}</Tag>
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                        {Object.entries(counts).map(([opt, count]) => {
+                                            const pct = totalResp > 0 ? Math.round((count / totalResp) * 100) : 0;
+                                            return (
+                                                <div key={opt} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                    <div style={{ width: '40%', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                                                        <Text style={{ fontSize: 13 }}>{opt}</Text>
+                                                    </div>
+                                                    <div style={{ width: '45%', margin: '0 10px' }}>
+                                                        <div style={{ height: 8, borderRadius: 4, background: 'rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+                                                            <div style={{ height: '100%', width: `${pct}%`, background: 'linear-gradient(90deg, #3b82f6, #1d4ed8)', borderRadius: 4 }} />
+                                                        </div>
+                                                    </div>
+                                                    <div style={{ width: '15%', textAlign: 'right' }}>
+                                                        <Text strong style={{ fontSize: 12 }}>{count} ({pct}%)</Text>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </List.Item>
+                            );
+                        }
+
+                        if (['SATISFACTION', 'RATING'].includes(q.type)) {
+                            const numericAnswers = answers.map(a => Number(a)).filter(n => !isNaN(n));
+                            const average = numericAnswers.length > 0 
+                                ? (numericAnswers.reduce((sum, n) => sum + n, 0) / numericAnswers.length).toFixed(1)
+                                : '—';
+
+                            return (
+                                <List.Item style={{ display: 'block', padding: '24px 0', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+                                    <div style={{ marginBottom: 12 }}>
+                                        <Text strong>{idx + 1}. {q.label}</Text>
+                                        <Tag color="green" style={{ marginLeft: 8 }}>{q.type}</Tag>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+                                        <div style={{ padding: '10px 20px', borderRadius: 16, background: 'rgba(16, 185, 129, 0.08)', textAlign: 'center' }}>
+                                            <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>Moyenne</Text>
+                                            <Text strong style={{ fontSize: 24, color: '#10b981' }}>{average} / 5</Text>
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            {q.type === 'RATING' ? (
+                                                <span style={{ fontSize: 24, color: '#f59e0b' }}>
+                                                    {[1, 2, 3, 4, 5].map(v => (
+                                                        <StarOutlined key={v} style={{ opacity: v <= Math.round(Number(average) || 0) ? 1 : 0.2, marginRight: 4 }} />
+                                                    ))}
+                                                </span>
+                                            ) : (
+                                                <Text type="secondary" style={{ fontSize: 13 }}>Note moyenne attribuée par les volontaires</Text>
+                                            )}
+                                        </div>
+                                    </div>
+                                </List.Item>
+                            );
+                        }
+
+                        return (
+                            <List.Item style={{ display: 'block', padding: '24px 0', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+                                <div style={{ marginBottom: 12 }}>
+                                    <Text strong>{idx + 1}. {q.label}</Text>
+                                    <Tag color="orange" style={{ marginLeft: 8 }}>Libre</Tag>
+                                </div>
+                                <div style={{ background: 'rgba(0,0,0,0.02)', padding: 12, borderRadius: 12, maxHeight: 150, overflowY: 'auto' }}>
+                                    {answers.slice(0, 5).map((ans, aIdx) => (
+                                        <div key={aIdx} style={{ padding: '6px 0', borderBottom: aIdx < 4 && aIdx < answers.length - 1 ? '1px dashed rgba(0,0,0,0.05)' : 'none' }}>
+                                            <Text style={{ fontSize: 13, fontStyle: 'italic' }}>"{String(ans)}"</Text>
+                                        </div>
+                                    ))}
+                                    {answers.length === 0 && <Text type="secondary" style={{ fontSize: 13 }}>Aucune réponse textuelle</Text>}
+                                    {answers.length > 5 && (
+                                        <div style={{ marginTop: 8, textAlign: 'center' }}>
+                                            <Text type="secondary" style={{ fontSize: 11 }}>+ {answers.length - 5} autres réponses dans l'onglet Détails</Text>
+                                        </div>
+                                    )}
+                                </div>
+                            </List.Item>
+                        );
+                    }}
+                />
+            </div>
+        );
+    };
+
     // ----- Columns Definitions -----
     const formColumns: ColumnsType<YouthIntegrationFormDTO> = [
         {
@@ -377,7 +661,7 @@ const JeunessePage: React.FC = () => {
             title: 'Actions', key: 'actions', align: 'right',
             render: (_, r) => (
                 <Space>
-                    {(isRespJeunesse || user?.type === 'ADMIN') && (
+                    {(isRespJeunesse || user?.type === 'ADMIN') && !isVicePresident && (
                         <>
                             <Button size="small" icon={<EditOutlined />} onClick={() => {
                                 setEditingRecommendation(r);
@@ -436,8 +720,40 @@ const JeunessePage: React.FC = () => {
                                 </div>
                                 <div>
                                     <Title level={3} style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>Jeunesse</Title>
-                                    <Tag color="blue" icon={<GlobalOutlined />} style={{ borderRadius: 6, margin: '4px 0 0 0', fontWeight: 700, fontSize: 11 }}>{userLevel}</Tag>
+                                    <Tag color={levelBadge.color} icon={levelBadge.icon} style={{ borderRadius: 6, margin: '4px 0 0 0', fontWeight: 700, fontSize: 11 }}>
+                                        {levelBadge.label}
+                                    </Tag>
                                 </div>
+                            </div>
+
+                            {/* Périmètre de Pilotage (Dropdown) */}
+                            <div style={{
+                                padding: 20,
+                                borderRadius: 24,
+                                background: isDark ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)',
+                                border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'}`,
+                                marginBottom: 32
+                            }}>
+                                <Text strong style={{ fontSize: 12, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 12 }}>
+                                    Périmètre de Pilotage
+                                </Text>
+                                <Select
+                                    style={{ width: '100%' }}
+                                    placeholder="Sélectionner un comité"
+                                    value={selectedCommittee}
+                                    onChange={setSelectedCommittee}
+                                    disabled={userLevel === 'LOCAL'}
+                                    options={[
+                                        ...(userLevel !== 'LOCAL' ? [{
+                                            label: userLevel === 'NATIONAL' ? '🌍 Tous les comités' : '🗺️ Tous mes comités',
+                                            value: 'ALL'
+                                        }] : []),
+                                        ...getSelectableCommittees().map(c => ({
+                                            label: c.type === 'NATIONAL' ? `🌍 ${c.name}` : c.type === 'REGIONAL' ? `🗺️ ${c.name}` : `📍 ${c.name}`,
+                                            value: c.id
+                                        }))
+                                    ]}
+                                />
                             </div>
 
                             <div style={{ marginBottom: 40 }}>
@@ -455,7 +771,7 @@ const JeunessePage: React.FC = () => {
                             </div>
 
                             <Space direction="vertical" style={{ width: '100%' }} size={16}>
-                                {(isRespJeunesse || user?.type === 'ADMIN') && (
+                                {(isRespJeunesse || user?.type === 'ADMIN') && !isVicePresident && (
                                     <>
                                         <Button
                                             type="primary"
@@ -528,13 +844,21 @@ const JeunessePage: React.FC = () => {
                                                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
                                                                     <Space>
                                                                         <div style={{ width: 40, height: 40, borderRadius: 10, background: '#e01c2e', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}><FileTextOutlined /></div>
-                                                                        <Text strong>{tmpl.title}</Text>
+                                                                        <div>
+                                                                            <Text strong style={{ display: 'block' }}>{tmpl.title}</Text>
+                                                                            <Tag color={tmpl.status === 'APPROVED' ? 'green' : tmpl.status === 'REJECTED' ? 'red' : 'gold'} style={{ marginTop: 4 }}>
+                                                                                {tmpl.status === 'APPROVED' ? 'Approuvé' : tmpl.status === 'REJECTED' ? 'Rejeté' : 'En attente'}
+                                                                            </Tag>
+                                                                        </div>
                                                                     </Space>
                                                                     <Tag color="cyan" style={{ margin: 0 }}>{tmpl._responseCount} Réponses</Tag>
                                                                 </div>
                                                                 <Text type="secondary" style={{ fontSize: 13, display: 'block', marginBottom: 20 }}>{tmpl.description || 'Aucune description.'}</Text>
                                                                 <div style={{ display: 'flex', gap: 8 }}>
-                                                                    <Button type="primary" ghost style={{ flex: 1, borderRadius: 10 }} onClick={() => handleViewResponses(tmpl)}>Détails</Button>
+                                                                    <Button type="primary" ghost style={{ flex: 1, borderRadius: 10 }} onClick={() => handleViewResponses(tmpl)}>Réponses</Button>
+                                                                    {(isRespJeunesse || user?.type === 'ADMIN') && (
+                                                                        <Button icon={<EditOutlined />} style={{ borderRadius: 10 }} onClick={() => handleEditTemplate(tmpl)}>Modifier</Button>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                         </Col>
@@ -546,6 +870,19 @@ const JeunessePage: React.FC = () => {
 
                                     {activeTab === 'forms' && (
                                         <motion.div key="forms" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+                                            {!isVicePresident && (
+                                                <div style={{ marginBottom: 16 }}>
+                                                    <Button
+                                                        type="primary"
+                                                        icon={<RobotOutlined />}
+                                                        onClick={handleSimulateResponse}
+                                                        loading={simulating}
+                                                        style={{ background: 'linear-gradient(135deg, #e01c2e, #c0152a)', border: 'none', borderRadius: 10, height: 40 }}
+                                                    >
+                                                        Simuler Réponse & Recommandation
+                                                    </Button>
+                                                </div>
+                                            )}
                                             <Table columns={formColumns} dataSource={forms} rowKey="id" pagination={{ pageSize: 8 }} locale={{ emptyText: "Aucune soumission reçue" }} />
                                         </motion.div>
                                     )}
@@ -564,7 +901,15 @@ const JeunessePage: React.FC = () => {
 
                                     {activeTab === 'stats' && (
                                         <motion.div key="stats" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                                            <YouthStatsDashboard onExport={() => { }} data={stats} loading={statsLoading} />
+                                            <YouthStatsDashboard 
+                                                onExport={() => { }} 
+                                                data={stats} 
+                                                loading={statsLoading} 
+                                                userLevel={userLevel} 
+                                                committees={getSelectableCommittees()} 
+                                                selectedCommittee={selectedCommittee}
+                                                onCommitteeChange={setSelectedCommittee}
+                                            />
                                         </motion.div>
                                     )}
 
@@ -586,8 +931,12 @@ const JeunessePage: React.FC = () => {
                                                                     render: (_, r) => (
                                                                         <Space>
                                                                             <Button size="small" icon={<EyeOutlined />} onClick={() => { setSelectedProjectDetails(r); setIsProjectDetailsOpen(true); }} />
-                                                                            <Button size="small" type="primary" style={{ background: '#10b981', borderColor: '#10b981' }} icon={<CheckOutlined />} onClick={() => handleValidateProject(r.id!, true)}>Approuver</Button>
-                                                                            <Button size="small" danger type="primary" icon={<CloseOutlined />} onClick={() => handleValidateProject(r.id!, false)}>Rejeter</Button>
+                                                                            {!isVicePresident && (
+                                                                                <>
+                                                                                    <Button size="small" type="primary" style={{ background: '#10b981', borderColor: '#10b981' }} icon={<CheckOutlined />} onClick={() => handleValidateProject(r.id!, true)}>Approuver</Button>
+                                                                                    <Button size="small" danger type="primary" icon={<CloseOutlined />} onClick={() => handleValidateProject(r.id!, false)}>Rejeter</Button>
+                                                                                </>
+                                                                            )}
                                                                         </Space>
                                                                     )
                                                                 }
@@ -609,8 +958,39 @@ const JeunessePage: React.FC = () => {
                                                                     title: 'Actions', key: 'actions', align: 'right',
                                                                     render: (_, r) => (
                                                                         <Space>
-                                                                            <Button size="small" type="primary" style={{ background: '#10b981', borderColor: '#10b981' }} icon={<CheckOutlined />} onClick={() => handleValidateRecommendation(r.id!, true)}>Approuver</Button>
-                                                                            <Button size="small" danger type="primary" icon={<CloseOutlined />} onClick={() => handleValidateRecommendation(r.id!, false)}>Rejeter</Button>
+                                                                            {!isVicePresident && (
+                                                                                <>
+                                                                                    <Button size="small" type="primary" style={{ background: '#10b981', borderColor: '#10b981' }} icon={<CheckOutlined />} onClick={() => handleValidateRecommendation(r.id!, true)}>Approuver</Button>
+                                                                                    <Button size="small" danger type="primary" icon={<CloseOutlined />} onClick={() => handleValidateRecommendation(r.id!, false)}>Rejeter</Button>
+                                                                                </>
+                                                                            )}
+                                                                        </Space>
+                                                                    )
+                                                                }
+                                                            ]}
+                                                        />
+                                                    </Card>
+                                                </Col>
+                                                <Col span={24}>
+                                                    <Card title={<Space><FileTextOutlined /> Formulaires en attente</Space>} style={{ borderRadius: 20 }} className="glass-card">
+                                                        <Table
+                                                            dataSource={templates.filter(t => t.status === 'PENDING_VALIDATION')}
+                                                            rowKey="id"
+                                                            pagination={{ pageSize: 4 }}
+                                                            columns={[
+                                                                { title: 'Titre', dataIndex: 'title', key: 'title', render: (t) => <Text strong>{t}</Text> },
+                                                                { title: 'Description', dataIndex: 'description', key: 'description', render: (d) => <Text type="secondary">{d || '—'}</Text> },
+                                                                { title: 'Niveau Cible', dataIndex: 'targetLevel', key: 'targetLevel', render: (tl) => <Tag color="blue">{tl}</Tag> },
+                                                                {
+                                                                    title: 'Actions', key: 'actions', align: 'right',
+                                                                    render: (_, r) => (
+                                                                        <Space>
+                                                                            {!isVicePresident && (
+                                                                                <>
+                                                                                    <Button size="small" type="primary" style={{ background: '#10b981', borderColor: '#10b981' }} icon={<CheckOutlined />} onClick={() => handleValidateTemplate(r.id!, true)}>Approuver</Button>
+                                                                                    <Button size="small" danger type="primary" icon={<CloseOutlined />} onClick={() => handleValidateTemplate(r.id!, false)}>Rejeter</Button>
+                                                                                </>
+                                                                            )}
                                                                         </Space>
                                                                     )
                                                                 }
@@ -629,46 +1009,192 @@ const JeunessePage: React.FC = () => {
             </motion.div>
 
             {/* MODALS & DRAWERS */}
-            <Modal open={isBuilderOpen} onCancel={() => setIsBuilderOpen(false)} footer={null} width={1000} title="Générateur de Formulaire Jeunesse">
+            <Modal open={isBuilderOpen} onCancel={() => { setIsBuilderOpen(false); setEditingTemplate(null); }} footer={null} width={1000} title={editingTemplate ? "Modifier le Formulaire Jeunesse" : "Générateur de Formulaire Jeunesse"}>
                 <YouthFormBuilder
+                    key={editingTemplate ? `edit-${editingTemplate.id}` : 'new'}
+                    initialData={editingTemplate ? {
+                        title: editingTemplate.title,
+                        description: editingTemplate.description,
+                        questions: JSON.parse(editingTemplate.questions)
+                    } : undefined}
                     onSave={async (data) => {
                         try {
-                            await jeunesseService.createTemplate({
-                                title: data.title,
-                                description: data.description,
-                                questions: JSON.stringify(data.questions),
-                                targetLevel: data.targetLevel,
-                                committeeId: data.targetCommitteeIds.length > 0 ? data.targetCommitteeIds[0] : 'ALL'
-                            } as any);
-                            messageApi.success('Formulaire publié avec succès');
+                            if (editingTemplate) {
+                                await jeunesseService.updateTemplate(editingTemplate.id, {
+                                    title: data.title,
+                                    description: data.description,
+                                    questions: JSON.stringify(data.questions),
+                                    targetLevel: data.targetLevel,
+                                    committeeId: data.targetCommitteeIds.length > 0 ? data.targetCommitteeIds[0] : 'ALL'
+                                } as any);
+                                messageApi.success('Formulaire mis à jour avec succès et soumis à validation');
+                            } else {
+                                await jeunesseService.createTemplate({
+                                    title: data.title,
+                                    description: data.description,
+                                    questions: JSON.stringify(data.questions),
+                                    targetLevel: data.targetLevel,
+                                    committeeId: data.targetCommitteeIds.length > 0 ? data.targetCommitteeIds[0] : 'ALL'
+                                } as any);
+                                messageApi.success('Formulaire publié avec succès');
+                            }
                             setIsBuilderOpen(false);
+                            setEditingTemplate(null);
                             loadData();
                         } catch (error) {
-                            notification.error({ message: "Erreur", description: "Impossible de publier le formulaire." });
+                            notification.error({ message: "Erreur", description: "Impossible d'enregistrer le formulaire." });
                         }
                     }}
-                    onCancel={() => setIsBuilderOpen(false)}
+                    onCancel={() => { setIsBuilderOpen(false); setEditingTemplate(null); }}
                     userLevel={userLevel}
                     userCommitteeId={selectedCommittee}
                 />
             </Modal>
 
-            <Drawer open={drawerVisible} onClose={() => setDrawerVisible(false)} width={600} title={selectedTemplate?.title}>
-                <Table columns={formColumns} dataSource={templateResponses} loading={responsesLoading} rowKey="id" />
+            <Drawer open={drawerVisible} onClose={() => setDrawerVisible(false)} width={650} title={selectedTemplate?.title}>
+                <Tabs
+                    defaultActiveKey="responses"
+                    items={[
+                        {
+                            key: 'responses',
+                            label: (
+                                <span>
+                                    <TeamOutlined />
+                                    Réponses ({templateResponses.length})
+                                </span>
+                            ),
+                            children: (
+                                <Table 
+                                    columns={responseColumns} 
+                                    dataSource={templateResponses} 
+                                    loading={responsesLoading} 
+                                    rowKey="id" 
+                                    locale={{ emptyText: "Aucune réponse pour le moment" }} 
+                                />
+                            )
+                        },
+                        {
+                            key: 'stats',
+                            label: (
+                                <span>
+                                    <BarChartOutlined />
+                                    Statistiques
+                                </span>
+                            ),
+                            children: renderTemplateStats()
+                        }
+                    ]}
+                />
             </Drawer>
 
+            {/* Detailed Custom Response View Modal */}
+            <Modal
+                title={<Space><FileTextOutlined /> Réponse de {selectedDetailedResponse?.volunteerName}</Space>}
+                open={isResponseDetailsOpen}
+                onCancel={() => setIsResponseDetailsOpen(false)}
+                footer={<Button onClick={() => setIsResponseDetailsOpen(false)}>Fermer</Button>}
+                width={600}
+            >
+                {selectedDetailedResponse && selectedTemplate && (() => {
+                    let questionsList: any[] = [];
+                    try {
+                        questionsList = JSON.parse(selectedTemplate.questions);
+                    } catch (e) {
+                        console.error("Error parsing questions:", e);
+                    }
+                    let answersMap: Record<string, any> = {};
+                    try {
+                        answersMap = typeof selectedDetailedResponse.responses === 'string' 
+                            ? JSON.parse(selectedDetailedResponse.responses) 
+                            : selectedDetailedResponse.responses;
+                    } catch (e) {
+                        console.error("Error parsing answers:", e);
+                    }
+
+                    return (
+                        <div style={{ marginTop: 16 }}>
+                            <Descriptions bordered column={1} size="small" style={{ marginBottom: 24 }}>
+                                <Descriptions.Item label="Volontaire">{selectedDetailedResponse.volunteerName}</Descriptions.Item>
+                                <Descriptions.Item label="Date de soumission">{new Date(selectedDetailedResponse.submittedAt).toLocaleString()}</Descriptions.Item>
+                            </Descriptions>
+
+                            <Title level={5} style={{ marginBottom: 16 }}>Détails des Réponses</Title>
+                            <List
+                                dataSource={questionsList}
+                                renderItem={(q: any, index: number) => {
+                                    const answer = answersMap[q.id];
+                                    let displayAnswer = answer;
+                                    if (Array.isArray(answer)) {
+                                        displayAnswer = answer.join(', ');
+                                    } else if (typeof answer === 'boolean') {
+                                        displayAnswer = answer ? 'Oui' : 'Non';
+                                    } else if (answer === undefined || answer === null || answer === '') {
+                                        displayAnswer = '—';
+                                    }
+                                    return (
+                                        <List.Item style={{ display: 'block', padding: '16px 0' }}>
+                                            <div style={{ marginBottom: 8 }}>
+                                                <Text type="secondary" style={{ marginRight: 8 }}>{index + 1}.</Text>
+                                                <Text strong>{q.label}</Text>
+                                                {q.required && <span style={{ color: 'red', marginLeft: 4 }}>*</span>}
+                                            </div>
+                                            <div style={{ paddingLeft: 20 }}>
+                                                {q.type === 'RATING' ? (
+                                                    <span style={{ fontSize: 20, color: '#f59e0b' }}>
+                                                        {[1, 2, 3, 4, 5].map(v => (
+                                                            <StarOutlined key={v} style={{ opacity: v <= Number(answer) ? 1 : 0.2, marginRight: 4 }} />
+                                                        ))}
+                                                    </span>
+                                                ) : q.type === 'SATISFACTION' ? (
+                                                    <Badge count={`${answer || 0} / 5`} style={{ backgroundColor: '#10b981' }} />
+                                                ) : (
+                                                    <Text style={{ fontSize: 15, whiteSpace: 'pre-wrap' }}>{String(displayAnswer)}</Text>
+                                                )}
+                                            </div>
+                                        </List.Item>
+                                    );
+                                }}
+                            />
+                        </div>
+                    );
+                })()}
+            </Modal>
+
             {/* Recommendation Modal */}
-            <Modal open={isRecModalOpen} onCancel={() => setIsRecModalOpen(false)} footer={null} title="Détails de la Soumission">
+            <Modal open={isRecModalOpen} onCancel={() => setIsRecModalOpen(false)} footer={null} title="Détails de la Soumission" width={650}>
                 {selectedForm && (
                     <div style={{ padding: 20 }}>
-                        <Descriptions title="Informations" bordered column={1}>
-                            <Descriptions.Item label="Volontaire">{selectedForm.volunteerName}</Descriptions.Item>
-                            <Descriptions.Item label="Date">{new Date(selectedForm.submittedAt).toLocaleString()}</Descriptions.Item>
+                        <Descriptions title="Informations Bénévolat" bordered column={1} size="small" style={{ marginBottom: 20 }}>
+                            <Descriptions.Item label="Volontaire">{selectedForm.volunteerName || '—'}</Descriptions.Item>
+                            <Descriptions.Item label="Date de soumission">{selectedForm.submittedAt ? new Date(selectedForm.submittedAt).toLocaleString() : '—'}</Descriptions.Item>
+                        </Descriptions>
+                        
+                        <Descriptions title="Réponses du Formulaire" bordered column={1} size="small" style={{ marginBottom: 20 }}>
+                            <Descriptions.Item label="Aspirations / Motivations">
+                                <Space wrap>
+                                    {selectedForm.aspirations?.map((a: string) => <Tag color="blue" key={a}>{a}</Tag>) || <Text type="secondary">Aucune</Text>}
+                                </Space>
+                            </Descriptions.Item>
+                            <Descriptions.Item label="Compétences déclarées">
+                                <Space wrap>
+                                    {selectedForm.skills?.map((s: string) => <Tag color="green" key={s}>{s}</Tag>) || <Text type="secondary">Aucune</Text>}
+                                </Space>
+                            </Descriptions.Item>
+                            <Descriptions.Item label="Aptitudes / Points forts">
+                                <Space wrap>
+                                    {selectedForm.aptitudes?.map((ap: string) => <Tag color="purple" key={ap}>{ap}</Tag>) || <Text type="secondary">Aucune</Text>}
+                                </Space>
+                            </Descriptions.Item>
+                            <Descriptions.Item label="Domaines d'intérêt">
+                                <Space wrap>
+                                    {selectedForm.interestAreas?.map((i: string) => <Tag color="orange" key={i}>{i}</Tag>) || <Text type="secondary">Aucun</Text>}
+                                </Space>
+                            </Descriptions.Item>
                         </Descriptions>
                         <Divider />
                         {(() => {
                             const rec = recommendations.find(r => r.formId === selectedForm.id);
-                            return <YouthRecommendationView recommendation={rec} volunteerName={selectedForm.volunteerName} onClose={() => setIsRecModalOpen(false)} />;
+                            return <YouthRecommendationView recommendation={rec} volunteerName={selectedForm.volunteerName || 'Simulation Bénévolat'} onClose={() => setIsRecModalOpen(false)} />;
                         })()}
                     </div>
                 )}

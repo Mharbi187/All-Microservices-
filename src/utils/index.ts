@@ -65,3 +65,22 @@ export const getRoleLabel = (role: string): string => {
     };
     return labels[role] || role;
 };
+
+/**
+ * Convert any absolute localhost URLs containing /files/ or /images/ to relative paths
+ */
+export const toRelativeUrl = (url?: string): string => {
+    if (!url) return '';
+    try {
+        if (url.startsWith('http://') || url.startsWith('https://')) {
+            const parsed = new URL(url);
+            if (parsed.pathname.startsWith('/files/') || parsed.pathname.startsWith('/images/')) {
+                return parsed.pathname;
+            }
+        }
+    } catch (e) {
+        // Fallback to original URL
+    }
+    return url;
+};
+

@@ -643,17 +643,69 @@ const AdminDash: React.FC<{
 const TrainerDash: React.FC<{
     isDark: boolean; navigate: (p: string) => void;
     totalVolunteers: number; committees: CommitteeOverview[];
-}> = ({ isDark, navigate, totalVolunteers, committees }) => {
-    const sessions = [
-        { title: 'Formation PSE2 — Niveau avancé', date: '15 Mars 2026', status: 'Planifiée', accent: p.blu600 },
+    user?: any;
+}> = ({ isDark, navigate, totalVolunteers, user }) => {
+    const t = makeTheme(isDark);
+
+    // Determine trainer domains from profile
+    const rawDomains: string[] = (user?.trainerDomains || []).map((d: string) => d.toUpperCase());
+    const isSecourismeTrainer = rawDomains.length === 0 || rawDomains.some((d: string) =>
+        d.includes('SECOURISME') || d.includes('PSE') || d.includes('SECOUR') || d.includes('PREMIERS')
+    );
+    const isRcpTrainer = rawDomains.length === 0 || rawDomains.some((d: string) =>
+        d.includes('RCP') || d.includes('REANIMATION') || d.includes('CARDIO') || d.includes('PREMIERS')
+    );
+    // If no domains or unknown domains, show everything
+    const showAll = rawDomains.length === 0;
+
+    // Domain-specific sessions label
+    const domainLabel = rawDomains.length > 0 ? rawDomains.join(' · ') : 'Secourisme & RCP';
+
+    const sessions = isRcpTrainer || showAll ? [
+        { title: 'Formation RCP — Adultes & Enfants', date: '15 Mars 2026', status: 'Planifiée', accent: p.blu600 },
         { title: 'Recyclage RCP — Comité Tunis', date: '22 Mars 2026', status: 'Confirmée', accent: p.grn600 },
+        { title: 'Évaluation RCP Niveau B', date: '5 Avril 2026', status: 'En préparation', accent: p.amb600 },
+        { title: 'Formation Gestes qui sauvent', date: '12 Avril 2026', status: 'Planifiée', accent: '#7C3AED' },
+    ] : [
+        { title: 'Formation PSE2 — Niveau avancé', date: '15 Mars 2026', status: 'Planifiée', accent: p.blu600 },
+        { title: 'Atelier Premiers Secours', date: '22 Mars 2026', status: 'Confirmée', accent: p.grn600 },
         { title: 'Atelier DIH — Nouveaux volontaires', date: '5 Avril 2026', status: 'En préparation', accent: p.amb600 },
         { title: 'Formation Gestion de Crise', date: '12 Avril 2026', status: 'Planifiée', accent: '#7C3AED' },
     ];
-    const t = makeTheme(isDark);
+
+    // Domain badge colors
+    const domainBadgeColor = isRcpTrainer && !isSecourismeTrainer ? p.blu600
+        : isSecourismeTrainer && !isRcpTrainer ? p.red600
+        : p.amb600;
 
     return (
         <>
+            {/* Domain banner for trainer */}
+            <div style={{
+                marginBottom: 20, padding: '14px 20px',
+                borderRadius: r.md,
+                background: isDark ? `${domainBadgeColor}12` : `${domainBadgeColor}08`,
+                border: `1px solid ${domainBadgeColor}25`,
+                display: 'flex', alignItems: 'center', gap: 12,
+            }}>
+                <div style={{
+                    width: 38, height: 38, borderRadius: r.sm,
+                    background: `${domainBadgeColor}18`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexShrink: 0,
+                }}>
+                    <SafetyCertificateOutlined style={{ fontSize: 18, color: domainBadgeColor }} />
+                </div>
+                <div>
+                    <div style={{ fontFamily: fonts.body, fontWeight: 700, fontSize: 13, color: isDark ? '#F0F4FF' : p.ink }}>
+                        Formateur — {domainLabel}
+                    </div>
+                    <div style={{ fontFamily: fonts.body, fontSize: 11, color: t.textFaint }}>
+                        Accès aux évaluations et sessions de formation
+                    </div>
+                </div>
+            </div>
+
             <div className="nd-kpi-grid" style={{
                 display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 20,
             }}>
@@ -713,12 +765,12 @@ const TrainerDash: React.FC<{
                         <span style={{ fontFamily: fonts.body, fontWeight: 700, fontSize: 14, color: isDark ? '#F0F4FF' : p.ink }}>Mes Expertises</span></>}
                 >
                     {[
-                        { name: 'PSE1', pct: 94, color: p.grn600 },
-                        { name: 'RCP', pct: 82, color: p.blu600 },
-                        { name: 'Gestes qui sauvent', pct: 80, color: '#7C3AED' },
-                        { name: 'PSE2', pct: 75, color: p.amb600 },
-                        { name: 'Secourisme', pct: 78, color: p.red600 },
-                    ].map((d) => (
+                        ...(isRcpTrainer || showAll ? [{ name: 'RCP Adultes', pct: 92, color: p.blu600 }] : []),
+                        ...(isRcpTrainer || showAll ? [{ name: 'RCP Enfants', pct: 88, color: '#7C3AED' }] : []),
+                        ...(isSecourismeTrainer || showAll ? [{ name: 'PSE1', pct: 94, color: p.grn600 }] : []),
+                        ...(isSecourismeTrainer || showAll ? [{ name: 'PSE2', pct: 75, color: p.amb600 }] : []),
+                        ...(isSecourismeTrainer || showAll ? [{ name: 'Secourisme', pct: 78, color: p.red600 }] : []),
+                    ].slice(0, 5).map((d) => (
                         <ProgRow key={d.name} isDark={isDark}
                             label={d.name} value={d.pct} max={100} color={d.color} suffix={`${d.pct}%`}
                         />
@@ -730,12 +782,20 @@ const TrainerDash: React.FC<{
                 title={<><ThunderboltOutlined style={{ color: p.amb600, fontSize: 16, marginRight: 8 }} />
                     <span style={{ fontFamily: fonts.body, fontWeight: 700, fontSize: 14, color: isDark ? '#F0F4FF' : p.ink }}>Actions Rapides</span></>}
             >
-                <div className="nd-action-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+                <div className="nd-action-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
                     {[
-                        { icon: <AlertOutlined style={{ fontSize: 26, color: p.red600 }} />, label: 'Secourisme', desc: 'Équipements & cours', accent: p.red600, route: '/secourisme' },
+                        { icon: <AlertOutlined style={{ fontSize: 26, color: p.red600 }} />, label: 'Secourisme', desc: 'Module formation', accent: p.red600, route: '/secourisme' },
                         { icon: <TeamOutlined style={{ fontSize: 26, color: '#5A78E6' }} />, label: 'Volontaires', desc: 'Mes apprenants', accent: '#5A78E6', route: '/volunteers' },
                         { icon: <FileTextOutlined style={{ fontSize: 26, color: p.grn600 }} />, label: 'Rapports', desc: 'Bilans formation', accent: p.grn600, route: '/reports' },
                         { icon: <InboxOutlined style={{ fontSize: 26, color: '#7C3AED' }} />, label: 'Matériel', desc: 'Stock formation', accent: '#7C3AED', route: '/stocks' },
+                        ...(isRcpTrainer || showAll ? [
+                            { icon: <AuditOutlined style={{ fontSize: 26, color: '#EC4899' }} />, label: 'Évaluations RCP', desc: 'Historique des tests', accent: '#EC4899', route: '/secourisme?tab=rcpEvaluations' },
+                            { icon: <SafetyCertificateOutlined style={{ fontSize: 26, color: '#ef4444' }} />, label: 'Nouvelle éval. RCP', desc: 'Créer une évaluation', accent: '#ef4444', route: '/secourisme/rcp-evaluation' },
+                        ] : []),
+                        ...(isSecourismeTrainer && !isRcpTrainer ? [
+                            { icon: <AuditOutlined style={{ fontSize: 26, color: '#EC4899' }} />, label: 'Évaluations RCP', desc: 'Historique des tests', accent: '#EC4899', route: '/secourisme?tab=rcpEvaluations' },
+                            { icon: <SafetyCertificateOutlined style={{ fontSize: 26, color: '#ef4444' }} />, label: 'Nouvelle éval. RCP', desc: 'Créer une évaluation', accent: '#ef4444', route: '/secourisme/rcp-evaluation' },
+                        ] : []),
                     ].map((a) => (
                         <QAction key={a.label} isDark={isDark}
                             icon={a.icon} label={a.label} desc={a.desc} accent={a.accent}
@@ -747,6 +807,7 @@ const TrainerDash: React.FC<{
         </>
     );
 };
+
 
 // ─────────────────────────────────────────────────────────────
 // DONOR DASHBOARD
@@ -1820,8 +1881,8 @@ const DashboardPage: React.FC = () => {
                 if (permissions.sidebarKeys.includes('/immigration')) {
                     setImmigrationCasesCount((await ds.immigrationService.getCases().catch(() => [])).length);
                 }
-                if (permissions.dashboardType === 'volunteer') {
-                    // Fetch profile to sync fresh hours/matricule
+                if (permissions.dashboardType === 'volunteer' || permissions.dashboardType === 'trainer') {
+                    // Fetch profile to sync fresh hours/matricule/trainerDomains
                     await useAuthStore.getState().fetchProfile().catch(() => {});
                     // Fetch calendar events
                     const evs = await calendarService.getUpcomingEvents().catch(() => []);
@@ -1879,6 +1940,7 @@ const DashboardPage: React.FC = () => {
             {dt === 'trainer' && (
                 <TrainerDash isDark={isDark} navigate={navigate}
                     totalVolunteers={totalVolunteers} committees={committees}
+                    user={user}
                 />
             )}
             {dt === 'donor' && <DonorDash isDark={isDark} navigate={navigate} />}

@@ -7,12 +7,17 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Spin, Typography, Row, Col, Tag, Button, Space } from 'antd';
 import {
     GlobalOutlined, CloudOutlined, AlertOutlined,
-    ExpandOutlined, ReloadOutlined, InfoCircleOutlined
+    ExpandOutlined, ReloadOutlined, InfoCircleOutlined,
+    TeamOutlined, FileTextOutlined
 } from '@ant-design/icons';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useUIStore } from '@/stores';
 import apiClient from '@/services/api';
+import TeamsManagementTab from './catastrophes/TeamsManagementTab';
+import MissionAssignmentTab from './catastrophes/MissionAssignmentTab';
+import FieldReportTab from './catastrophes/FieldReportTab';
+import { generateMissionOrderPdf } from './catastrophes/missionOrderPdf';
 
 const { Title, Text } = Typography;
 
@@ -36,6 +41,7 @@ const CatastrophesPage: React.FC = () => {
     const themeMode = useUIStore((s) => s.themeMode);
     const isDark = themeMode === 'dark';
     const navigate = useNavigate();
+    const [activeTab, setActiveTab] = useState('monitor');
 
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -236,73 +242,123 @@ const CatastrophesPage: React.FC = () => {
                             </div>
                         </Col>
 
-                        <Col xs={24} lg={17} style={{ position: 'relative', overflow: 'hidden' }}>
-                            <div style={{ position: 'absolute', top: 20, right: 20, zIndex: 10, display: 'flex', gap: 8 }}>
-                                <Button
-                                    shape="circle"
-                                    icon={<ExpandOutlined />}
-                                    onClick={openCommandCenter}
-                                    title="Ouvrir le command center complet"
-                                    style={{ background: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.8)', border: 'none' }}
-                                />
-                                <Button
-                                    shape="circle"
-                                    icon={<InfoCircleOutlined />}
-                                    onClick={openCrisisRoom}
-                                    title="Ouvrir la crisis room"
-                                    style={{ background: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.8)', border: 'none' }}
-                                />
+                        <Col xs={24} lg={17} style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+                            {/* Tab Switcher */}
+                            <div style={{ padding: '20px 24px 10px 24px', borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'}` }}>
+                                <div style={{ display: 'flex', gap: 8, background: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9', padding: 6, borderRadius: 16, width: 'fit-content' }}>
+                                    {[
+                                        { key: 'monitor', label: 'Moniteur Satellite', icon: <GlobalOutlined /> },
+                                        { key: 'teams', label: 'Équipes NDRT/RDRT', icon: <TeamOutlined /> },
+                                        { key: 'missions', label: 'Missions', icon: <AlertOutlined /> },
+                                        { key: 'reports', label: 'Rapports', icon: <FileTextOutlined /> }
+                                    ].map(tab => (
+                                        <Button
+                                            key={tab.key}
+                                            type="text"
+                                            icon={tab.icon}
+                                            onClick={() => setActiveTab(tab.key)}
+                                            style={{
+                                                height: 42, padding: '0 20px', borderRadius: 12,
+                                                fontWeight: 800,
+                                                background: activeTab === tab.key ? (isDark ? 'rgba(224,28,46,0.2)' : '#fff') : 'transparent',
+                                                color: activeTab === tab.key ? '#e01c2e' : (isDark ? 'rgba(255,255,255,0.4)' : '#64748b'),
+                                                boxShadow: activeTab === tab.key && !isDark ? '0 4px 12px rgba(0,0,0,0.05)' : 'none',
+                                                transition: 'all 0.3s ease'
+                                            }}
+                                        >
+                                            {tab.label}
+                                        </Button>
+                                    ))}
+                                </div>
                             </div>
 
-                            {errorMessage && (
-                                <div style={{ position: 'absolute', top: 20, left: 20, right: 100, zIndex: 12 }}>
-                                    <Alert
-                                        type="warning"
-                                        showIcon
-                                        message={errorMessage}
-                                        style={{ borderRadius: 10 }}
-                                    />
-                                </div>
-                            )}
+                            {/* Tab Content */}
+                            <div style={{ flex: 1, overflowY: 'auto', padding: activeTab === 'monitor' ? 0 : '0 24px 24px 24px', position: 'relative' }}>
+                                <AnimatePresence mode="wait">
+                                    <motion.div
+                                        key={activeTab}
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -10 }}
+                                        transition={{ duration: 0.2 }}
+                                        style={{ height: '100%' }}
+                                    >
+                                        {activeTab === 'monitor' && (
+                                            <>
+                                                <div style={{ position: 'absolute', top: 20, right: 20, zIndex: 10, display: 'flex', gap: 8 }}>
+                                                    <Button
+                                                        shape="circle"
+                                                        icon={<ExpandOutlined />}
+                                                        onClick={openCommandCenter}
+                                                        title="Ouvrir le command center complet"
+                                                        style={{ background: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.8)', border: 'none' }}
+                                                    />
+                                                    <Button
+                                                        shape="circle"
+                                                        icon={<InfoCircleOutlined />}
+                                                        onClick={openCrisisRoom}
+                                                        title="Ouvrir la crisis room"
+                                                        style={{ background: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.8)', border: 'none' }}
+                                                    />
+                                                </div>
 
-                            {loading && (
-                                <div
-                                    style={{
-                                        position: 'absolute',
-                                        top: 0,
-                                        left: 0,
-                                        right: 0,
-                                        bottom: 0,
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        background: isDark ? '#0f172a' : '#f8fafc',
-                                        zIndex: 5,
-                                    }}
-                                >
-                                    <Spin size="large" />
-                                    <Text type="secondary" style={{ marginTop: 16, fontWeight: 600 }}>
-                                        Initialisation du moniteur satellite...
-                                    </Text>
-                                    {slowLoading && (
-                                        <Text type="secondary" style={{ marginTop: 6 }}>
-                                            Connexion GEE plus lente que prevu. Le tableau va continuer des reception des donnees.
-                                        </Text>
-                                    )}
-                                </div>
-                            )}
+                                                {errorMessage && (
+                                                    <div style={{ position: 'absolute', top: 20, left: 20, right: 100, zIndex: 12 }}>
+                                                        <Alert
+                                                            type="warning"
+                                                            showIcon
+                                                            message={errorMessage}
+                                                            style={{ borderRadius: 10 }}
+                                                        />
+                                                    </div>
+                                                )}
 
-                            <iframe
-                                srcDoc={mapHtml}
-                                style={{
-                                    width: '100%',
-                                    height: '100%',
-                                    border: 'none',
-                                    filter: isDark ? 'brightness(0.8) contrast(1.2)' : 'none',
-                                }}
-                                title="Nexus-AID Disaster Monitor"
-                            />
+                                                {loading && (
+                                                    <div
+                                                        style={{
+                                                            position: 'absolute',
+                                                            top: 0,
+                                                            left: 0,
+                                                            right: 0,
+                                                            bottom: 0,
+                                                            display: 'flex',
+                                                            flexDirection: 'column',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            background: isDark ? '#0f172a' : '#f8fafc',
+                                                            zIndex: 5,
+                                                        }}
+                                                    >
+                                                        <Spin size="large" />
+                                                        <Text type="secondary" style={{ marginTop: 16, fontWeight: 600 }}>
+                                                            Initialisation du moniteur satellite...
+                                                        </Text>
+                                                        {slowLoading && (
+                                                            <Text type="secondary" style={{ marginTop: 6 }}>
+                                                                Connexion GEE plus lente que prevu. Le tableau va continuer des reception des donnees.
+                                                            </Text>
+                                                        )}
+                                                    </div>
+                                                )}
+
+                                                <iframe
+                                                    srcDoc={mapHtml}
+                                                    style={{
+                                                        width: '100%',
+                                                        height: '100%',
+                                                        border: 'none',
+                                                        filter: isDark ? 'brightness(0.8) contrast(1.2)' : 'none',
+                                                    }}
+                                                    title="Nexus-AID Disaster Monitor"
+                                                />
+                                            </>
+                                        )}
+                                        {activeTab === 'teams' && <TeamsManagementTab isDark={isDark} />}
+                                        {activeTab === 'missions' && <MissionAssignmentTab isDark={isDark} onGeneratePdf={generateMissionOrderPdf} />}
+                                        {activeTab === 'reports' && <FieldReportTab isDark={isDark} />}
+                                    </motion.div>
+                                </AnimatePresence>
+                            </div>
                         </Col>
                     </Row>
                 </div>

@@ -1,10 +1,26 @@
 // ============================================================
 // NEXUS-AID — Volunteer Service
-// Volunteer listing, approval, rejection, promotion
+// Volunteer listing, approval, rejection, promotion, trainer management
 // ============================================================
 
 import apiClient from './api';
 import type { CommitteeOverview, VolunteerDTO } from '@/types';
+
+export interface TrainerDto {
+    id: string;
+    fullName: string;
+    email: string;
+    phone?: string;
+    matricule?: string;
+    avatar?: string;
+    committeeId?: string;
+    committeeName?: string;
+    committeeType?: string;
+    expertiseDomains: string[];
+    promotedAt?: string;
+    secourismeExpiringSoon: boolean;
+    secourismeExpired: boolean;
+}
 
 const volunteerService = {
     getVisible: async (): Promise<CommitteeOverview[]> => {
@@ -34,6 +50,27 @@ const volunteerService = {
 
     promote: async (volunteerId: string, payload: { expertiseDomains: string }): Promise<string> => {
         const { data } = await apiClient.put<string>(`/profiles/volunteers/${volunteerId}/promote-to-trainer`, payload);
+        return data;
+    },
+
+    updateDetails: async (volunteerId: string, payload: { skills?: string; bloodType?: string }): Promise<string> => {
+        const { data } = await apiClient.put<string>(`/profiles/volunteers/${volunteerId}/details`, payload);
+        return data;
+    },
+
+    // ── Trainer management ───────────────────────────────────────────────────
+    getTrainers: async (): Promise<TrainerDto[]> => {
+        const { data } = await apiClient.get<TrainerDto[]>('/profiles/trainers');
+        return data;
+    },
+
+    updateTrainer: async (trainerId: string, expertiseDomains: string[]): Promise<TrainerDto> => {
+        const { data } = await apiClient.put<TrainerDto>(`/profiles/trainers/${trainerId}`, { expertiseDomains });
+        return data;
+    },
+
+    removeTrainer: async (trainerId: string): Promise<string> => {
+        const { data } = await apiClient.delete<string>(`/profiles/trainers/${trainerId}`);
         return data;
     },
 };

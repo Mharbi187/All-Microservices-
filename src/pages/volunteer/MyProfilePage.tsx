@@ -907,16 +907,24 @@ const MyProfilePage: React.FC = () => {
                                                         <TeamOutlined style={{ color: '#DC2626' }} /> Rôles & Comité
                                                     </div>
                                                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                                                        {user?.roles?.length ? user.roles.map(r => (
-                                                            <span key={r} style={{
-                                                                background: '#FEF2F2', color: '#B91C1C',
-                                                                border: '1.5px solid #FCA5A5',
-                                                                borderRadius: 99, padding: '5px 14px',
-                                                                fontSize: 12.5, fontWeight: 800, letterSpacing: '0.02em',
-                                                            }}>
-                                                                {r}
-                                                            </span>
-                                                        )) : <Text type="secondary">Aucun rôle attribué</Text>}
+                                                        {user?.roles?.length ? (() => {
+                                                            let displayRoles = [...user.roles];
+                                                            if (displayRoles.includes('PRESIDENT_NATIONAL')) {
+                                                                displayRoles = ['PRESIDENT_NATIONAL'];
+                                                            } else if (displayRoles.includes('PRESIDENT')) {
+                                                                displayRoles = ['PRESIDENT'];
+                                                            }
+                                                            return displayRoles.map(r => (
+                                                                <span key={r} style={{
+                                                                    background: '#FEF2F2', color: '#B91C1C',
+                                                                    border: '1.5px solid #FCA5A5',
+                                                                    borderRadius: 99, padding: '5px 14px',
+                                                                    fontSize: 12.5, fontWeight: 800, letterSpacing: '0.02em',
+                                                                }}>
+                                                                    {r}
+                                                                </span>
+                                                            ));
+                                                        })() : <Text type="secondary">Aucun rôle attribué</Text>}
                                                     </div>
                                                 </div>
                                             </motion.div>

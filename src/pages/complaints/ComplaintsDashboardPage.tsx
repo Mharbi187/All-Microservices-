@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Layout, Table, Tag, Typography, Button, Modal } from 'antd';
+import { Layout, Table, Tag, Typography, Button, Modal, Select } from 'antd';
 import {
   EyeOutlined,
   CheckCircleOutlined,
@@ -119,20 +119,38 @@ export const ComplaintsDashboardPage: React.FC = () => {
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [isDetailsVisible, setIsDetailsVisible] = useState(false);
   const [selectedComplaint, setSelectedComplaint] = useState<ComplaintDto | null>(null);
-  const [committeesList, setCommitteesList] = useState<{ id: string; name: string }[]>([]);
+  const [committeesList, setCommitteesList] = useState<any[]>([]);
+  
+  // Filters state
+  const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [submitterTypeFilter, setSubmitterTypeFilter] = useState<string>('ALL');
+  const [committeeFilter, setCommitteeFilter] = useState<string>('ALL');
 
   const isNationalPresidentOrVP =
     user?.roles?.some(r => ['PRESIDENT_NATIONAL', 'VICE_PRESIDENT_NATIONAL'].includes(r)) ||
-    user?.rawRoles?.some((r: any) => ['PRESIDENT', 'VICE_PRESIDENT'].includes(r.role) && r.committeeType === 'NATIONAL');
+    user?.rawRoles?.some((r: any) => ['PRESIDENT', 'VICE_PRESIDENT'].includes(r.role) && r.committeeType === 'NATIONAL') ||
+    user?.type === 'ADMIN';
 
-  // Can manage (view & respond) complaints — but cannot submit new ones if national
+  const isRegionalPresidentOrVP =
+    user?.roles?.some(r => ['PRESIDENT_REGIONAL', 'VICE_PRESIDENT_REGIONAL'].includes(r)) ||
+    user?.rawRoles?.some((r: any) => ['PRESIDENT', 'VICE_PRESIDENT'].includes(r.role) && r.committeeType === 'REGIONAL');
+
+  const isLocalPresidentOrVP =
+    user?.roles?.some(r => ['PRESIDENT_LOCAL', 'VICE_PRESIDENT_LOCAL'].includes(r)) ||
+    user?.rawRoles?.some((r: any) => ['PRESIDENT', 'VICE_PRESIDENT'].includes(r.role) && r.committeeType === 'LOCAL');
+
+  // Can manage (view & respond) complaints
   const canManageComplaints =
+    isNationalPresidentOrVP ||
+    isRegionalPresidentOrVP ||
+    isLocalPresidentOrVP ||
     user?.roles?.some(r => [
       'PRESIDENT', 'VICE_PRESIDENT', 'SECRETAIRE_GENERAL',
       'PRESIDENT_NATIONAL', 'VICE_PRESIDENT_NATIONAL',
       'PRESIDENT_REGIONAL', 'VICE_PRESIDENT_REGIONAL',
       'PRESIDENT_LOCAL', 'VICE_PRESIDENT_LOCAL'
     ].includes(r)) ||
+    user?.rawRoles?.some((r: any) => ['PRESIDENT', 'VICE_PRESIDENT', 'SECRETAIRE_GENERAL'].includes(r.role)) ||
     user?.type === 'ADMIN';
 
   const fetchComplaints = async () => {
@@ -165,24 +183,77 @@ export const ComplaintsDashboardPage: React.FC = () => {
   const fetchCommittees = async () => {
     try {
       const data = await committeeService.getAll();
-      setCommitteesList(data.map((c: any) => ({ id: c.id, name: c.name })));
+      setCommitteesList(data.map((c: any) => ({
+        id: c.id,
+        name: c.name,
+        parentId: c.parentId || c.parentCommitteeId,
+        type: c.type,
+        region: c.region
+      })));
     } catch (e) {
       console.error(e);
     }
   };
+
 
   useEffect(() => {
     fetchComplaints();
     fetchCommittees();
   }, [user]);
 
-  const counts = {
-    total: complaints.length,
-    enAttente: complaints.filter(c => c.status === ComplaintStatus.EN_ATTENTE).length,
-    enCours: complaints.filter(c => c.status === ComplaintStatus.EN_COURS).length,
-    resolu: complaints.filter(c => c.status === ComplaintStatus.RESOLU).length,
-    rejete: complaints.filter(c => c.status === ComplaintStatus.REJETE).length,
+  const filteredComplaints = complaints.filter(c => {
+    // 1. Status Filter
+    if (statusFilter !== 'ALL' && c.status !== statusFilter) {
+      return false;
+    }
+    
+    // 2. Submitter Type Filter
+    if (submitterTypeFilter !== 'ALL' && c.submitterType !== submitterTypeFilter) {
+      return false;
+    }
+    
+    // 3. Committee Filter
+    if (committeeFilter !== 'ALL' && c.targetCommitteeId !== committeeFilter) {
+      return false;
+    }
+    
+    return true;
+  });
+
+  const getCommitteeOptions = () => {
+    const defaultOpt = { value: 'ALL', label: isNationalPresidentOrVP ? 'Tous les comités' : 'Tous les comités (Régional & Locaux)' };
+    
+    if (isNationalPresidentOrVP) {
+      return [
+        defaultOpt,
+        ...committeesList.map(c => ({ value: c.id, label: c.name }))
+      ];
+    }
+    
+    if (isRegionalPresidentOrVP) {
+      const regionalCommitteeId = user?.committeeId || (user as any)?.rawRoles?.[0]?.committeeId;
+      const filtered = committeesList.filter(c => 
+        c.id === regionalCommitteeId || 
+        c.parentId === regionalCommitteeId || 
+        c.parentCommitteeName === user?.committeeName
+      );
+      return [
+        defaultOpt,
+        ...filtered.map(c => ({ value: c.id, label: c.name }))
+      ];
+    }
+    
+    return [defaultOpt];
   };
+
+  const counts = {
+    total: filteredComplaints.length,
+    enAttente: filteredComplaints.filter(c => c.status === ComplaintStatus.EN_ATTENTE).length,
+    enCours: filteredComplaints.filter(c => c.status === ComplaintStatus.EN_COURS).length,
+    resolu: filteredComplaints.filter(c => c.status === ComplaintStatus.RESOLU).length,
+    rejete: filteredComplaints.filter(c => c.status === ComplaintStatus.REJETE).length,
+  };
+
 
   const columns = [
     {
@@ -247,7 +318,16 @@ export const ComplaintsDashboardPage: React.FC = () => {
       width: 110,
       render: (_: any, record: ComplaintDto) => (
         <button
-          onClick={() => { setSelectedComplaint(record); setIsDetailsVisible(true); }}
+          onClick={async () => {
+            try {
+              const updated = await complaintService.viewComplaint(record.id);
+              setSelectedComplaint(updated);
+            } catch (err) {
+              console.error("Failed to mark complaint as viewed", err);
+              setSelectedComplaint(record);
+            }
+            setIsDetailsVisible(true);
+          }}
           style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -403,6 +483,68 @@ export const ComplaintsDashboardPage: React.FC = () => {
           <StatCard label="Rejetés" value={counts.rejete} color="#DC2626" bg="#FEE2E2" icon={<CloseCircleOutlined />} />
         </div>
 
+        {/* ── Filters ── */}
+        {canManageComplaints && (
+          <div
+            style={{
+              background: C.white,
+              borderRadius: 16,
+              border: `1px solid ${C.gray100}`,
+              padding: '20px 24px',
+              marginBottom: 28,
+              boxShadow: '0 2px 12px rgba(0,0,0,0.03)',
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 16,
+              alignItems: 'center',
+            }}
+          >
+            <div style={{ flex: '1 1 200px' }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: C.gray600, marginBottom: 6 }}>Statut</div>
+              <Select
+                value={statusFilter}
+                onChange={setStatusFilter}
+                style={{ width: '100%' }}
+                options={[
+                  { value: 'ALL', label: 'Tous les statuts' },
+                  { value: ComplaintStatus.EN_ATTENTE, label: 'En Attente' },
+                  { value: ComplaintStatus.EN_COURS, label: 'En Cours' },
+                  { value: ComplaintStatus.RESOLU, label: 'Résolu' },
+                  { value: ComplaintStatus.REJETE, label: 'Rejeté' },
+                ]}
+              />
+            </div>
+            
+            <div style={{ flex: '1 1 200px' }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: C.gray600, marginBottom: 6 }}>Type de demandeur</div>
+              <Select
+                value={submitterTypeFilter}
+                onChange={setSubmitterTypeFilter}
+                style={{ width: '100%' }}
+                options={[
+                  { value: 'ALL', label: 'Tous les demandeurs' },
+                  { value: 'VOLONTAIRE', label: 'Volontaires' },
+                  { value: 'RESPONSABLE', label: 'Responsables' },
+                ]}
+              />
+            </div>
+
+            {(isNationalPresidentOrVP || isRegionalPresidentOrVP) && (
+              <div style={{ flex: '2 1 300px' }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: C.gray600, marginBottom: 6 }}>Comité</div>
+                <Select
+                  value={committeeFilter}
+                  onChange={setCommitteeFilter}
+                  style={{ width: '100%' }}
+                  showSearch
+                  optionFilterProp="label"
+                  options={getCommitteeOptions()}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ── Table ── */}
         <div
           style={{
@@ -437,13 +579,13 @@ export const ComplaintsDashboardPage: React.FC = () => {
                 fontWeight: 700,
               }}
             >
-              {complaints.length} entrée{complaints.length !== 1 ? 's' : ''}
+              {filteredComplaints.length} entrée{filteredComplaints.length !== 1 ? 's' : ''}
             </span>
           </div>
 
           <Table
             columns={columns}
-            dataSource={complaints}
+            dataSource={filteredComplaints}
             rowKey="id"
             loading={loading}
             pagination={{
@@ -456,6 +598,7 @@ export const ComplaintsDashboardPage: React.FC = () => {
             style={{ '--row-hover': C.redFade } as any}
           />
         </div>
+
 
         {/* ── Form Modal ── */}
         <Modal

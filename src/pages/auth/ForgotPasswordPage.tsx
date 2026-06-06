@@ -176,7 +176,16 @@ const ForgotPasswordPage: React.FC = () => {
                     headline={t('auth_page.heroForgotTitle', 'Récupérez votre accès en quelques secondes')}
                     description={t('auth_page.heroForgotDesc', 'Saisissez votre e-mail et nous vous enverrons un lien sécurisé pour réinitialiser votre mot de passe.')}
                     stats={[
-                        { value: '🔒', label: t('auth_page.statsSecure', 'Lien sécurisé') },
+                        {
+                            value: (
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f10316" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline-block', verticalAlign: 'middle' }}>
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                                    <circle cx="12" cy="16" r="1.5" fill="#f10316" />
+                                </svg>
+                            ),
+                            label: t('auth_page.statsSecure', 'Lien sécurisé')
+                        },
                         { value: '60', label: t('auth_page.statsMinutes', 'Minutes de validité') },
                         { value: '1', label: t('auth_page.statsClick', 'Clic pour réinitialiser') },
                     ]}

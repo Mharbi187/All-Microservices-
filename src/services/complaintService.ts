@@ -56,6 +56,12 @@ export const complaintService = {
     const response = await api.post<ComplaintDto>(`${COMPLAINTS_API}/${complaintId}/responses`, { message });
     return response.data;
   },
+
+  // Record that a manager viewed/consulted the complaint and trigger notifications
+  viewComplaint: async (complaintId: string): Promise<ComplaintDto> => {
+    const response = await api.get<ComplaintDto>(`${COMPLAINTS_API}/${complaintId}/view`);
+    return response.data;
+  },
 };
 
 export default complaintService;

@@ -44,7 +44,7 @@ const LoginPage: React.FC = () => {
 
         try {
             await login({
-                email: formData.email,
+                email: formData.email.trim(),
                 password: formData.password,
                 captchaToken: captchaRequired && captchaChecked ? 'local-bypass' : undefined
             });

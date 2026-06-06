@@ -26,6 +26,7 @@ import { useUIStore, useAuthStore } from '@/stores';
 import NewsManagerTab from './components/NewsManagerTab';
 import EventManagerTab from './components/EventManagerTab';
 import QuizManagerTab from './components/QuizManagerTab';
+import { toRelativeUrl } from '@/utils';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -227,7 +228,15 @@ const DiffusionPage: React.FC = () => {
               Télécharger
             </Button>
           ) : (
-            <Button type="text" icon={<EyeOutlined />} size="small" onClick={() => r.contentUrl && window.open(r.contentUrl, '_blank')} />
+            <Button
+              type="text"
+              icon={<EyeOutlined />}
+              size="small"
+              onClick={() => {
+                const url = r.fileUrl || r.contentUrl;
+                if (url) window.open(toRelativeUrl(url), '_blank');
+              }}
+            />
           )}
           <Button type="text" icon={<ShareAltOutlined />} size="small" />
         </Space>

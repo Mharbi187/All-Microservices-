@@ -145,6 +145,18 @@ export const useAuthStore = create<AuthState>()(
                     // Map backend's userType to frontend's UserType
                     const userType = profile.userType as import('@/types').UserType | undefined;
 
+                    // Parse trainer domains if present (JSON string like '["SECOURISME","RCP"]')
+                    let trainerDomains: string[] | undefined;
+                    if (profile.trainerDomains) {
+                        try {
+                            trainerDomains = typeof profile.trainerDomains === 'string'
+                                ? JSON.parse(profile.trainerDomains)
+                                : profile.trainerDomains;
+                        } catch {
+                            trainerDomains = [];
+                        }
+                    }
+
                     set((state) => ({
                         user: {
                             ...state.user,
@@ -171,6 +183,7 @@ export const useAuthStore = create<AuthState>()(
                             educationLevel: profile.educationLevel,
                             avatar: profile.avatar || state.user?.avatar,
                             firstLoginCompleted: profile.firstLoginCompleted ?? state.user?.firstLoginCompleted,
+                            trainerDomains,
                         } as User,
                     }));
                 } catch (err) {

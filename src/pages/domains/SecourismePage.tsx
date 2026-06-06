@@ -14,13 +14,17 @@ import {
     PlusOutlined, ToolOutlined, CalendarOutlined,
     GlobalOutlined, SafetyCertificateOutlined, AlertOutlined,
     CheckCircleOutlined, InfoCircleOutlined, FilterOutlined,
-    ArrowRightOutlined, SettingOutlined, MedicineBoxOutlined
+    ArrowRightOutlined, SettingOutlined, MedicineBoxOutlined,
+    AuditOutlined, BarChartOutlined
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore, useUIStore } from '@/stores';
 import { secourismeService } from '@/services/domainServices';
 import type { RescueEquipmentDTO, RescueDeviceDTO } from '@/types';
+import RcpEvaluationsTab from './components/RcpEvaluationsTab';
+import RcpNationalDashboard from './components/RcpNationalDashboard';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -30,6 +34,7 @@ const SecourismePage: React.FC = () => {
     const themeMode = useUIStore((s) => s.themeMode);
     const user = useAuthStore((s) => s.user);
     const isDark = themeMode === 'dark';
+    const navigate = useNavigate();
 
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('inventory');
@@ -59,7 +64,12 @@ const SecourismePage: React.FC = () => {
     const roles = user?.roles || [];
     const isPresident = roles.some(r => ['PRESIDENT', 'PRESIDENT_LOCAL', 'PRESIDENT_REGIONAL', 'PRESIDENT_NATIONAL'].includes(r));
     const isVicePresident = roles.some(r => ['VICE_PRESIDENT', 'VICE_PRESIDENT_LOCAL', 'VICE_PRESIDENT_REGIONAL', 'VICE_PRESIDENT_NATIONAL'].includes(r));
+    const isNationalPresident = roles.some(r => ['PRESIDENT_NATIONAL', 'VICE_PRESIDENT_NATIONAL'].includes(r));
+    const isRespSecourisme = roles.some(r => r === 'RESP_SECOURISME');
+    const isTrainer = user?.type === 'TRAINER';
     const canApprove = isPresident || isVicePresident;
+    // Trainers + RESP_SECOURISME can access RCP evaluations form and committee tab
+    const canAccessRcp = isTrainer || isRespSecourisme || isPresident || isVicePresident;
 
     const loadData = async () => {
         if (!user?.committeeId) {
@@ -68,18 +78,40 @@ const SecourismePage: React.FC = () => {
         }
         setLoading(true);
         try {
-            const [eq, dv] = await Promise.all([
-                secourismeService.getEquipment(user.committeeId).catch(() => []),
-                secourismeService.getDevices(user.committeeId).catch(() => []),
-            ]);
-            setEquipment(Array.isArray(eq) ? eq : []);
-            setDevices(Array.isArray(dv) ? dv : []);
+            const isManager = isRespSecourisme || isPresident || isVicePresident;
+            if (isManager) {
+                const [eq, dv] = await Promise.all([
+                    secourismeService.getEquipment(user.committeeId).catch(() => []),
+                    secourismeService.getDevices(user.committeeId).catch(() => []),
+                ]);
+                setEquipment(Array.isArray(eq) ? eq : []);
+                setDevices(Array.isArray(dv) ? dv : []);
+            } else {
+                setEquipment([]);
+                setDevices([]);
+            }
         } catch (error) {
             console.error("Failed to load secourisme data", error);
         } finally {
             setLoading(false);
         }
     };
+
+    const location = useLocation();
+
+    useEffect(() => {
+        const queryParams = new URLSearchParams(location.search);
+        const tabParam = queryParams.get('tab');
+        const isManager = isRespSecourisme || isPresident || isVicePresident;
+        
+        if (tabParam && ['inventory', 'devices', 'validations', 'rcpEvaluations', 'rcpNational'].includes(tabParam)) {
+            setActiveTab(tabParam);
+        } else if (!isManager && isTrainer) {
+            setActiveTab('rcpEvaluations');
+        } else {
+            setActiveTab('inventory');
+        }
+    }, [location.search, isRespSecourisme, isPresident, isVicePresident, isTrainer]);
 
     useEffect(() => {
         loadData();
@@ -398,17 +430,27 @@ const SecourismePage: React.FC = () => {
         overflow: 'hidden'
     };
 
-    const tabsList = [
-        { key: 'inventory', label: 'Inventaire', icon: <ToolOutlined /> },
-        { key: 'devices', label: 'Dispositifs', icon: <CalendarOutlined /> }
-    ];
-    if (canApprove) {
-        const pendingCount = devices.filter(d => d.approvalStatus === 'PENDING' || !d.approvalStatus).length;
-        tabsList.push({
-            key: 'validations',
-            label: `Demandes (${pendingCount})`,
-            icon: <SafetyCertificateOutlined />
-        });
+    const isManager = isRespSecourisme || isPresident || isVicePresident;
+    const tabsList = [];
+
+    if (isManager) {
+        tabsList.push({ key: 'inventory', label: 'Inventaire', icon: <ToolOutlined /> });
+        tabsList.push({ key: 'devices', label: 'Dispositifs', icon: <CalendarOutlined /> });
+        if (canApprove) {
+            const pendingCount = devices.filter(d => d.approvalStatus === 'PENDING' || !d.approvalStatus).length;
+            tabsList.push({
+                key: 'validations',
+                label: `Demandes (${pendingCount})`,
+                icon: <SafetyCertificateOutlined />
+            });
+        }
+    }
+
+    if (canAccessRcp && !isNationalPresident) {
+        tabsList.push({ key: 'rcpEvaluations', label: 'Évaluations RCP', icon: <AuditOutlined /> });
+    }
+    if (isNationalPresident) {
+        tabsList.push({ key: 'rcpNational', label: 'Dashboard RCP National', icon: <BarChartOutlined /> });
     }
 
     return (
@@ -431,7 +473,7 @@ const SecourismePage: React.FC = () => {
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                                         fontSize: 28, boxShadow: '0 12px 24px rgba(239,68,68,0.25)'
                                     }}>
-                                        🚑
+                                        <MedicineBoxOutlined style={{ fontSize: 28, color: '#fff' }} />
                                     </div>
                                     <div>
                                         <Title level={3} style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>Secourisme</Title>
@@ -442,44 +484,73 @@ const SecourismePage: React.FC = () => {
                                 </div>
 
                                 {/* OPERATIONAL STATS */}
-                                <Space direction="vertical" style={{ width: '100%' }} size={24}>
-                                    <div style={{ padding: 20, borderRadius: 20, background: isDark ? 'rgba(239,68,68,0.05)' : '#fff', border: `1px solid ${isDark ? 'rgba(239,68,68,0.1)' : 'rgba(0,0,0,0.05)'}` }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                                            <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(239,68,68,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }}>
-                                                <ToolOutlined />
+                                {isManager ? (
+                                    <Space direction="vertical" style={{ width: '100%' }} size={24}>
+                                        <div style={{ padding: 20, borderRadius: 20, background: isDark ? 'rgba(239,68,68,0.05)' : '#fff', border: `1px solid ${isDark ? 'rgba(239,68,68,0.1)' : 'rgba(0,0,0,0.05)'}` }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                                                <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(239,68,68,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }}>
+                                                    <ToolOutlined />
+                                                </div>
+                                                <Tag color="red" style={{ borderRadius: 10 }}>CRITIQUE</Tag>
                                             </div>
-                                            <Tag color="red" style={{ borderRadius: 10 }}>CRITIQUE</Tag>
+                                            <Text type="secondary" style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase' }}>Inventaire Actif</Text>
+                                            <Title level={4} style={{ margin: '4px 0 0 0', fontWeight: 800 }}>{equipment.length} Éléments</Title>
                                         </div>
-                                        <Text type="secondary" style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase' }}>Inventaire Actif</Text>
-                                        <Title level={4} style={{ margin: '4px 0 0 0', fontWeight: 800 }}>{equipment.length} Éléments</Title>
-                                    </div>
 
-                                    <div style={{ padding: 20, borderRadius: 20, background: isDark ? 'rgba(30,41,59,0.2)' : '#fff', border: `1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                                            <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(139,92,246,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8b5cf6' }}>
-                                                <CalendarOutlined />
+                                        <div style={{ padding: 20, borderRadius: 20, background: isDark ? 'rgba(30,41,59,0.2)' : '#fff', border: `1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                                                <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(139,92,246,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8b5cf6' }}>
+                                                    <CalendarOutlined />
+                                                </div>
+                                                <Tag color="purple" style={{ borderRadius: 10 }}>PLANIFIÉ</Tag>
                                             </div>
-                                            <Tag color="purple" style={{ borderRadius: 10 }}>PLANIFIÉ</Tag>
+                                            <Text type="secondary" style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase' }}>Prochains Dispositifs</Text>
+                                            <Title level={4} style={{ margin: '4px 0 0 0', fontWeight: 800 }}>{devices.length} Missions</Title>
                                         </div>
-                                        <Text type="secondary" style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase' }}>Prochains Dispositifs</Text>
-                                        <Title level={4} style={{ margin: '4px 0 0 0', fontWeight: 800 }}>{devices.length} Missions</Title>
-                                    </div>
 
-                                    <Button
-                                        type="primary"
-                                        block
-                                        icon={<PlusOutlined />}
-                                        onClick={() => activeTab === 'inventory' ? setIsEqModalOpen(true) : setIsDvModalOpen(true)}
-                                        style={{ height: 50, borderRadius: 16, background: '#ef4444', borderColor: '#ef4444', fontWeight: 700, marginTop: 20, boxShadow: '0 8px 24px rgba(239,68,68,0.2)' }}
-                                    >
-                                        Nouvelle Entrée
-                                    </Button>
-                                </Space>
+                                        <Button
+                                            type="primary"
+                                            block
+                                            icon={<PlusOutlined />}
+                                            onClick={() => activeTab === 'inventory' ? setIsEqModalOpen(true) : setIsDvModalOpen(true)}
+                                            style={{ height: 50, borderRadius: 16, background: '#ef4444', borderColor: '#ef4444', fontWeight: 700, marginTop: 20, boxShadow: '0 8px 24px rgba(239,68,68,0.2)' }}
+                                        >
+                                            Nouvelle Entrée
+                                        </Button>
+                                    </Space>
+                                ) : (
+                                    <Space direction="vertical" style={{ width: '100%' }} size={24}>
+                                        <div style={{ padding: 20, borderRadius: 20, background: isDark ? 'rgba(239,68,68,0.05)' : '#fff', border: `1px solid ${isDark ? 'rgba(239,68,68,0.1)' : 'rgba(0,0,0,0.05)'}` }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                                                <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(239,68,68,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }}>
+                                                    <SafetyCertificateOutlined />
+                                                </div>
+                                                <Tag color="red" style={{ borderRadius: 10 }}>ACTIF</Tag>
+                                            </div>
+                                            <Text type="secondary" style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase' }}>Rôle Formateur</Text>
+                                            <Title level={4} style={{ margin: '4px 0 0 0', fontWeight: 800 }}>Évaluation RCP</Title>
+                                        </div>
+
+                                        <Button
+                                            type="primary"
+                                            block
+                                            icon={<PlusOutlined />}
+                                            onClick={() => navigate('/secourisme/rcp-evaluation')}
+                                            style={{ height: 50, borderRadius: 16, background: '#ef4444', borderColor: '#ef4444', fontWeight: 700, marginTop: 20, boxShadow: '0 8px 24px rgba(239,68,68,0.2)' }}
+                                        >
+                                            Nouvelle évaluation
+                                        </Button>
+                                    </Space>
+                                )}
 
                                 <div style={{ marginTop: 'auto', paddingTop: 60 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px', borderRadius: 16, background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)' }}>
                                         <InfoCircleOutlined style={{ color: '#ef4444' }} />
-                                        <Text style={{ fontSize: 13 }}>Toutes les inspections sont à jour pour le mois en cours.</Text>
+                                        <Text style={{ fontSize: 13 }}>
+                                            {isManager 
+                                                ? "Toutes les inspections sont à jour pour le mois en cours." 
+                                                : "Évaluez les participants sur les techniques de massage cardiaque et RCP."}
+                                        </Text>
                                     </div>
                                 </div>
                             </div>
@@ -510,6 +581,15 @@ const SecourismePage: React.FC = () => {
                                 </div>
 
                                 <Space size={12}>
+                                    {canAccessRcp && (
+                                        <Button
+                                            icon={<SafetyCertificateOutlined />}
+                                            onClick={() => navigate('/secourisme/rcp-evaluation')}
+                                            style={{ borderRadius: 12, height: 44, padding: '0 16px', background: 'rgba(239,68,68,0.1)', borderColor: '#ef4444', color: '#ef4444', fontWeight: 600, fontSize: 12 }}
+                                        >
+                                            Nouvelle éval. RCP
+                                        </Button>
+                                    )}
                                     <Button icon={<FilterOutlined />} style={{ borderRadius: 12, height: 44, width: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }} />
                                     <Button icon={<SettingOutlined />} style={{ borderRadius: 12, height: 44, width: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }} />
                                 </Space>
@@ -541,6 +621,10 @@ const SecourismePage: React.FC = () => {
                                             className="premium-table"
                                             locale={{ emptyText: <div style={{ padding: '60px 0' }}><Title level={5}>Aucun dispositif</Title><Text type="secondary">Planifiez un événement de secours.</Text></div> }}
                                         />
+                                    ) : activeTab === 'rcpEvaluations' ? (
+                                        <RcpEvaluationsTab committeeId={user?.committeeId || ''} isDark={isDark} />
+                                    ) : activeTab === 'rcpNational' ? (
+                                        <RcpNationalDashboard isDark={isDark} />
                                     ) : (
                                         <Table
                                             columns={pendingColumns}

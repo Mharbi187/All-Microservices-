@@ -118,8 +118,7 @@ const ResourcesPage = lazy(() => import('@/pages/volunteer/ResourcesPage'));
 const YouthSpacePage = lazy(() => import('@/pages/volunteer/YouthSpacePage'));
 const QuizPage = lazy(() => import('@/pages/volunteer/QuizPage'));
 const DonationReceptionPage = lazy(() => import('@/pages/volunteer/DonationReceptionPage'));
-
-// ---- Donor-specific pages ----
+const MyInterventionsPage = lazy(() => import('@/pages/domains/catastrophes/MyInterventionsPage'));
 const DonorDashboardPage = lazy(() => import('@/pages/donor/DonorDashboardPage'));
 const DonorMapPage = lazy(() => import('@/pages/donor/DonorMapPage'));
 const MakeDonationPage = lazy(() => import('@/pages/donor/MakeDonationPage'));
@@ -136,6 +135,7 @@ const ImmigrationPage = lazy(() => import('@/pages/domains/ImmigrationPage'));
 const VffPage = lazy(() => import('@/pages/domains/VffPage'));
 const CatastrophesPage = lazy(() => import('@/pages/domains/CatastrophesPage'));
 const DistributionMedicalePage = lazy(() => import('@/pages/domains/DistributionMedicalePage'));
+const RcpEvaluationFormPage = lazy(() => import('@/pages/domains/RcpEvaluationFormPage'));
 
 // ---- Crisis Command Center ----
 const RadarDashboardPage = lazy(() => import('@/pages/crisis/Dashboard'));
@@ -206,8 +206,10 @@ export const router = createBrowserRouter([
             { path: 'volunteer/youth', element: withLoader(<YouthSpacePage />) },
             { path: 'volunteer/quiz', element: withLoader(<QuizPage />) },
             { path: 'volunteer/reception', element: withLoader(<DonationReceptionPage />) },
+            { path: 'volunteer/interventions', element: withLoader(<MyInterventionsPage />) },
             // Domain-specific routes
             { path: 'secourisme', element: withLoader(<SecourismePage />) },
+            { path: 'secourisme/rcp-evaluation', element: withLoader(<RcpEvaluationFormPage />) },
             { path: 'diffusion', element: withLoader(<DiffusionPage />) },
             { path: 'jeunesse', element: withLoader(<JeunessePage />) },
             { path: 'sante', element: withLoader(<SantePage />) },

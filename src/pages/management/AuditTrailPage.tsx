@@ -22,8 +22,11 @@ interface AuditLog {
     id: string;
     action: string;
     performedBy: string;
+    performedByName: string;
     targetCommitteeId: string;
+    targetCommitteeName: string;
     targetVolunteerId: string;
+    targetVolunteerName: string;
     reason: string;
     timestamp: string;
 }
@@ -70,17 +73,47 @@ const AuditTrailPage: React.FC = () => {
             },
         },
         {
-            title: 'Par (ID)',
-            dataIndex: 'performedBy',
+            title: 'Par (Utilisateur)',
             key: 'performedBy',
-            render: (id: string) => <Text code>{id ? id.substring(0, 8) : 'System'}</Text>,
+            render: (r: AuditLog) => (
+                <Space>
+                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <AuditOutlined style={{ color: '#888' }} />
+                    </div>
+                    <div>
+                        <Text strong>{r.performedByName || 'Système'}</Text>
+                        <br />
+                        <Text type="secondary" style={{ fontSize: 11 }} code>{r.performedBy?.substring(0, 8)}</Text>
+                    </div>
+                </Space>
+            )
+        },
+        {
+            title: 'Cible(s)',
+            key: 'targets',
+            render: (r: AuditLog) => {
+                if (!r.targetCommitteeName && !r.targetVolunteerName) return <Text type="secondary">Aucune</Text>;
+                return (
+                    <div>
+                        {r.targetCommitteeName && (
+                            <div style={{ marginBottom: 4 }}>
+                                <Tag color="geekblue">Comité</Tag> <Text style={{ fontSize: 13 }}>{r.targetCommitteeName}</Text>
+                            </div>
+                        )}
+                        {r.targetVolunteerName && (
+                            <div>
+                                <Tag color="purple">Volontaire</Tag> <Text style={{ fontSize: 13 }}>{r.targetVolunteerName}</Text>
+                            </div>
+                        )}
+                    </div>
+                );
+            }
         },
         {
             title: 'Justification',
             dataIndex: 'reason',
             key: 'reason',
-            ellipsis: true,
-            render: (reason: string) => <Text style={{ fontSize: 13 }}>{reason || 'N/A'}</Text>,
+            render: (reason: string) => <Text style={{ fontSize: 13, wordBreak: 'break-word', whiteSpace: 'normal' }}>{reason || 'N/A'}</Text>,
         },
         {
             title: 'Date & Heure',

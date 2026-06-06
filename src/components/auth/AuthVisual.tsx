@@ -10,7 +10,7 @@ import { useUIStore } from '@/stores/uiStore';
 interface AuthVisualProps {
     headline: string;
     description: string;
-    stats?: { value: string; label: string }[];
+    stats?: { value: React.ReactNode; label: string }[];
 }
 
 const NetworkMeshBg: React.FC<{ dark: boolean }> = ({ dark }) => (

@@ -147,8 +147,8 @@ export const ROLE_PERMISSIONS: Record<RoleTitle, RolePermission> = {
         dashboardType: 'volunteer',
     },
     RESP_JEUNESSE: {
-        allowedRoutes: [...SHARED_ROUTES, '/jeunesse', '/reports', '/admin-reports'],
-        sidebarKeys: [...SHARED_SIDEBAR, '/jeunesse', '/reports', '/admin-reports', 'domains'],
+        allowedRoutes: [...SHARED_ROUTES, '/jeunesse', '/reports', '/admin-reports', '/volunteers'],
+        sidebarKeys: [...SHARED_SIDEBAR, '/jeunesse', '/reports', '/admin-reports', 'domains', 'management', '/volunteers'],
         label: 'Resp. Jeunesse',
         dashboardType: 'volunteer',
     },
@@ -193,8 +193,8 @@ export const USER_TYPE_PERMISSIONS: Record<UserType, RolePermission> = {
         dashboardType: 'admin',
     },
     TRAINER: {
-        allowedRoutes: [...SHARED_ROUTES, '/volunteers', '/secourisme', '/reports', '/admin-reports', '/stocks'],
-        sidebarKeys: [...SHARED_SIDEBAR, 'management', '/volunteers', '/secourisme', '/reports', '/admin-reports', '/stocks', 'domains'],
+        allowedRoutes: [...SHARED_ROUTES, '/secourisme', '/secourisme/rcp-evaluation'],
+        sidebarKeys: [...SHARED_SIDEBAR, '/secourisme', 'domains'],
         label: 'Formateur',
         dashboardType: 'trainer',
     },

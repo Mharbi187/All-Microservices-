@@ -16,6 +16,7 @@ import {
 import { diffusionService } from '@/services/domainServices';
 import { useAuthStore } from '@/stores';
 import type { EducationalResourceDTO } from '@/types';
+import { toRelativeUrl } from '@/utils';
 
 const { Title, Text, Paragraph } = Typography;
 const { Search } = Input;
@@ -206,20 +207,24 @@ const ResourcesPage: React.FC = () => {
                         <Col xs={24} sm={12} lg={8} xl={6} key={resource.id || resource.title}>
                             <Card
                                 hoverable
-                                style={{ borderRadius: 12, height: '100%' }}
-                                styles={{ body: { padding: 20, display: 'flex', flexDirection: 'column', height: '100%' } }}
-                                actions={resource.fileUrl ? [
-                                    <Tooltip title="Ouvrir" key="open">
-                                        <Button
-                                            type="link"
-                                            icon={<LinkOutlined />}
-                                            href={resource.fileUrl}
-                                            target="_blank"
-                                        >
-                                            Ouvrir
-                                        </Button>
-                                    </Tooltip>,
-                                ] : undefined}
+                                style={{
+                                    borderRadius: 16,
+                                    height: '100%',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    border: '1px solid var(--card-border)',
+                                    background: 'var(--bg-secondary)',
+                                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                    overflow: 'hidden',
+                                }}
+                                styles={{
+                                    body: {
+                                        padding: 24,
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        flex: 1,
+                                    }
+                                }}
                             >
                                 <div style={{ textAlign: 'center', marginBottom: 16 }}>
                                     <Avatar
@@ -228,33 +233,81 @@ const ResourcesPage: React.FC = () => {
                                             backgroundColor:
                                                 resource.contentType === 'PDF' ? '#fef2f2' :
                                                 resource.contentType === 'VIDEO' ? '#f5f3ff' : '#eff6ff',
+                                            border: '1px solid rgba(0,0,0,0.03)',
                                         }}
                                         icon={contentTypeIcons[resource.contentType || ''] || <BookOutlined style={{ color: '#6b7280' }} />}
                                     />
                                 </div>
-                                <Title level={5} style={{ margin: '0 0 8px', textAlign: 'center', fontSize: 14 }} ellipsis={{ rows: 2 }}>
+                                <Title 
+                                    level={5} 
+                                    style={{ 
+                                        margin: '0 0 12px', 
+                                        textAlign: 'center', 
+                                        fontSize: 15, 
+                                        fontWeight: 700,
+                                        lineHeight: 1.4,
+                                        minHeight: 42,
+                                    }} 
+                                    ellipsis={{ rows: 2 }}
+                                >
                                     {resource.title}
                                 </Title>
-                                <Space wrap style={{ justifyContent: 'center', width: '100%', marginBottom: 8 }}>
-                                    <Tag color={contentTypeColors[resource.contentType || ''] || 'default'}>
+                                <Space wrap style={{ justifyContent: 'center', width: '100%', marginBottom: 16 }}>
+                                    <Tag color={contentTypeColors[resource.contentType || ''] || 'default'} style={{ borderRadius: 6, fontWeight: 600 }}>
                                         {resource.contentType}
                                     </Tag>
                                     {resource.category && (
-                                        <Tag color={categoryColors[resource.category] || 'default'} style={{ fontSize: 11 }}>
+                                        <Tag color={categoryColors[resource.category] || 'default'} style={{ borderRadius: 6, fontSize: 11, fontWeight: 500 }}>
                                             {resource.category}
                                         </Tag>
                                     )}
                                 </Space>
+                                
                                 <div style={{ flex: 1 }} />
+                                
                                 {resource.topic && (
-                                    <Text type="secondary" style={{ fontSize: 12, display: 'block', textAlign: 'center' }}>
+                                    <Text 
+                                        type="secondary" 
+                                        style={{ 
+                                            fontSize: 13, 
+                                            display: 'block', 
+                                            textAlign: 'center', 
+                                            marginBottom: 8,
+                                            fontStyle: 'italic',
+                                        }}
+                                    >
                                         {resource.topic}
                                     </Text>
                                 )}
                                 {resource.language && (
-                                    <div style={{ textAlign: 'center', marginTop: 4 }}>
-                                        <Tag icon={<GlobalOutlined />} style={{ fontSize: 10 }}>{resource.language}</Tag>
+                                    <div style={{ textAlign: 'center', marginBottom: 16 }}>
+                                        <Tag icon={<GlobalOutlined />} style={{ borderRadius: 6, fontSize: 11, padding: '2px 8px' }}>
+                                            {resource.language}
+                                        </Tag>
                                     </div>
+                                )}
+                                {resource.fileUrl && (
+                                    <Button
+                                        type="primary"
+                                        icon={<LinkOutlined />}
+                                        href={toRelativeUrl(resource.fileUrl)}
+                                        target="_blank"
+                                        style={{
+                                            width: '100%',
+                                            borderRadius: 10,
+                                            background: 'linear-gradient(135deg, #e01c2e 0%, #c0152a 100%)',
+                                            borderColor: '#e01c2e',
+                                            fontWeight: 700,
+                                            height: 40,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            boxShadow: '0 4px 12px rgba(224, 28, 46, 0.15)',
+                                            transition: 'transform 0.2s, box-shadow 0.2s',
+                                        }}
+                                    >
+                                        Ouvrir
+                                    </Button>
                                 )}
                             </Card>
                         </Col>
@@ -270,7 +323,7 @@ const ResourcesPage: React.FC = () => {
                                     <Button
                                         type="link"
                                         icon={<LinkOutlined />}
-                                        href={resource.fileUrl}
+                                        href={toRelativeUrl(resource.fileUrl)}
                                         target="_blank"
                                         key="open"
                                     >

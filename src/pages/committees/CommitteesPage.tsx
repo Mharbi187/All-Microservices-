@@ -194,10 +194,10 @@ const CommitteesPage: React.FC = () => {
             setSelectedType(undefined);
             fetchData();
         } catch (err: unknown) {
-            const errObj = err as { response?: { data?: string } };
-            if (errObj?.response?.data) {
-                message.error(errObj.response.data);
-            }
+            const errObj = err as { response?: { data?: { message?: string } | string } };
+            const d = errObj?.response?.data;
+            const msg = typeof d === 'string' ? d : (d as { message?: string })?.message || 'Erreur lors de la création du comité';
+            message.error(msg);
         } finally {
             setCreateLoading(false);
         }
@@ -210,12 +210,10 @@ const CommitteesPage: React.FC = () => {
             message.success('Comité approuvé et activé. Mandat de 4 ans démarré.');
             fetchData();
         } catch (err: unknown) {
-            const errObj = err as { response?: { data?: string } };
-            if (errObj?.response?.data) {
-                message.error(errObj.response.data);
-            } else {
-                message.error('Erreur lors de l\'approbation');
-            }
+            const errObj = err as { response?: { data?: { message?: string } | string } };
+            const d = errObj?.response?.data;
+            const msg = typeof d === 'string' ? d : (d as { message?: string })?.message || 'Erreur lors de l\'approbation';
+            message.error(msg);
         }
     };
 

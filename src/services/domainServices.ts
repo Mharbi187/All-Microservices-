@@ -12,7 +12,8 @@ import type {
     FamilyDTO, SocialActionDTO, VulnerabilityScoreDTO, SocialAnalyticsDTO,
     MigrantCaseDTO, FamilyLinkCaseDTO,
     VictimCaseDTO, ProtectionCampaignDTO,
-    ShelterDTO, PartnerDTO
+    ShelterDTO, PartnerDTO,
+    RcpEvaluationDTO, RcpNationalStatsDTO
 } from '@/types';
 
 // ---- Secourisme ----
@@ -37,6 +38,30 @@ export const secourismeService = {
         const { data } = await apiClient.put(`/secourisme/devices/${deviceId}/approve`, null, {
             params: { actionChiefName, approvalStatus }
         });
+        return data;
+    },
+};
+
+// ---- RCP Evaluations ----
+export const rcpService = {
+    create: async (payload: RcpEvaluationDTO): Promise<RcpEvaluationDTO> => {
+        const { data } = await apiClient.post('/secourisme/rcp-evaluations', payload);
+        return data;
+    },
+    getMyEvaluations: async (): Promise<RcpEvaluationDTO[]> => {
+        const { data } = await apiClient.get('/secourisme/rcp-evaluations/my');
+        return data;
+    },
+    getByCommittee: async (committeeId: string): Promise<RcpEvaluationDTO[]> => {
+        const { data } = await apiClient.get(`/secourisme/committees/${committeeId}/rcp-evaluations`);
+        return data;
+    },
+    getAllNational: async (): Promise<RcpEvaluationDTO[]> => {
+        const { data } = await apiClient.get('/secourisme/rcp-evaluations/national');
+        return data;
+    },
+    getStatistics: async (): Promise<RcpNationalStatsDTO> => {
+        const { data } = await apiClient.get('/secourisme/rcp-evaluations/statistics');
         return data;
     },
 };

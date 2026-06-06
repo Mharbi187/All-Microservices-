@@ -368,6 +368,15 @@ const MainLayout: React.FC = () => {
                 label: 'Réception Dons',
             });
         }
+        
+        // My Interventions (NDRT/RDRT)
+        // Check if the user is a volunteer (they usually have 'VOLUNTEER' role or we just allow it broadly in Volunteer space)
+        volunteerChildren.push({
+            key: '/volunteer/interventions',
+            icon: <SafetyOutlined />,
+            label: 'Mes Interventions (NDRT)',
+        });
+
         // Quiz — visible to all volunteers
         volunteerChildren.push({
             key: '/volunteer/quiz',

@@ -38,7 +38,9 @@ export interface ComplaintDto {
   updatedAt: string;
   submitterId?: string | null;
   submitterName?: string;
+  submitterType?: 'RESPONSABLE' | 'VOLONTAIRE';
   targetCommitteeId: string;
+
   targetCommitteeName: string;
   attachments: ComplaintAttachment[];
   responses: ComplaintResponse[];

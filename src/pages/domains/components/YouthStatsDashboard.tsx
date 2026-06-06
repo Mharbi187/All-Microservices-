@@ -4,6 +4,7 @@
 // ============================================================
 
 import React, { useState, useEffect } from 'react';
+import type { Committee } from '@/types';
 import {
     Card, Col, Row, Typography, Tag, Button, Space,
     Select, Segmented, Table, Avatar, Tooltip, Progress,
@@ -188,50 +189,101 @@ interface StatsProps {
     onExport: () => void;
     data: any;
     loading: boolean;
+    userLevel?: 'NATIONAL' | 'REGIONAL' | 'LOCAL';
+    committees?: Committee[];
+    selectedCommittee?: string;
+    onCommitteeChange?: (id: string) => void;
 }
 
-const YouthStatsDashboard: React.FC<StatsProps> = ({ onExport, data: apiData, loading }) => {
-    const [level, setLevel] = useState<'NATIONAL' | 'REGIONAL' | 'LOCAL'>('NATIONAL');
-    const [region, setRegion] = useState<string>('Grand Tunis');
-    const [localComite, setLocalComite] = useState<string>('Ariana');
+const YouthStatsDashboard: React.FC<StatsProps> = ({ 
+    onExport, 
+    data: apiData, 
+    loading, 
+    userLevel = 'NATIONAL', 
+    committees = [],
+    selectedCommittee,
+    onCommitteeChange
+}) => {
+    const [level, setLevel] = useState<'NATIONAL' | 'REGIONAL' | 'LOCAL'>(userLevel);
+    const [region, setRegion] = useState<string>('');
+    const [localComite, setLocalComite] = useState<string>('');
     const [period, setPeriod] = useState<'monthly' | 'quarterly' | 'annual'>('monthly');
     const [engagementMetric, setEngagementMetric] = useState<'projets' | 'heures' | 'volontaires'>('heures');
 
+    useEffect(() => {
+        setLevel(userLevel);
+    }, [userLevel]);
+
+    // Synchronize local dropdowns in the dashboard when parent's selectedCommittee changes
+    useEffect(() => {
+        if (!selectedCommittee || selectedCommittee === 'ALL') {
+            setLevel('NATIONAL');
+        } else {
+            const current = committees.find(c => c.id === selectedCommittee);
+            if (current) {
+                if (current.type === 'REGIONAL') {
+                    setLevel('REGIONAL');
+                    setRegion(current.id);
+                } else if (current.type === 'LOCAL') {
+                    setLevel('LOCAL');
+                    setLocalComite(current.id);
+                }
+            }
+        }
+    }, [selectedCommittee, committees]);
+
+    const activeRegionName = committees.find(c => c.id === region)?.name || 'Grand Tunis';
+    const activeLocalName = committees.find(c => c.id === localComite)?.name || 'Ariana';
+
     const activeData = level === 'NATIONAL' ? NATIONAL_DATA
-        : level === 'REGIONAL' ? (REGIONAL_DATA[region] || NATIONAL_DATA)
+        : level === 'REGIONAL' ? (REGIONAL_DATA[activeRegionName] || NATIONAL_DATA)
         : NATIONAL_DATA;
 
     // Enrich from real API data when available
-    const enrichedKpis = activeData.kpis.map(kpi => {
-        if (kpi.key === 'projects' && typeof apiData?.totalProjects === 'number') return { ...kpi, value: apiData.totalProjects };
-        if (kpi.key === 'volunteers' && typeof apiData?.totalForms === 'number') return { ...kpi, value: apiData.totalForms };
-        if (kpi.key === 'certified' && typeof apiData?.totalRecommendations === 'number') return { ...kpi, value: apiData.totalRecommendations };
-        if (kpi.key === 'hours' && typeof apiData?.totalResponses === 'number') return { ...kpi, value: apiData.totalResponses };
-        return kpi;
-    });
+    const enrichedKpis = [
+        { key: 'volunteers', label: 'Volontaires Jeunes', value: apiData?.totalForms ?? activeData.kpis[0].value, trend: '+14.2%', icon: <TeamOutlined />, gradient: ['#e01c2e', '#c0152a'], suffix: '' },
+        { key: 'certified', label: 'Certifiés Secourisme', value: apiData?.totalCertified ?? activeData.kpis[1].value, trend: '+8.5%', icon: <SafetyCertificateOutlined />, gradient: ['#059669', '#10B981'], suffix: '' },
+        { key: 'hours', label: 'Heures Bénévolat', value: apiData?.totalHours ?? activeData.kpis[2].value, trend: '+22.1%', icon: <ClockCircleOutlined />, gradient: ['#D97706', '#F59E0B'], suffix: 'h' },
+        { key: 'projects', label: 'Projets Actifs', value: apiData?.totalProjects ?? activeData.kpis[3].value, trend: '+5.3%', icon: <BarsOutlined />, gradient: ['#0284C7', '#38BDF8'], suffix: '' },
+    ];
 
+    const maxInterestVal = apiData?.emergingInterests?.length > 0
+        ? Math.max(...apiData.emergingInterests.map((item: any) => item.value))
+        : 1;
     const interestRadarData = (apiData?.emergingInterests && apiData.emergingInterests.length > 0)
-        ? apiData.emergingInterests.map((item: any) => ({ area: item.name, score: item.value * 25 > 100 ? 100 : item.value * 25 }))
+        ? apiData.emergingInterests.map((item: any) => ({
+            area: item.name,
+            score: maxInterestVal > 0 ? Math.round((item.value / maxInterestVal) * 100) : 0
+          }))
         : activeData.interestRadar;
 
+    const maxSkillVal = apiData?.topSkills?.length > 0
+        ? Math.max(...apiData.topSkills.map((item: any) => item.value))
+        : 1;
     const goalsData = (apiData?.topSkills && apiData.topSkills.length > 0)
         ? apiData.topSkills.map((item: any, idx: number) => ({
             label: item.name,
-            value: item.value * 25 > 100 ? 100 : item.value * 25,
+            value: maxSkillVal > 0 ? Math.round((item.value / maxSkillVal) * 100) : 0,
             color: ['#e01c2e', '#059669', '#D97706', '#0284C7', '#7C3AED', '#E11D48'][idx % 6]
           }))
         : activeData.goals;
 
-    const engagementData = activeData.engagement.flatMap(item => [
-        { region: item.region, type: 'Heures', value: item.heures },
-        { region: item.region, type: 'Volontaires', value: item.volontaires * 10 },
-        { region: item.region, type: 'Projets', value: item.projets * 100 },
-    ]);
+    const currentEngagement = (apiData?.engagement && apiData.engagement.length > 0)
+        ? apiData.engagement
+        : activeData.engagement;
 
-    const trendData = activeData.trend.flatMap(item => [
+    const currentTrend = (apiData?.trend && apiData.trend.length > 0)
+        ? apiData.trend
+        : activeData.trend;
+
+    const trendData = currentTrend.flatMap((item: any) => [
         { month: item.month, type: 'Inscriptions', value: item.inscriptions },
         { month: item.month, type: 'Certifications', value: item.certifications },
     ]);
+
+    const currentLeaders = (apiData?.leaders && apiData.leaders.length > 0)
+        ? apiData.leaders
+        : activeData.leaders;
 
     const leaderColumns = [
         {
@@ -295,10 +347,28 @@ const YouthStatsDashboard: React.FC<StatsProps> = ({ onExport, data: apiData, lo
                         </Text>
                         <Segmented
                             value={level}
-                            onChange={(v) => setLevel(v as any)}
+                            onChange={(v) => {
+                                const newLevel = v as any;
+                                setLevel(newLevel);
+                                if (newLevel === 'NATIONAL') {
+                                    onCommitteeChange?.('ALL');
+                                } else if (newLevel === 'REGIONAL') {
+                                    const reg = committees.find(c => c.type === 'REGIONAL');
+                                    if (reg) {
+                                        setRegion(reg.id);
+                                        onCommitteeChange?.(reg.id);
+                                    }
+                                } else if (newLevel === 'LOCAL') {
+                                    const loc = committees.find(c => c.type === 'LOCAL');
+                                    if (loc) {
+                                        setLocalComite(loc.id);
+                                        onCommitteeChange?.(loc.id);
+                                    }
+                                }
+                            }}
                             options={[
-                                { label: <><GlobalOutlined /> National</>, value: 'NATIONAL' },
-                                { label: <><EnvironmentOutlined /> Régional</>, value: 'REGIONAL' },
+                                ...(userLevel === 'NATIONAL' ? [{ label: <><GlobalOutlined /> National</>, value: 'NATIONAL' }] : []),
+                                ...((userLevel === 'NATIONAL' || userLevel === 'REGIONAL') ? [{ label: <><EnvironmentOutlined /> Régional</>, value: 'REGIONAL' }] : []),
                                 { label: <><HomeOutlined /> Local</>, value: 'LOCAL' },
                             ]}
                             style={{ background: 'rgba(224,28,46,0.08)', borderRadius: 12 }}
@@ -312,15 +382,24 @@ const YouthStatsDashboard: React.FC<StatsProps> = ({ onExport, data: apiData, lo
                                     🗺 Région
                                 </Text>
                                 <Select
-                                    value={region} onChange={setRegion} style={{ width: 180 }}
-                                    options={[
-                                        { label: 'Grand Tunis', value: 'Grand Tunis' },
-                                        { label: 'Sfax', value: 'Sfax' },
-                                        { label: 'Sousse', value: 'Sousse' },
-                                        { label: 'Kairouan', value: 'Kairouan' },
-                                        { label: 'Nabeul', value: 'Nabeul' },
-                                        { label: 'Bizerte', value: 'Bizerte' },
-                                    ]}
+                                    value={region} 
+                                    onChange={(val) => {
+                                        setRegion(val);
+                                        onCommitteeChange?.(val);
+                                    }} 
+                                    style={{ width: 180 }}
+                                    options={
+                                        committees.filter(c => c.type === 'REGIONAL').length > 0
+                                            ? committees.filter(c => c.type === 'REGIONAL').map(c => ({ label: c.name, value: c.id }))
+                                            : [
+                                                { label: 'Grand Tunis', value: 'Grand Tunis' },
+                                                { label: 'Sfax', value: 'Sfax' },
+                                                { label: 'Sousse', value: 'Sousse' },
+                                                { label: 'Kairouan', value: 'Kairouan' },
+                                                { label: 'Nabeul', value: 'Nabeul' },
+                                                { label: 'Bizerte', value: 'Bizerte' },
+                                            ]
+                                    }
                                 />
                             </motion.div>
                         )}
@@ -330,13 +409,22 @@ const YouthStatsDashboard: React.FC<StatsProps> = ({ onExport, data: apiData, lo
                                     🏛 Comité Local
                                 </Text>
                                 <Select
-                                    value={localComite} onChange={setLocalComite} style={{ width: 200 }}
-                                    options={[
-                                        { label: 'Ariana (Local)', value: 'Ariana' },
-                                        { label: 'Manouba (Local)', value: 'Manouba' },
-                                        { label: 'La Marsa (Local)', value: 'La Marsa' },
-                                        { label: 'Ben Arous (Local)', value: 'Ben Arous' },
-                                    ]}
+                                    value={localComite} 
+                                    onChange={(val) => {
+                                        setLocalComite(val);
+                                        onCommitteeChange?.(val);
+                                    }} 
+                                    style={{ width: 200 }}
+                                    options={
+                                        committees.filter(c => c.type === 'LOCAL').length > 0
+                                            ? committees.filter(c => c.type === 'LOCAL').map(c => ({ label: c.name, value: c.id }))
+                                            : [
+                                                { label: 'Ariana (Local)', value: 'Ariana' },
+                                                { label: 'Manouba (Local)', value: 'Manouba' },
+                                                { label: 'La Marsa (Local)', value: 'La Marsa' },
+                                                { label: 'Ben Arous (Local)', value: 'Ben Arous' },
+                                            ]
+                                    }
                                 />
                             </motion.div>
                         )}
@@ -372,7 +460,7 @@ const YouthStatsDashboard: React.FC<StatsProps> = ({ onExport, data: apiData, lo
                     <div style={{ fontSize: 20 }}>{level === 'NATIONAL' ? '🇹🇳' : level === 'REGIONAL' ? '🗺' : '🏛'}</div>
                     <div>
                         <Text style={{ fontWeight: 800, fontSize: 15 }}>
-                            {level === 'NATIONAL' ? 'Vue Nationale — Tunisie' : level === 'REGIONAL' ? `Région : ${region}` : `Comité : ${localComite}`}
+                            {level === 'NATIONAL' ? 'Vue Nationale — Tunisie' : level === 'REGIONAL' ? `Région : ${activeRegionName}` : `Comité : ${activeLocalName}`}
                         </Text>
                         <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>
                             {level === 'NATIONAL' ? 'Supervision stratégique — Toutes les régions' : level === 'REGIONAL' ? 'Coordination de zone — Statistiques agrégées' : 'Gestion de proximité — Données détaillées'}
@@ -429,7 +517,7 @@ const YouthStatsDashboard: React.FC<StatsProps> = ({ onExport, data: apiData, lo
                         >
                             <div style={{ height: 340 }}>
                                 <Column
-                                    data={activeData.engagement.map(item => ({
+                                    data={currentEngagement.map((item: any) => ({
                                         region: item.region,
                                         value: item[engagementMetric]
                                     }))}
@@ -591,7 +679,7 @@ const YouthStatsDashboard: React.FC<StatsProps> = ({ onExport, data: apiData, lo
                             {level === 'LOCAL' ? (
                                 <Table
                                     columns={leaderColumns}
-                                    dataSource={activeData.leaders}
+                                    dataSource={currentLeaders}
                                     rowKey="rank"
                                     pagination={false}
                                     size="small"
@@ -625,7 +713,7 @@ const YouthStatsDashboard: React.FC<StatsProps> = ({ onExport, data: apiData, lo
                                         <Text style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#9ca3af' }}>
                                             Top régions par engagement
                                         </Text>
-                                        {activeData.leaders.slice(0, 3).map((l, i) => (
+                                        {currentLeaders.slice(0, 3).map((l: any, i: number) => (
                                             <motion.div key={l.rank} variants={fadeUp} transition={{ delay: i * 0.1 }}
                                                 style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 0', borderBottom: i < 2 ? '1px solid rgba(0,0,0,0.04)' : 'none' }}
                                             >

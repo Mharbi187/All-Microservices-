@@ -28,6 +28,7 @@ import type { ColumnsType } from 'antd/es/table';
 import { useAuthStore, useUIStore } from '@/stores';
 import inventoryService from '@/services/inventoryService';
 import type { InventoryItemDTO, StockMovementResponse, StockAlertDTO, StorageLocationDTO } from '@/types';
+import LocationMapPicker, { type GpsLocation } from '../domains/catastrophes/LocationMapPicker';
 
 const { Title, Text } = Typography;
 
@@ -325,11 +326,13 @@ const StocksPage: React.FC = () => {
             name: loc.name,
             type: loc.type,
             acquisitionType: loc.acquisitionType,
-            address: loc.address,
-            gpsLatitude: loc.gpsLatitude,
-            gpsLongitude: loc.gpsLongitude,
             capacity: loc.capacity,
             status: loc.status || 'ACTIVE',
+            locationPicker: {
+                lat: loc.gpsLatitude ? String(loc.gpsLatitude) : '',
+                lng: loc.gpsLongitude ? String(loc.gpsLongitude) : '',
+                address: loc.address || ''
+            }
         });
         setLocPhoto(loc.photo || '');
         setLocModal({ open: true, editing: loc });
@@ -343,9 +346,9 @@ const StocksPage: React.FC = () => {
                 name: values.name,
                 type: values.type,
                 acquisitionType: values.acquisitionType,
-                address: values.address,
-                gpsLatitude: values.gpsLatitude || undefined,
-                gpsLongitude: values.gpsLongitude || undefined,
+                address: values.locationPicker?.address || undefined,
+                gpsLatitude: values.locationPicker?.lat ? parseFloat(values.locationPicker.lat) : undefined,
+                gpsLongitude: values.locationPicker?.lng ? parseFloat(values.locationPicker.lng) : undefined,
                 capacity: values.capacity || undefined,
                 photo: locPhoto || undefined,
                 committeeId: user!.committeeId!,
@@ -1434,21 +1437,9 @@ const StocksPage: React.FC = () => {
                             </Form.Item>
                         </Col>
                     </Row>
-                    <Form.Item name="address" label="Adresse physique / Localisation">
-                        <Input prefix={<EnvironmentOutlined style={{ color: CRC.red }} />} placeholder="Ex: Rue de Carthage, Sfax" size="large" style={{ borderRadius: 10 }} />
+                    <Form.Item name="locationPicker" label="Adresse physique / Localisation" initialValue={{ lat: '', lng: '', address: '' }}>
+                        <LocationMapPicker isDark={isDark} value={locForm.getFieldValue('locationPicker')} onChange={(val) => locForm.setFieldsValue({ locationPicker: val })} />
                     </Form.Item>
-                    <Row gutter={16}>
-                        <Col span={12}>
-                            <Form.Item name="gpsLatitude" label="Latitude GPS (optionnel)">
-                                <InputNumber style={{ width: '100%', borderRadius: 10 }} placeholder="Ex: 34.739" size="large" />
-                            </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                            <Form.Item name="gpsLongitude" label="Longitude GPS (optionnel)">
-                                <InputNumber style={{ width: '100%', borderRadius: 10 }} placeholder="Ex: 10.760" size="large" />
-                            </Form.Item>
-                        </Col>
-                    </Row>
                     <Row gutter={16}>
                         <Col span={12}>
                             <Form.Item name="capacity" label="Capacité de stockage (m³)">

@@ -16,9 +16,9 @@ import type {
 export const jeunesseService = {
     // ----- Integration Forms & Recommendations -----
     
-    getForms: async (): Promise<YouthIntegrationFormDTO[]> => {
+    getForms: async (committeeId?: string): Promise<YouthIntegrationFormDTO[]> => {
         try {
-            const { data } = await apiClient.get<any>('/jeunesse/forms');
+            const { data } = await apiClient.get<any>('/jeunesse/forms', { params: { committeeId } });
             if (Array.isArray(data)) return data;
             if (data && Array.isArray(data.content)) return data.content;
             return [];
@@ -53,10 +53,15 @@ export const jeunesseService = {
         return data;
     },
 
+    simulateFormAndRecommendation: async (): Promise<YouthRecommendationDTO> => {
+        const { data } = await apiClient.post('/jeunesse/forms/simulate');
+        return data;
+    },
+
     // ----- Dynamic Templates (Form Builder) -----
 
-    getTemplates: async (): Promise<YouthFormTemplateDTO[]> => {
-        const { data } = await apiClient.get<any>('/jeunesse/templates');
+    getTemplates: async (committeeId?: string): Promise<YouthFormTemplateDTO[]> => {
+        const { data } = await apiClient.get<any>('/jeunesse/templates', { params: { committeeId } });
         if (Array.isArray(data)) return data;
         if (data && Array.isArray(data.content)) return data.content;
         return [];
@@ -64,6 +69,18 @@ export const jeunesseService = {
 
     createTemplate: async (payload: YouthFormTemplateDTO): Promise<YouthFormTemplateDTO> => {
         const { data } = await apiClient.post('/jeunesse/templates', payload);
+        return data;
+    },
+
+    updateTemplate: async (id: string, payload: YouthFormTemplateDTO): Promise<YouthFormTemplateDTO> => {
+        const { data } = await apiClient.put(`/jeunesse/templates/${id}`, payload);
+        return data;
+    },
+
+    validateTemplate: async (templateId: string, approve: boolean): Promise<YouthFormTemplateDTO> => {
+        const { data } = await apiClient.post(`/jeunesse/templates/${templateId}/validate`, null, {
+            params: { approve }
+        });
         return data;
     },
 
@@ -83,9 +100,9 @@ export const jeunesseService = {
 
     // ----- Micro Projects -----
 
-    getProjects: async (): Promise<MicroProjectDTO[]> => {
+    getProjects: async (committeeId?: string): Promise<MicroProjectDTO[]> => {
         try {
-            const { data } = await apiClient.get<any>('/jeunesse/projects');
+            const { data } = await apiClient.get<any>('/jeunesse/projects', { params: { committeeId } });
             if (Array.isArray(data)) return data;
             if (data && Array.isArray(data.content)) return data.content;
             return [];
@@ -109,8 +126,8 @@ export const jeunesseService = {
 
     // ----- General Recommendations -----
 
-    getRecommendations: async (): Promise<YouthRecommendationDTO[]> => {
-        const { data } = await apiClient.get<any>('/jeunesse/recommendations');
+    getRecommendations: async (committeeId?: string): Promise<YouthRecommendationDTO[]> => {
+        const { data } = await apiClient.get<any>('/jeunesse/recommendations', { params: { committeeId } });
         if (Array.isArray(data)) return data;
         if (data && Array.isArray(data.content)) return data.content;
         return [];
@@ -139,9 +156,9 @@ export const jeunesseService = {
 
     // ----- Statistics -----
 
-    getStats: async (): Promise<YouthStatsDTO> => {
+    getStats: async (committeeId?: string): Promise<YouthStatsDTO> => {
         try {
-            const { data } = await apiClient.get('/jeunesse/stats');
+            const { data } = await apiClient.get('/jeunesse/stats', { params: { committeeId } });
             return data;
         } catch (error) {
             console.error('Error fetching youth stats:', error);

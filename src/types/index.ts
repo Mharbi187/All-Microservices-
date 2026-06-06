@@ -79,6 +79,7 @@ export interface User {
     cin?: string;
     hoursVolunteered?: number;
     dateAdhesion?: string;
+    bloodType?: string;
     // Kept for UI compatibility
     firstName?: string;
     lastName?: string;
@@ -88,6 +89,8 @@ export interface User {
     address?: string;
     educationLevel?: string;
     isActive?: boolean;
+    /** Trainer-specific: JSON array of expertise domain names, e.g. ["SECOURISME", "RCP"] */
+    trainerDomains?: string[];
 }
 
 export interface AuthResponse {
@@ -149,11 +152,13 @@ export interface ProfileResponse {
     skills?: string;
     hoursVolunteered?: number;
     dateAdhesion?: string;
+    bloodType?: string;
     phone?: string;
     address?: string;
     educationLevel?: string;
     avatar?: string;
     committeeId?: string;
+    trainerDomains?: string | string[];
 }
 
 // ---- Committee / Organization Types ----
@@ -228,6 +233,7 @@ export interface VolunteerDTO {
     dateAdhesion?: string;
     hoursVolunteered?: number;
     trainingProgress?: string;
+    bloodType?: string;
 }
 
 // ---- Stock/Inventory Types ----
@@ -406,6 +412,7 @@ export interface YouthFormTemplateDTO {
     questions: string; // JSON string
     targetLevel: string;
     committeeId?: string;
+    status?: string;
     createdAt?: string;
 }
 
@@ -740,5 +747,140 @@ export interface PartnerDTO {
     address?: string;
     latitude?: number;
     longitude?: number;
+}
+
+// ---- RCP AI Evaluation Types ----
+
+export type ParticipantLevel = 'DEBUTANT' | 'INTERMEDIAIRE' | 'AVANCE' | 'PROFESSIONNEL';
+export type ConcordanceLevel = 'EXCELLENT' | 'BON' | 'MOYEN' | 'FAIBLE';
+export type TrainerDecision = 'PRET' | 'AMELIORATIONS_MINEURES' | 'AMELIORATIONS_MAJEURES' | 'NON_RECOMMANDE';
+
+export interface RcpEvaluationDTO {
+    id?: string;
+    committeeId?: string;
+    committeeName?: string;
+    trainerId?: string;
+    trainerName: string;
+    trainerCenter?: string;
+    aiVersion?: string;
+    evaluationDate?: string;       // YYYY-MM-DD
+    evaluationTime?: string;       // HH:mm
+    participantName?: string;
+    participantEmail?: string;
+    participantLevel?: ParticipantLevel;
+    totalAttempts?: number;
+    // Photos (base64)
+    photoParticipant?: string;
+    photoCardiacPosition?: string;
+    photoAiScreenshot?: string;
+    videoTestUrl?: string;
+    // Evaluation data
+    scores?: Record<string, number>;
+    comments?: Record<string, string>;
+    problemsEncountered?: string[];
+    problemDescription?: string;
+    // Results
+    scoreIa?: number;
+    scoreTrainer?: number;
+    concordanceLevel?: ConcordanceLevel;
+    concordanceGap?: number;
+    recommendations?: { high?: string[]; medium?: string[]; low?: string[] };
+    // Decision
+    trainerDecision?: TrainerDecision;
+    trainerFinalComments?: string;
+    trainerSignature?: string;
+    // Metadata
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+export interface RcpNationalStatsDTO {
+    totalEvaluations: number;
+    avgScoreIa: number;
+    avgScoreTrainer: number;
+    byConcordance: Record<string, number>;
+    byDecision: Record<string, number>;
+    byCommittee: Record<string, number>;
+    avgIaByCommittee: Record<string, number>;
+}
+
+// ============================================================
+// ---- Domain: Catastrophes — NDRT/RDRT Mission Management ----
+// ============================================================
+
+export type MissionType = 'SECOURS' | 'EVACUATION' | 'LOGISTIQUE' | 'MEDICAL' | 'SURVEILLANCE';
+export type MissionStatus = 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+export type FieldReportStatus = 'PENDING' | 'SUBMITTED' | 'VALIDATED';
+
+export interface GpsLocation {
+    lat: number;
+    lng: number;
+    address?: string;
+}
+
+export interface AssignedVolunteerEntry {
+    volunteerId: string;
+    fullName: string;
+    teamType?: string;  // NDRT or RDRT label
+    matricule?: string;
+    committeeId?: string;
+    committeeName?: string;
+    phone?: string;
+}
+
+export interface DisasterMissionDTO {
+    id?: string;
+    committeeId?: string;
+    committeeName?: string;
+    title: string;
+    description?: string;
+    missionType: MissionType;
+    status?: MissionStatus;
+    startDatetime: string;           // ISO datetime string
+    endDatetime?: string;
+    locationGps?: GpsLocation;
+    teamChiefId?: string;
+    teamChiefName?: string;
+    assignedVolunteers?: AssignedVolunteerEntry[];
+    requiredMaterials?: string[];
+    instructions?: string;
+    notificationSent?: boolean;
+    reportTemplateId?: string;
+    reportDeadline?: string;
+    reportAssignedAt?: string;
+    reportReminderSent?: boolean;
+    missionNumber?: string;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+export interface DisasterTeamMemberDTO {
+    id: string; // ID of the DisasterTeamMember entity
+    volunteerId: string;
+    fullName: string;
+    email?: string;
+    matricule?: string;
+    phone?: string;
+    committeeId?: string;
+    committeeName?: string;
+    committeeType?: string; // Adjust depending on CommitteeType enum usage
+    teamType?: string;
+    specialty?: string;
+    status?: string; // ACTIVE, SUSPENDED
+    skills?: string[] | string;
+    isActive: boolean;
+}
+
+export interface DisasterFieldReportDTO {
+    id?: string;
+    missionId?: string;
+    volunteerId?: string;
+    volunteerName?: string;
+    templateId?: string;
+    responses?: Record<string, unknown>;
+    status?: FieldReportStatus;
+    submittedAt?: string;
+    validatorNotes?: string;
+    createdAt?: string;
 }
 
