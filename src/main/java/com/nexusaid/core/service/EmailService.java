@@ -496,4 +496,98 @@ public class EmailService {
 
         sendHtmlEmail(to, "[RAPPEL] Rapport Requis - Mission " + mission.getTitle(), html);
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Donation Workflow Email Templates
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Async
+    public void sendDonationNeedCreatedEmail(String to, String presidentName, String needTitle, String committeeName) {
+        String html = "<div style='font-family:Inter,Arial,sans-serif;max-width:600px;margin:0 auto;" +
+            "background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)'>" +
+            "<div style='background:linear-gradient(135deg,#0284c7,#0369a1);padding:32px;text-align:center'>" +
+            "<h1 style='color:#fff;margin:0;font-size:22px'>&#128221; Nouveau besoin de don à valider</h1>" +
+            "<p style='color:rgba(255,255,255,.85);margin:8px 0 0'>" + committeeName + " — Nexus-AID</p>" +
+            "</div><div style='padding:32px'>" +
+            "<p style='color:#333;font-size:16px'>Cher(e) <strong>" + presidentName + "</strong>,</p>" +
+            "<p style='color:#555;line-height:1.7'>Un nouveau besoin de don a été créé par un responsable de votre comité et nécessite votre validation pour être publié :</p>" +
+            "<div style='background:#f0f9ff;border-left:4px solid #0284c7;padding:16px;border-radius:8px;margin:20px 0'>" +
+            "<p style='margin:0;color:#333;font-weight:600'>Titre : " + needTitle + "</p>" +
+            "</div>" +
+            "<p style='color:#555;line-height:1.7'>Veuillez vous connecter à la plateforme pour examiner et valider ce besoin.</p>" +
+            "<div style='text-align:center;margin:30px 0'>" +
+            "<a href='http://localhost:5173/admin/donations/needs' style='background:#0284c7;color:#fff;padding:12px 24px;" +
+            "text-decoration:none;border-radius:8px;font-weight:600;display:inline-block;box-shadow:0 4px 12px rgba(2,132,199,0.2)'>Voir les besoins en attente</a>" +
+            "</div>" +
+            "<p style='color:#888;font-size:13px;margin-top:24px'>Envoyé automatiquement par Nexus-AID.</p>" +
+            "</div><div style='background:#f8f8f8;padding:16px;text-align:center'>" +
+            "<p style='color:#aaa;font-size:12px;margin:0'>© Croissant-Rouge Tunisien — Nexus-AID</p></div></div>";
+
+        sendHtmlEmail(to, "[Nexus-AID] Nouveau besoin de don à valider - " + committeeName, html);
+    }
+
+    @Async
+    public void sendDonationNeedValidatedEmail(String to, String creatorName, String needTitle) {
+        String html = "<div style='font-family:Inter,Arial,sans-serif;max-width:600px;margin:0 auto;" +
+            "background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)'>" +
+            "<div style='background:linear-gradient(135deg,#10b981,#059669);padding:32px;text-align:center'>" +
+            "<h1 style='color:#fff;margin:0;font-size:22px'>&#10004;&#65039; Besoin de don validé</h1>" +
+            "<p style='color:rgba(255,255,255,.85);margin:8px 0 0'>Croissant-Rouge Tunisien — Nexus-AID</p>" +
+            "</div><div style='padding:32px'>" +
+            "<p style='color:#333;font-size:16px'>Cher(e) <strong>" + creatorName + "</strong>,</p>" +
+            "<p style='color:#555;line-height:1.7'>Bonne nouvelle ! Le besoin de don que vous avez créé a été <strong>validé</strong> par la présidence de votre comité et est maintenant visible publiquement.</p>" +
+            "<div style='background:#ecfdf5;border-left:4px solid #10b981;padding:16px;border-radius:8px;margin:20px 0'>" +
+            "<p style='margin:0;color:#333;font-weight:600'>Titre : " + needTitle + "</p>" +
+            "</div>" +
+            "<p style='color:#888;font-size:13px;margin-top:24px'>Envoyé automatiquement par Nexus-AID.</p>" +
+            "</div><div style='background:#f8f8f8;padding:16px;text-align:center'>" +
+            "<p style='color:#aaa;font-size:12px;margin:0'>© Croissant-Rouge Tunisien — Nexus-AID</p></div></div>";
+
+        sendHtmlEmail(to, "[Nexus-AID] Besoin de don validé", html);
+    }
+
+    @Async
+    public void sendDonationNeedRejectedEmail(String to, String creatorName, String needTitle, String reason) {
+        String html = "<div style='font-family:Inter,Arial,sans-serif;max-width:600px;margin:0 auto;" +
+            "background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)'>" +
+            "<div style='background:linear-gradient(135deg,#e01c2e,#c0152a);padding:32px;text-align:center'>" +
+            "<h1 style='color:#fff;margin:0;font-size:22px'>&#10060; Besoin de don rejeté</h1>" +
+            "<p style='color:rgba(255,255,255,.85);margin:8px 0 0'>Croissant-Rouge Tunisien — Nexus-AID</p>" +
+            "</div><div style='padding:32px'>" +
+            "<p style='color:#333;font-size:16px'>Cher(e) <strong>" + creatorName + "</strong>,</p>" +
+            "<p style='color:#555;line-height:1.7'>Nous vous informons que le besoin de don suivant n'a pas été approuvé :</p>" +
+            "<div style='background:#fef2f2;border-left:4px solid #e01c2e;padding:16px;border-radius:8px;margin:20px 0'>" +
+            "<p style='margin:0 0 8px;color:#333;font-weight:600'>Titre : " + needTitle + "</p>" +
+            "<p style='margin:0;color:#555'><strong>Motif :</strong> " + reason + "</p>" +
+            "</div>" +
+            "<p style='color:#555;line-height:1.7'>Veuillez prendre en compte ces remarques et soumettre un nouveau besoin si nécessaire.</p>" +
+            "<p style='color:#888;font-size:13px;margin-top:24px'>Envoyé automatiquement par Nexus-AID.</p>" +
+            "</div><div style='background:#f8f8f8;padding:16px;text-align:center'>" +
+            "<p style='color:#aaa;font-size:12px;margin:0'>© Croissant-Rouge Tunisien — Nexus-AID</p></div></div>";
+
+        sendHtmlEmail(to, "[Nexus-AID] Besoin de don rejeté", html);
+    }
+
+    @Async
+    public void sendDonationFiscalReceiptEmail(String to, String receiptLink) {
+        String fullLink = receiptLink.startsWith("http") ? receiptLink : "http://localhost:8080" + receiptLink;
+        String html = "<div style='font-family:Inter,Arial,sans-serif;max-width:600px;margin:0 auto;" +
+            "background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)'>" +
+            "<div style='background:linear-gradient(135deg,#0284c7,#0369a1);padding:32px;text-align:center'>" +
+            "<h1 style='color:#fff;margin:0;font-size:22px'>&#128196; Votre reçu fiscal</h1>" +
+            "<p style='color:rgba(255,255,255,.85);margin:8px 0 0'>Croissant-Rouge Tunisien — Nexus-AID</p>" +
+            "</div><div style='padding:32px'>" +
+            "<p style='color:#333;font-size:16px'>Cher Donateur,</p>" +
+            "<p style='color:#555;line-height:1.7'>Nous vous remercions infiniment pour votre généreux don. Votre soutien est essentiel pour nous permettre de mener à bien nos missions humanitaires.</p>" +
+            "<p style='color:#555;line-height:1.7'>Vous pouvez télécharger votre reçu fiscal officiel généré par le système Nexus-AID en cliquant sur le bouton ci-dessous :</p>" +
+            "<div style='text-align:center;margin:30px 0'>" +
+            "<a href='" + fullLink + "' style='background:#0284c7;color:#fff;padding:12px 24px;" +
+            "text-decoration:none;border-radius:8px;font-weight:600;display:inline-block;box-shadow:0 4px 12px rgba(2,132,199,0.2)'>Télécharger mon reçu (PDF)</a>" +
+            "</div>" +
+            "<p style='color:#888;font-size:13px;margin-top:24px'>Envoyé automatiquement par Nexus-AID. Ce reçu peut être utilisé pour vos déclarations fiscales.</p>" +
+            "</div><div style='background:#f8f8f8;padding:16px;text-align:center'>" +
+            "<p style='color:#aaa;font-size:12px;margin:0'>© Croissant-Rouge Tunisien — Nexus-AID</p></div></div>";
+
+        sendHtmlEmail(to, "Croissant-Rouge Tunisien - Votre reçu fiscal", html);
+    }
 }

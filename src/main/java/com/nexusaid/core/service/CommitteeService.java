@@ -313,7 +313,7 @@ public class CommitteeService {
      * Audit Trail Hiérarchique
      */
     public List<HierarchyDtos.AuditLogResponse> getHierarchicalAuditLogs(UUID auditRequesterId) {
-        List<UUID> visibleCommittees = getVisibleCommitteeIds(auditRequesterId);
+        List<UUID> visibleCommittees = getAccessibleCommitteeIds(auditRequesterId);
 
         if (visibleCommittees.isEmpty()) {
             return new ArrayList<>();
@@ -348,7 +348,7 @@ public class CommitteeService {
         }).collect(Collectors.toList());
     }
 
-    private List<UUID> getVisibleCommitteeIds(UUID requestingUserId) {
+    public List<UUID> getAccessibleCommitteeIds(UUID requestingUserId) {
         User requester = userRepository.findById(requestingUserId).orElse(null);
         if (requester != null && requester.getType() == UserType.ADMIN) {
             return committeeRepository.findAll().stream().map(Committee::getId).toList();
@@ -357,7 +357,7 @@ public class CommitteeService {
         List<CommitteeRole> roles = committeeRoleRepository.findByVolunteerId(requestingUserId);
 
         boolean isNational = roles.stream()
-                .anyMatch(r -> r.getTitle() == RoleTitle.PRESIDENT &&
+                .anyMatch(r -> (r.getTitle() == RoleTitle.PRESIDENT || r.getTitle() == RoleTitle.VICE_PRESIDENT) &&
                         r.getCommittee().getType() == CommitteeType.NATIONAL &&
                         r.getStatus() == CommitteeRoleStatus.APPROVED);
 
@@ -370,7 +370,7 @@ public class CommitteeService {
             if (role.getStatus() != CommitteeRoleStatus.APPROVED)
                 continue;
 
-            if (role.getTitle() == RoleTitle.PRESIDENT) {
+            if (role.getTitle() == RoleTitle.PRESIDENT || role.getTitle() == RoleTitle.VICE_PRESIDENT) {
                 scope.add(role.getCommittee().getId());
                 committeeRepository.findByParentCommitteeId(role.getCommittee().getId())
                         .forEach(child -> scope.add(child.getId()));
@@ -379,6 +379,10 @@ public class CommitteeService {
             }
         }
         return scope.stream().distinct().collect(Collectors.toList());
+    }
+
+    public List<User> getCommitteePresidents(UUID committeeId) {
+        return userRepository.findPresidentsAndVpsByCommittee(committeeId);
     }
 
     // =========================================================================

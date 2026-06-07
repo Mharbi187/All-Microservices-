@@ -161,4 +161,12 @@ public class ProfileController {
         trainerService.removeTrainer(trainerId, userDetails.getUser().getId());
         return ResponseEntity.ok("Statut formateur retiré avec succès.");
     }
+
+    @GetMapping("/donors")
+    @PreAuthorize("hasAnyRole('PRESIDENT', 'PRESIDENT_LOCAL', 'PRESIDENT_REGIONAL', 'PRESIDENT_NATIONAL'," +
+        "'VICE_PRESIDENT', 'VICE_PRESIDENT_LOCAL', 'VICE_PRESIDENT_REGIONAL', 'VICE_PRESIDENT_NATIONAL', 'ADMIN')")
+    public ResponseEntity<List<Map<String, Object>>> getDonors(
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        return ResponseEntity.ok(profileService.getDonors(userDetails.getUser().getId()));
+    }
 }

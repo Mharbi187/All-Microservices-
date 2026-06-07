@@ -8,6 +8,7 @@ import com.nexusaid.core.entity.CommitteeRole;
 import com.nexusaid.core.entity.Trainer;
 import com.nexusaid.core.entity.User;
 import com.nexusaid.core.entity.Volunteer;
+import com.nexusaid.core.entity.Donor;
 import com.nexusaid.core.entity.enums.AccountStatus;
 import com.nexusaid.core.entity.enums.CommitteeRoleStatus;
 import com.nexusaid.core.entity.enums.CommitteeType;
@@ -524,5 +525,27 @@ public class ProfileService {
         }
 
         volunteerRepository.save(volunteer);
+    }
+
+    public List<Map<String, Object>> getDonors(UUID requestingUserId) {
+        return userRepository.findAll().stream()
+                .filter(u -> u.getType() == UserType.DONOR)
+                .map(d -> {
+                    Map<String, Object> dto = new java.util.LinkedHashMap<>();
+                    dto.put("id", d.getId());
+                    dto.put("fullName", d.getFullName());
+                    dto.put("email", d.getEmail());
+                    dto.put("phone", d.getPhone());
+                    dto.put("cin", d.getCin());
+                    dto.put("accountStatus", d.getAccountStatus().name());
+                    dto.put("avatar", d.getAvatar());
+                    if (d instanceof Donor donor) {
+                        dto.put("preferredCategories", donor.getPreferredCategories());
+                        dto.put("targetZones", donor.getTargetZones());
+                        dto.put("totalDonationsCount", donor.getTotalDonationsCount());
+                    }
+                    return dto;
+                })
+                .collect(Collectors.toList());
     }
 }

@@ -42,6 +42,12 @@ public class RabbitMQConfig {
     public static final String DONATION_EVENTS_QUEUE = "nexusaid.donation.events";
     public static final String REPORT_PUBLISHED_QUEUE = "nexusaid.report.published";
 
+    // ── Queues for Donation Workflow (consumed by MS1) ───────────
+    public static final String DONATION_NEED_CREATED_QUEUE  = "nexusaid.donation.need.created";
+    public static final String DONATION_NEED_VALIDATED_QUEUE = "nexusaid.donation.need.validated";
+    public static final String DONATION_NEED_REJECTED_QUEUE  = "nexusaid.donation.need.rejected";
+    public static final String DONATION_FISCAL_RECEIPT_QUEUE = "nexusaid.donation.fiscal.receipt";
+
     // ── DLQ ──────────────────────────────────────────────────
     public static final String DLQ_QUEUE = "nexusaid.dlq";
 
@@ -54,6 +60,12 @@ public class RabbitMQConfig {
     public static final String VOLUNTEER_ROLE_ASSIGNED_KEY = "volunteer.role.assigned";
     public static final String DONATION_RECEIVED_KEY = "donation.received";
     public static final String REPORT_PUBLISHED_KEY = "report.published";
+
+    // ── Routing Keys for Donation Workflow ───────────────────────
+    public static final String DONATION_NEED_CREATED_KEY   = "donation.need.created";
+    public static final String DONATION_NEED_VALIDATED_KEY = "donation.need.validated";
+    public static final String DONATION_NEED_REJECTED_KEY  = "donation.need.rejected";
+    public static final String DONATION_FISCAL_RECEIPT_KEY = "donation.fiscal.receipt";
 
     // ── Exchanges ────────────────────────────────────────────
 
@@ -125,6 +137,34 @@ public class RabbitMQConfig {
                 .build();
     }
 
+    @Bean
+    public Queue donationNeedCreatedQueue() {
+        return QueueBuilder.durable(DONATION_NEED_CREATED_QUEUE)
+                .withArgument("x-dead-letter-exchange", DLX_EXCHANGE)
+                .build();
+    }
+
+    @Bean
+    public Queue donationNeedValidatedQueue() {
+        return QueueBuilder.durable(DONATION_NEED_VALIDATED_QUEUE)
+                .withArgument("x-dead-letter-exchange", DLX_EXCHANGE)
+                .build();
+    }
+
+    @Bean
+    public Queue donationNeedRejectedQueue() {
+        return QueueBuilder.durable(DONATION_NEED_REJECTED_QUEUE)
+                .withArgument("x-dead-letter-exchange", DLX_EXCHANGE)
+                .build();
+    }
+
+    @Bean
+    public Queue donationFiscalReceiptQueue() {
+        return QueueBuilder.durable(DONATION_FISCAL_RECEIPT_QUEUE)
+                .withArgument("x-dead-letter-exchange", DLX_EXCHANGE)
+                .build();
+    }
+
     // ── Bindings ─────────────────────────────────────────────
 
     @Bean
@@ -165,6 +205,26 @@ public class RabbitMQConfig {
     @Bean
     public Binding reportPublishedBinding(Queue reportPublishedQueue, TopicExchange nexusaidExchange) {
         return BindingBuilder.bind(reportPublishedQueue).to(nexusaidExchange).with(REPORT_PUBLISHED_KEY);
+    }
+
+    @Bean
+    public Binding donationNeedCreatedBinding(Queue donationNeedCreatedQueue, TopicExchange nexusaidExchange) {
+        return BindingBuilder.bind(donationNeedCreatedQueue).to(nexusaidExchange).with(DONATION_NEED_CREATED_KEY);
+    }
+
+    @Bean
+    public Binding donationNeedValidatedBinding(Queue donationNeedValidatedQueue, TopicExchange nexusaidExchange) {
+        return BindingBuilder.bind(donationNeedValidatedQueue).to(nexusaidExchange).with(DONATION_NEED_VALIDATED_KEY);
+    }
+
+    @Bean
+    public Binding donationNeedRejectedBinding(Queue donationNeedRejectedQueue, TopicExchange nexusaidExchange) {
+        return BindingBuilder.bind(donationNeedRejectedQueue).to(nexusaidExchange).with(DONATION_NEED_REJECTED_KEY);
+    }
+
+    @Bean
+    public Binding donationFiscalReceiptBinding(Queue donationFiscalReceiptQueue, TopicExchange nexusaidExchange) {
+        return BindingBuilder.bind(donationFiscalReceiptQueue).to(nexusaidExchange).with(DONATION_FISCAL_RECEIPT_KEY);
     }
 
     // ── Serialization ────────────────────────────────────────

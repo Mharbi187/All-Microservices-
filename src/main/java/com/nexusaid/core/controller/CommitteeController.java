@@ -117,6 +117,20 @@ public class CommitteeController {
         return ResponseEntity.ok(committeeService.getHierarchicalAuditLogs(userDetails.getUser().getId()));
     }
 
+    @GetMapping("/my-accessible")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<UUID>> getMyAccessibleCommitteeIds(
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        return ResponseEntity.ok(committeeService.getAccessibleCommitteeIds(userDetails.getUser().getId()));
+    }
+
+    @GetMapping("/{id}/presidents")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<com.nexusaid.core.entity.User>> getCommitteePresidents(
+            @PathVariable("id") UUID committeeId) {
+        return ResponseEntity.ok(committeeService.getCommitteePresidents(committeeId));
+    }
+
     // DTOs for requests
     @Data
     public static class CreateCommitteeRequest {

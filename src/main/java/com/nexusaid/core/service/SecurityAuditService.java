@@ -2,6 +2,7 @@ package com.nexusaid.core.service;
 
 import com.nexusaid.core.entity.SecurityAuditLog;
 import com.nexusaid.core.entity.SecurityAuditLog.SecurityEventType;
+import com.nexusaid.core.metrics.SecurityMetrics;
 import com.nexusaid.core.repository.SecurityAuditLogRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +29,7 @@ import java.util.stream.Collectors;
 public class SecurityAuditService {
 
     private final SecurityAuditLogRepository auditLogRepository;
+    private final SecurityMetrics securityMetrics;
 
     /**
      * Log a security event asynchronously to avoid blocking the main flow.
@@ -50,6 +52,8 @@ public class SecurityAuditService {
                     .build();
             auditLogRepository.save(logEntry);
             log.debug("Security event logged: {} for {} from IP {}", eventType, email, ipAddress);
+            // — Increment Micrometer Prometheus counters —
+            incrementMetricForEvent(eventType, riskScore);
         } catch (Exception e) {
             // Never let audit logging break the main flow
             log.error("Failed to log security event: {}", e.getMessage());
@@ -166,5 +170,30 @@ public class SecurityAuditService {
         Instant cutoff = Instant.now().minus(90, ChronoUnit.DAYS);
         // Custom query could be added; for now we rely on DB retention policies
         log.info("Audit log cleanup triggered for entries older than {}", cutoff);
+    }
+
+    /**
+     * Increment the appropriate Micrometer counter based on security event type.
+     * Called after each audit log entry to keep Prometheus metrics in sync.
+     */
+    private void incrementMetricForEvent(SecurityEventType eventType, int riskScore) {
+        try {
+            switch (eventType) {
+                case LOGIN_SUCCESS    -> securityMetrics.recordLoginSuccess();
+                case LOGIN_FAILURE    -> securityMetrics.recordLoginFailure();
+                case LOGOUT          -> securityMetrics.recordLogout();
+                case BLOCKED_IP      -> securityMetrics.recordAccountLocked();
+                case CAPTCHA_TRIGGERED -> securityMetrics.recordCaptchaTriggered();
+                case TOKEN_REFRESH   -> securityMetrics.recordTokenRefresh();
+                case BRUTE_FORCE_DETECTED -> securityMetrics.recordBruteForce();
+                case SUSPICIOUS_ACTIVITY, ANOMALY_DETECTED -> {
+                    securityMetrics.recordSuspiciousIp();
+                    securityMetrics.updateRiskScore(riskScore);
+                }
+                default -> { /* no metric for this event */ }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to update Prometheus metric for event {}: {}", eventType, e.getMessage());
+        }
     }
 }

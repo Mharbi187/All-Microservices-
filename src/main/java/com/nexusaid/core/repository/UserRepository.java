@@ -11,4 +11,7 @@ import java.util.UUID;
 public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<User> findByEmail(String email);
     Optional<User> findByCin(String cin);
+
+    @org.springframework.data.jpa.repository.Query("SELECT r.volunteer FROM CommitteeRole r WHERE r.committee.id = :committeeId AND r.title IN ('PRESIDENT', 'VICE_PRESIDENT')")
+    java.util.List<User> findPresidentsAndVpsByCommittee(@org.springframework.data.repository.query.Param("committeeId") UUID committeeId);
 }

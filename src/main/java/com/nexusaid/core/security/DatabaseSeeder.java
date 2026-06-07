@@ -158,7 +158,8 @@ public class DatabaseSeeder {
             DonationRepository donationRepository,
             DonationReceiptRepository receiptRepository,
             DonorRepository donorRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder) {
         return args -> {
             if (needRepository.count() > 0) {
                 System.out.println("Donation needs already seeded. Skipping.");
@@ -166,6 +167,23 @@ public class DatabaseSeeder {
             }
 
             System.out.println("Starting Database Seeding for Donation Needs...");
+
+            // Seed a test donor if none exist
+            if (donorRepository.count() == 0) {
+                System.out.println("Seeding test Donor...");
+                com.nexusaid.core.entity.Donor testDonor = new com.nexusaid.core.entity.Donor();
+                testDonor.setEmail("donor@nexus.tn");
+                testDonor.setFullName("Jean Donateur");
+                testDonor.setPassword(passwordEncoder.encode("pass"));
+                testDonor.setCin("09876543");
+                testDonor.setPhone("22334455");
+                testDonor.setType(UserType.DONOR);
+                testDonor.setAccountStatus(AccountStatus.APPROVED);
+                testDonor.setTotalDonationsCount(0);
+                testDonor.setPreferredCategories(List.of("Alimentaire", "Médical"));
+                testDonor.setTargetZones(List.of("Tunis", "Ariana"));
+                donorRepository.save(testDonor);
+            }
 
             List<Committee> committees = committeeRepository.findAll();
             if (committees.isEmpty()) {

@@ -26,7 +26,7 @@ public class Donation {
     private String donationNumber; // Generated like DON-2026-000123
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "need_id", nullable = false)
+    @JoinColumn(name = "need_id", nullable = true)
     private DonationNeed need;
 
     @ManyToOne(fetch = FetchType.LAZY)
