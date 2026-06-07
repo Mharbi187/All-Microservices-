@@ -24,6 +24,7 @@ import type { AdminDonationNeed } from '@/services/adminDonationService';
 import { donationService } from '@/services/donationService';
 import type { DonationReceipt } from '@/services/donationService';
 import { useAuthStore } from '@/stores/authStore';
+import LocationMapPicker from '../domains/catastrophes/LocationMapPicker';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -217,8 +218,21 @@ const DonationsPage: React.FC = () => {
 
     const createNeedMutation = useMutation({
         mutationFn: (values: any) => {
+            const originalDesc = values.description || '';
+            const locationStr = values.gpsLocation && values.gpsLocation.lat
+                ? `\n\n---\n📍 Localisation : ${values.gpsLocation.address} (${values.gpsLocation.lat}, ${values.gpsLocation.lng})`
+                : '';
+            const articleStr = values.articleName
+                ? `\n📦 Article requis : ${values.articleName}`
+                : '';
+            
+            const formattedDesc = `${originalDesc}${locationStr}${articleStr}`;
+
             const req = {
-                ...values,
+                title: values.title,
+                category: values.category,
+                targetQuantity: values.targetQuantity ? Number(values.targetQuantity) : undefined,
+                description: formattedDesc,
                 committeeId: user?.committeeId || '',
                 committeeName: user?.committeeName || 'Mon Comité',
                 committeeType: user?.rawRoles?.[0]?.committeeType || 'LOCAL',
@@ -617,6 +631,8 @@ const DonationsPage: React.FC = () => {
                 confirmLoading={createNeedMutation.isPending}
                 okText="Soumettre pour validation"
                 cancelText="Annuler"
+                width={750}
+                destroyOnClose
             >
                 <Form form={form} layout="vertical" onFinish={(values) => createNeedMutation.mutate(values)}>
                     <Form.Item name="title" label="Titre du besoin" rules={[{ required: true, message: 'Requis' }]}>
@@ -634,16 +650,21 @@ const DonationsPage: React.FC = () => {
                     </Form.Item>
                     <Row gutter={16}>
                         <Col span={12}>
-                            <Form.Item name="targetAmount" label="Montant cible (TND)">
-                                <Input type="number" placeholder="Ex: 1000" />
+                            <Form.Item name="articleName" label="Nom de l'article" rules={[{ required: true, message: 'Requis' }]}>
+                                <Input placeholder="Ex: Couvertures, Lait infantile..." />
                             </Form.Item>
                         </Col>
                         <Col span={12}>
-                            <Form.Item name="targetQuantity" label="Quantité cible (Articles)">
+                            <Form.Item name="targetQuantity" label="Quantité cible (Articles)" rules={[{ required: true, message: 'Requis' }]}>
                                 <Input type="number" placeholder="Ex: 50" />
                             </Form.Item>
                         </Col>
                     </Row>
+
+                    <Form.Item name="gpsLocation" label="Localisation du besoin (Pointer sur la carte)" initialValue={{ lat: '', lng: '', address: '' }}>
+                        <LocationMapPicker />
+                    </Form.Item>
+
                     <Form.Item name="description" label="Description détaillée" rules={[{ required: true }]}>
                         <TextArea rows={4} placeholder="Détaillez le besoin, les bénéficiaires cibles, etc." />
                     </Form.Item>

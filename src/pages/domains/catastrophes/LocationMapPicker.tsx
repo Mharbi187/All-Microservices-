@@ -28,8 +28,8 @@ export interface GpsLocation {
 }
 
 interface LocationMapPickerProps {
-    value: GpsLocation;
-    onChange: (value: GpsLocation) => void;
+    value?: GpsLocation;
+    onChange?: (value: GpsLocation) => void;
     isDark?: boolean;
 }
 
@@ -44,7 +44,7 @@ interface NominatimResult {
 const DEFAULT_CENTER: [number, number] = [34.0, 9.0]; // Tunisia center
 const DEFAULT_ZOOM = 7;
 
-const LocationMapPicker: React.FC<LocationMapPickerProps> = ({ value, onChange, isDark = false }) => {
+const LocationMapPicker: React.FC<LocationMapPickerProps> = ({ value = { lat: '', lng: '', address: '' }, onChange, isDark = false }) => {
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<L.Map | null>(null);
     const markerRef = useRef<L.Marker | null>(null);
@@ -136,9 +136,9 @@ const LocationMapPicker: React.FC<LocationMapPickerProps> = ({ value, onChange, 
             );
             const data = await resp.json();
             const address = data.display_name ?? `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-            onChange({ lat: lat.toFixed(6), lng: lng.toFixed(6), address });
+            onChange?.({ lat: lat.toFixed(6), lng: lng.toFixed(6), address });
         } catch {
-            onChange({ lat: lat.toFixed(6), lng: lng.toFixed(6), address: '' });
+            onChange?.({ lat: lat.toFixed(6), lng: lng.toFixed(6), address: '' });
         }
     }, [onChange]);
 
@@ -202,7 +202,7 @@ const LocationMapPicker: React.FC<LocationMapPickerProps> = ({ value, onChange, 
             }
         }
 
-        onChange({
+        onChange?.({
             lat: lat.toFixed(6),
             lng: lng.toFixed(6),
             address: result.display_name,
@@ -257,7 +257,7 @@ const LocationMapPicker: React.FC<LocationMapPickerProps> = ({ value, onChange, 
             mapRef.current.removeLayer(markerRef.current);
             markerRef.current = null;
         }
-        onChange({ lat: '', lng: '', address: '' });
+        onChange?.({ lat: '', lng: '', address: '' });
         setSearchQuery('');
         mapRef.current?.setView(DEFAULT_CENTER, DEFAULT_ZOOM, { animate: true });
     }, [onChange]);
