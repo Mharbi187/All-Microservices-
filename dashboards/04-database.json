@@ -1,0 +1,130 @@
+{
+  "id": null,
+  "uid": "nexusaid-database",
+  "title": "🗄️ NexusAid — Base de Données & Système",
+  "description": "Surveillance PostgreSQL, CPU, RAM, Disque — NexusAid",
+  "tags": ["nexusaid", "database", "postgresql", "system"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-3h", "to": "now" },
+  "panels": [
+    {
+      "id": 1, "title": "🔌 Connexions PG Actives", "type": "stat",
+      "gridPos": { "x": 0, "y": 0, "w": 4, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "fieldConfig": { "defaults": { "thresholds": { "mode": "absolute", "steps": [
+        { "color": "green", "value": null }, { "color": "yellow", "value": 50 }, { "color": "red", "value": 80 }
+      ]},"mappings": [] } },
+      "targets": [{ "datasource": { "type": "prometheus" }, "expr": "pg_stat_activity_count{datname=\"nexusaid_db\"}", "legendFormat": "Connexions" }]
+    },
+    {
+      "id": 2, "title": "📊 Transactions / sec", "type": "stat",
+      "gridPos": { "x": 4, "y": 0, "w": 4, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "fieldConfig": { "defaults": { "unit": "reqps", "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] } } },
+      "targets": [{ "datasource": { "type": "prometheus" }, "expr": "rate(pg_stat_database_xact_commit{datname=\"nexusaid_db\"}[1m]) + rate(pg_stat_database_xact_rollback{datname=\"nexusaid_db\"}[1m])", "legendFormat": "TPS" }]
+    },
+    {
+      "id": 3, "title": "💾 Taille Base (MB)", "type": "stat",
+      "gridPos": { "x": 8, "y": 0, "w": 4, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "fieldConfig": { "defaults": { "unit": "decmbytes", "thresholds": { "mode": "absolute", "steps": [
+        { "color": "green", "value": null }, { "color": "yellow", "value": 500 }, { "color": "red", "value": 2000 }
+      ]},"mappings": [] } },
+      "targets": [{ "datasource": { "type": "prometheus" }, "expr": "pg_database_size_bytes{datname=\"nexusaid_db\"} / 1024 / 1024", "legendFormat": "Taille DB" }]
+    },
+    {
+      "id": 4, "title": "⚠️ Verrous (Locks)", "type": "stat",
+      "gridPos": { "x": 12, "y": 0, "w": 4, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "fieldConfig": { "defaults": { "thresholds": { "mode": "absolute", "steps": [
+        { "color": "green", "value": null }, { "color": "yellow", "value": 5 }, { "color": "red", "value": 20 }
+      ]},"mappings": [] } },
+      "targets": [{ "datasource": { "type": "prometheus" }, "expr": "pg_locks_count{datname=\"nexusaid_db\"}", "legendFormat": "Locks" }]
+    },
+    {
+      "id": 5, "title": "🖥️ CPU Système (%)", "type": "gauge",
+      "gridPos": { "x": 16, "y": 0, "w": 4, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdMarkers": true },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "thresholds": { "mode": "absolute", "steps": [
+        { "color": "green", "value": null }, { "color": "yellow", "value": 60 }, { "color": "orange", "value": 80 }, { "color": "red", "value": 95 }
+      ]},"mappings": [] } },
+      "targets": [{ "datasource": { "type": "prometheus" }, "expr": "(1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m]))) * 100", "legendFormat": "CPU %" }]
+    },
+    {
+      "id": 6, "title": "💽 RAM Utilisée (%)", "type": "gauge",
+      "gridPos": { "x": 20, "y": 0, "w": 4, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdMarkers": true },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "thresholds": { "mode": "absolute", "steps": [
+        { "color": "green", "value": null }, { "color": "yellow", "value": 70 }, { "color": "orange", "value": 85 }, { "color": "red", "value": 95 }
+      ]},"mappings": [] } },
+      "targets": [{ "datasource": { "type": "prometheus" }, "expr": "(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100", "legendFormat": "RAM %" }]
+    },
+    {
+      "id": 10,
+      "title": "📈 Connexions PostgreSQL dans le Temps",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+      "options": { "tooltip": { "mode": "multi" } },
+      "fieldConfig": { "defaults": { "custom": { "lineWidth": 2 } } },
+      "targets": [
+        { "datasource": { "type": "prometheus" }, "expr": "pg_stat_activity_count{datname=\"nexusaid_db\",state=\"active\"}", "legendFormat": "Actives" },
+        { "datasource": { "type": "prometheus" }, "expr": "pg_stat_activity_count{datname=\"nexusaid_db\",state=\"idle\"}", "legendFormat": "Idle" },
+        { "datasource": { "type": "prometheus" }, "expr": "pg_stat_activity_count{datname=\"nexusaid_db\",state=\"idle in transaction\"}", "legendFormat": "Idle in Transaction" }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "💾 CPU & RAM Système",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+      "options": { "tooltip": { "mode": "multi" } },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "custom": { "lineWidth": 2 } } },
+      "targets": [
+        { "datasource": { "type": "prometheus" }, "expr": "(1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m]))) * 100", "legendFormat": "CPU %" },
+        { "datasource": { "type": "prometheus" }, "expr": "(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100", "legendFormat": "RAM %" }
+      ]
+    },
+    {
+      "id": 20,
+      "title": "💾 Espace Disque (%)",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 12, "w": 12, "h": 6 },
+      "options": { "tooltip": { "mode": "multi" } },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "thresholds": { "mode": "absolute", "steps": [
+        { "color": "green", "value": null }, { "color": "yellow", "value": 70 }, { "color": "red", "value": 90 }
+      ]} } },
+      "targets": [
+        { "datasource": { "type": "prometheus" }, "expr": "(1 - (node_filesystem_avail_bytes{mountpoint=\"/\"} / node_filesystem_size_bytes{mountpoint=\"/\"})) * 100", "legendFormat": "Disque /" }
+      ]
+    },
+    {
+      "id": 21,
+      "title": "🔄 I/O Disque (bytes/sec)",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 12, "w": 12, "h": 6 },
+      "options": { "tooltip": { "mode": "multi" } },
+      "fieldConfig": { "defaults": { "unit": "Bps", "custom": { "lineWidth": 1 } } },
+      "targets": [
+        { "datasource": { "type": "prometheus" }, "expr": "rate(node_disk_read_bytes_total[1m])", "legendFormat": "Lecture" },
+        { "datasource": { "type": "prometheus" }, "expr": "rate(node_disk_written_bytes_total[1m])", "legendFormat": "Écriture" }
+      ]
+    },
+    {
+      "id": 30,
+      "title": "🔍 Requêtes Lentes PostgreSQL (en cours)",
+      "type": "table",
+      "gridPos": { "x": 0, "y": 18, "w": 24, "h": 6 },
+      "options": { "sortBy": [{ "displayName": "duration_s", "desc": true }] },
+      "targets": [{
+        "datasource": { "type": "prometheus" },
+        "expr": "pg_stat_activity_max_tx_duration{datname=\"nexusaid_db\"} > 1",
+        "legendFormat": "{{state}}",
+        "instant": true,
+        "format": "table"
+      }]
+    }
+  ]
+}

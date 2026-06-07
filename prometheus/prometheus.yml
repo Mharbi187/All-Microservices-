@@ -1,0 +1,130 @@
+# ============================================================
+# PROMETHEUS CONFIGURATION — NEXUS AID
+# Scrape toutes les 15 secondes tous les services
+# ============================================================
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'nexus-aid-production'
+    environment: 'production'
+
+# ─── ALERT RULES ────────────────────────────────────────────
+rule_files:
+  - /etc/prometheus/alerts/security.yml
+  - /etc/prometheus/alerts/infrastructure.yml
+  - /etc/prometheus/alerts/application.yml
+
+# ─── ALERTMANAGER ───────────────────────────────────────────
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+      timeout: 10s
+
+# ─── SCRAPE CONFIGS ─────────────────────────────────────────
+scrape_configs:
+
+  # Prometheus lui-même
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    metrics_path: /metrics
+
+  # ─── API GATEWAY ────────────────────────────────────────
+  - job_name: 'api-gateway'
+    scrape_interval: 10s
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['api-gateway:8060']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'api-gateway'
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'jvm_.*|http_.*|spring_.*|process_.*|system_.*|logback_.*|resilience4j_.*'
+        action: keep
+
+  # ─── CORE SERVICE ───────────────────────────────────────
+  - job_name: 'core-service'
+    scrape_interval: 10s
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['core-service:8080']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'core-service'
+
+  # ─── ADMIN SERVICE ──────────────────────────────────────
+  - job_name: 'admin-service'
+    scrape_interval: 10s
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['admin-service:8081']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'admin-service'
+
+  # ─── PDF SERVICE ────────────────────────────────────────
+  - job_name: 'pdf-service'
+    scrape_interval: 15s
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['nexus-aid-pdf-service:3001']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'pdf-service'
+
+  # ─── DISASTER DETECTION (Python) ────────────────────────
+  - job_name: 'disaster-detection'
+    scrape_interval: 30s
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['disaster-detection:8000']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'disaster-detection'
+
+  # ─── NODE EXPORTER (System) ─────────────────────────────
+  - job_name: 'node-exporter'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['node-exporter:9100']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'nexus-aid-host'
+
+  # ─── POSTGRESQL EXPORTER ────────────────────────────────
+  - job_name: 'postgres-exporter'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'nexus-aid-postgres'
+
+  # ─── EUREKA SERVER ──────────────────────────────────────
+  - job_name: 'eureka-server'
+    scrape_interval: 30s
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['eureka-server:8761']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'eureka-server'
+
+  # ─── ALERTMANAGER ───────────────────────────────────────
+  - job_name: 'alertmanager'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['alertmanager:9093']

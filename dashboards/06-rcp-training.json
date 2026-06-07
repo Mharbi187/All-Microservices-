@@ -1,0 +1,110 @@
+{
+  "id": null,
+  "uid": "nexusaid-rcp-training",
+  "title": "🚑 NexusAid — RCP & Formation",
+  "description": "Évaluations RCP, scores IA vs formateurs, PDFs générés, certifications",
+  "tags": ["nexusaid", "rcp", "training", "secourisme"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "1m",
+  "time": { "from": "now-7d", "to": "now" },
+  "panels": [
+    {
+      "id": 1, "title": "📊 Total Évaluations RCP", "type": "stat",
+      "gridPos": { "x": 0, "y": 0, "w": 4, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "blue" } } },
+      "targets": [{ "datasource": { "type": "prometheus" }, "expr": "nexusaid_rcp_evaluations_total or vector(0)", "legendFormat": "Évaluations" }]
+    },
+    {
+      "id": 2, "title": "📄 PDFs Générés (7j)", "type": "stat",
+      "gridPos": { "x": 4, "y": 0, "w": 4, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "purple" } } },
+      "targets": [{ "datasource": { "type": "prometheus" }, "expr": "increase(nexusaid_pdf_generated_total[7d]) or vector(0)", "legendFormat": "PDFs" }]
+    },
+    {
+      "id": 3, "title": "📸 Photos Uploadées (7j)", "type": "stat",
+      "gridPos": { "x": 8, "y": 0, "w": 4, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "orange" } } },
+      "targets": [{ "datasource": { "type": "prometheus" }, "expr": "increase(nexusaid_photo_uploaded_total[7d]) or vector(0)", "legendFormat": "Photos" }]
+    },
+    {
+      "id": 4, "title": "🤖 Score IA Moyen", "type": "gauge",
+      "gridPos": { "x": 12, "y": 0, "w": 4, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdMarkers": true },
+      "fieldConfig": { "defaults": { "min": 0, "max": 20, "thresholds": { "mode": "absolute", "steps": [
+        { "color": "red", "value": null }, { "color": "yellow", "value": 10 }, { "color": "green", "value": 16 }
+      ]},"mappings": [] } },
+      "targets": [{ "datasource": { "type": "prometheus" }, "expr": "nexusaid_rcp_ai_score_avg or vector(0)", "legendFormat": "Score IA" }]
+    },
+    {
+      "id": 5, "title": "👨‍🏫 Score Formateur Moyen", "type": "gauge",
+      "gridPos": { "x": 16, "y": 0, "w": 4, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdMarkers": true },
+      "fieldConfig": { "defaults": { "min": 0, "max": 20, "thresholds": { "mode": "absolute", "steps": [
+        { "color": "red", "value": null }, { "color": "yellow", "value": 10 }, { "color": "green", "value": 16 }
+      ]},"mappings": [] } },
+      "targets": [{ "datasource": { "type": "prometheus" }, "expr": "nexusaid_rcp_trainer_score_avg or vector(0)", "legendFormat": "Score Formateur" }]
+    },
+    {
+      "id": 6, "title": "🎯 Concordance IA/Formateur", "type": "gauge",
+      "gridPos": { "x": 20, "y": 0, "w": 4, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdMarkers": true },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "thresholds": { "mode": "absolute", "steps": [
+        { "color": "red", "value": null }, { "color": "yellow", "value": 60 }, { "color": "green", "value": 80 }
+      ]},"mappings": [] } },
+      "targets": [{ "datasource": { "type": "prometheus" }, "expr": "nexusaid_rcp_concordance_percent or vector(0)", "legendFormat": "Concordance %" }]
+    },
+    {
+      "id": 10,
+      "title": "📈 Évaluations RCP dans le Temps",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+      "options": { "tooltip": { "mode": "multi" } },
+      "fieldConfig": { "defaults": { "custom": { "lineWidth": 2, "fillOpacity": 10 } } },
+      "targets": [
+        { "datasource": { "type": "prometheus" }, "expr": "increase(nexusaid_rcp_evaluations_total[1d])", "legendFormat": "Évaluations / jour" },
+        { "datasource": { "type": "prometheus" }, "expr": "increase(nexusaid_pdf_generated_total[1d]) or vector(0)", "legendFormat": "PDFs / jour" }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "📊 Scores IA vs Formateurs (Évolution)",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+      "options": { "tooltip": { "mode": "multi" } },
+      "fieldConfig": { "defaults": { "min": 0, "max": 20, "custom": { "lineWidth": 2 } } },
+      "targets": [
+        { "datasource": { "type": "prometheus" }, "expr": "nexusaid_rcp_ai_score_avg or vector(0)", "legendFormat": "🤖 Score IA" },
+        { "datasource": { "type": "prometheus" }, "expr": "nexusaid_rcp_trainer_score_avg or vector(0)", "legendFormat": "👨‍🏫 Score Formateur" }
+      ]
+    },
+    {
+      "id": 20,
+      "title": "📸 Uploads Photos & PDFs par Heure",
+      "type": "barchart",
+      "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
+      "options": { "orientation": "auto", "xTickLabelRotation": 0, "groupWidth": 0.7, "barWidth": 0.97, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "datasource": { "type": "prometheus" }, "expr": "increase(nexusaid_pdf_generated_total[1h]) or vector(0)", "legendFormat": "PDFs" },
+        { "datasource": { "type": "prometheus" }, "expr": "increase(nexusaid_photo_uploaded_total[1h]) or vector(0)", "legendFormat": "Photos" }
+      ]
+    },
+    {
+      "id": 21,
+      "title": "📋 Logs RCP & Formation",
+      "type": "logs",
+      "gridPos": { "x": 12, "y": 12, "w": 12, "h": 8 },
+      "options": { "dedupStrategy": "none", "enableLogDetails": true, "showTime": true, "sortOrder": "Descending" },
+      "targets": [{
+        "datasource": { "type": "loki" },
+        "expr": "{container=\"core-service\"} |~ \"rcp|RCP|secourisme|evaluation|pdf|upload\"",
+        "legendFormat": "",
+        "maxLines": 100
+      }]
+    }
+  ]
+}

@@ -1,0 +1,107 @@
+groups:
+  # ============================================================
+  # GROUPE : SÉCURITÉ ET AUTHENTIFICATION
+  # ============================================================
+  - name: nexusaid.security
+    interval: 30s
+    rules:
+
+      # ─── BRUTEFORCE DÉTECTÉ ─────────────────────────────────
+      - alert: BruteForceDetected
+        expr: |
+          increase(
+            http_server_requests_seconds_count{
+              job="core-service",
+              uri=~"/api/v1/auth/login.*",
+              status="401"
+            }[1m]
+          ) > 5
+        for: 0m
+        labels:
+          severity: critical
+          category: security
+          service: auth
+        annotations:
+          summary: "🚨 BRUTEFORCE DÉTECTÉ — NexusAid"
+          description: |
+            Plus de {{ $value | printf "%.0f" }} tentatives de connexion échouées en 1 minute.
+            Service: {{ $labels.instance }}
+            Action: Vérifier les logs et bloquer l'IP suspecte.
+
+      # ─── TAUX D'ÉCHECS DE CONNEXION ÉLEVÉ ───────────────────
+      - alert: HighLoginFailureRate
+        expr: |
+          rate(
+            http_server_requests_seconds_count{
+              job="core-service",
+              uri=~"/api/v1/auth/login.*",
+              status="401"
+            }[5m]
+          ) > 0.5
+        for: 2m
+        labels:
+          severity: warning
+          category: security
+          service: auth
+        annotations:
+          summary: "⚠️ Taux d'échecs de connexion élevé"
+          description: |
+            Taux: {{ $value | printf "%.2f" }} req/sec d'échecs sur /api/v1/auth/login
+            Durée: > 2 minutes
+
+      # ─── COMPTE VERROUILLÉ ──────────────────────────────────
+      - alert: AccountLocked
+        expr: |
+          increase(nexusaid_accounts_locked_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: warning
+          category: security
+          service: auth
+        annotations:
+          summary: "🔒 Compte utilisateur verrouillé"
+          description: "{{ $value | printf \"%.0f\" }} compte(s) verrouillé(s) dans les 5 dernières minutes."
+
+      # ─── SCORE DE RISQUE CRITIQUE ────────────────────────────
+      - alert: CriticalRiskScore
+        expr: nexusaid_risk_score_max > 80
+        for: 0m
+        labels:
+          severity: critical
+          category: security
+          service: anomaly-detection
+        annotations:
+          summary: "🚨 Score de risque CRITIQUE détecté"
+          description: "Score de risque: {{ $value }}/100. Activité très suspecte en cours."
+
+      # ─── IP SUSPECTE ─────────────────────────────────────────
+      - alert: SuspiciousIPDetected
+        expr: |
+          increase(nexusaid_suspicious_ip_total[10m]) > 0
+        for: 0m
+        labels:
+          severity: warning
+          category: security
+          service: auth
+        annotations:
+          summary: "⚠️ IP suspecte détectée"
+          description: "Une ou plusieurs IPs suspectes ont été détectées. Vérifier les logs de sécurité."
+
+      # ─── CRÉATION MASSIVE DE COMPTES ─────────────────────────
+      - alert: MassAccountCreation
+        expr: |
+          increase(
+            http_server_requests_seconds_count{
+              job="core-service",
+              uri=~"/api/v1/auth/register.*",
+              status="201"
+            }[10m]
+          ) > 20
+        for: 0m
+        labels:
+          severity: warning
+          category: security
+          service: auth
+        annotations:
+          summary: "⚠️ Création massive de comptes"
+          description: "{{ $value | printf \"%.0f\" }} inscriptions en 10 minutes. Possible attaque."

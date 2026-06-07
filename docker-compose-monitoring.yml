@@ -1,0 +1,256 @@
+version: '3.8'
+
+# ============================================================
+# NEXUS AID — MONITORING STACK
+# Prometheus + Grafana + Loki + Promtail + AlertManager
+# Node Exporter + PostgreSQL Exporter + OpenWA WhatsApp
+# ============================================================
+
+networks:
+  nexus-aid-net:
+    external: true
+    name: nexus-aid-net
+  monitoring-net:
+    driver: bridge
+    name: monitoring-net
+
+volumes:
+  prometheus_data:
+    name: nexus_prometheus_data
+  grafana_data:
+    name: nexus_grafana_data
+  loki_data:
+    name: nexus_loki_data
+  alertmanager_data:
+    name: nexus_alertmanager_data
+  openwa_sessions:
+    name: nexus_openwa_sessions
+  openwa_data:
+    name: nexus_openwa_data
+
+services:
+
+  # ─── PROMETHEUS ─────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: nexus-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--storage.tsdb.retention.size=10GB'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/alerts:/etc/prometheus/alerts:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - monitoring-net
+      - nexus-aid-net
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:9090/-/healthy" ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    labels:
+      - "monitoring=nexusaid"
+
+  # ─── GRAFANA ────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: nexus-grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-NexusAid@2026!}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_USERS_DEFAULT_THEME=dark
+      - GF_SERVER_ROOT_URL=http://localhost:3000
+      - GF_SERVER_DOMAIN=localhost
+      # SMTP for Grafana alerts
+      - GF_SMTP_ENABLED=true
+      - GF_SMTP_HOST=${SMTP_HOST:-smtp.gmail.com:587}
+      - GF_SMTP_USER=${SMTP_USER:-c6287943@gmail.com}
+      - GF_SMTP_PASSWORD=${SMTP_PASSWORD:-lqdgldnjygchljia}
+      - GF_SMTP_FROM_ADDRESS=${SMTP_USER:-c6287943@gmail.com}
+      - GF_SMTP_FROM_NAME=NexusAid Monitoring
+      - GF_SMTP_STARTTLS_POLICY=MandatoryStartTLS
+      # Plugins
+      - GF_INSTALL_PLUGINS=grafana-worldmap-panel,grafana-piechart-panel,grafana-clock-panel
+      # Auth
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+      - GF_AUTH_BASIC_ENABLED=true
+      # Feature toggles
+      - GF_FEATURE_TOGGLES_ENABLE=ngalert
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/grafana.ini:/etc/grafana/grafana.ini:ro
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"
+    networks:
+      - monitoring-net
+      - nexus-aid-net
+    depends_on:
+      prometheus:
+        condition: service_healthy
+      loki:
+        condition: service_started
+    restart: unless-stopped
+    labels:
+      - "monitoring=nexusaid"
+
+  # ─── ALERTMANAGER ───────────────────────────────────────────
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: nexus-alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.listen-address=:9093'
+      - '--cluster.advertise-address=0.0.0.0:9093'
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    ports:
+      - "9093:9093"
+    networks:
+      - monitoring-net
+    restart: unless-stopped
+    labels:
+      - "monitoring=nexusaid"
+
+  # ─── LOKI ───────────────────────────────────────────────────
+  loki:
+    image: grafana/loki:2.9.4
+    container_name: nexus-loki
+    command: -config.file=/etc/loki/loki-config.yml
+    volumes:
+      - ./loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki_data:/loki
+    ports:
+      - "3100:3100"
+    networks:
+      - monitoring-net
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -q --spider http://localhost:3100/ready || exit 1" ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    labels:
+      - "monitoring=nexusaid"
+
+  # ─── PROMTAIL ───────────────────────────────────────────────
+  promtail:
+    image: grafana/promtail:2.9.4
+    container_name: nexus-promtail
+    command: -config.file=/etc/promtail/promtail-config.yml
+    volumes:
+      - ./promtail/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - monitoring-net
+      - nexus-aid-net
+    depends_on:
+      loki:
+        condition: service_healthy
+    restart: unless-stopped
+    labels:
+      - "monitoring=nexusaid"
+
+  # ─── NODE EXPORTER ──────────────────────────────────────────
+  node-exporter:
+    image: prom/node-exporter:v1.7.0
+    container_name: nexus-node-exporter
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    ports:
+      - "9100:9100"
+    networks:
+      - monitoring-net
+    restart: unless-stopped
+    labels:
+      - "monitoring=nexusaid"
+
+  # ─── POSTGRESQL EXPORTER ────────────────────────────────────
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: nexus-postgres-exporter
+    environment:
+      DATA_SOURCE_NAME: ${PG_EXPORTER_DSN:-postgresql://postgres:postgres@nexus-aid-db:5432/nexusaid_db?sslmode=disable}
+      PG_EXPORTER_EXTEND_QUERY_PATH: /etc/postgres_exporter/queries.yml
+    volumes:
+      - ./exporters/pg_queries.yml:/etc/postgres_exporter/queries.yml:ro
+    ports:
+      - "9187:9187"
+    networks:
+      - monitoring-net
+      - nexus-aid-net
+    restart: unless-stopped
+    labels:
+      - "monitoring=nexusaid"
+
+  # ─── OPENWA (Self-Hosted WhatsApp API Gateway) ──────────────
+  openwa:
+    build:
+      context: ./openwa
+      dockerfile: Dockerfile
+    container_name: nexus-openwa
+    environment:
+      - OPENWA_API_KEY=${OPENWA_API_KEY:-nexusaid-wa-2026}
+      - API_MASTER_KEY=${OPENWA_API_KEY:-nexusaid-wa-2026}
+      - OPENWA_PORT=8282
+    ports:
+      - "8282:8282"
+    volumes:
+      - openwa_sessions:/app/sessions
+      - openwa_data:/app/data
+    networks:
+      - monitoring-net
+    restart: unless-stopped
+    labels:
+      - "monitoring=nexusaid"
+
+  # ─── WHATSAPP ALERT WEBHOOK BRIDGE ──────────────────────────
+  wa-webhook:
+    build:
+      context: ./whatsapp-webhook
+      dockerfile: Dockerfile
+    container_name: nexus-wa-webhook
+    environment:
+      - OPENWA_URL=http://openwa:8282
+      - OPENWA_API_KEY=${OPENWA_API_KEY:-dev-admin-key}
+      - WA_ALERT_NUMBER=${WA_ALERT_NUMBER:-21651877406}
+      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-c6287943@gmail.com}
+      - SMTP_PASS=${SMTP_PASS:-lqdgldnjygchljia}
+      - ALERT_EMAIL=${ALERT_EMAIL:-c6287943@gmail.com}
+    volumes:
+      - ./whatsapp-webhook:/app
+    ports:
+      - "5001:5001"
+    networks:
+      - monitoring-net
+    depends_on:
+      - openwa
+    restart: unless-stopped
+    labels:
+      - "monitoring=nexusaid"

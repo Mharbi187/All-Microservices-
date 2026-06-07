@@ -1,0 +1,132 @@
+groups:
+  # ============================================================
+  # GROUPE : APPLICATION — API & PERFORMANCES
+  # ============================================================
+  - name: nexusaid.application
+    interval: 30s
+    rules:
+
+      # ─── TAUX D'ERREURS 500 ÉLEVÉ ───────────────────────────
+      - alert: HighError500Rate
+        expr: |
+          sum(rate(http_server_requests_seconds_count{status=~"5.."}[5m])) by (job)
+          /
+          sum(rate(http_server_requests_seconds_count[5m])) by (job)
+          > 0.05
+        for: 3m
+        labels:
+          severity: critical
+          category: application
+        annotations:
+          summary: "🔴 Taux d'erreurs 500 ÉLEVÉ — {{ $labels.job }}"
+          description: |
+            {{ $value | printf "%.1f" }}% des requêtes retournent une erreur 5xx sur {{ $labels.job }}.
+            Seuil: 5%. Vérifier les logs immédiatement.
+
+      # ─── TEMPS DE RÉPONSE LENT ──────────────────────────────
+      - alert: SlowResponseTime
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_server_requests_seconds_bucket[5m])) by (le, job)
+          ) > 2
+        for: 5m
+        labels:
+          severity: warning
+          category: application
+        annotations:
+          summary: "⚠️ Temps de réponse lent — {{ $labels.job }}"
+          description: "P95 latence: {{ $value | printf \"%.2f\" }}s > 2s sur {{ $labels.job }}."
+
+      # ─── TEMPS DE RÉPONSE CRITIQUE ───────────────────────────
+      - alert: CriticalResponseTime
+        expr: |
+          histogram_quantile(0.99,
+            sum(rate(http_server_requests_seconds_bucket[5m])) by (le, job)
+          ) > 10
+        for: 2m
+        labels:
+          severity: critical
+          category: application
+        annotations:
+          summary: "🔴 Temps de réponse CRITIQUE — {{ $labels.job }}"
+          description: "P99 latence: {{ $value | printf \"%.2f\" }}s > 10s sur {{ $labels.job }}."
+
+      # ─── ERREURS 401 GATEWAY ─────────────────────────────────
+      - alert: HighUnauthorizedRate
+        expr: |
+          sum(rate(http_server_requests_seconds_count{status="401"}[5m])) by (job)
+          > 1
+        for: 5m
+        labels:
+          severity: warning
+          category: application
+          service: api-gateway
+        annotations:
+          summary: "⚠️ Taux élevé de 401 — {{ $labels.job }}"
+          description: "{{ $value | printf \"%.2f\" }} req/sec avec status 401 (non autorisé)."
+
+      # ─── ERREURS 403 GATEWAY ─────────────────────────────────
+      - alert: HighForbiddenRate
+        expr: |
+          sum(rate(http_server_requests_seconds_count{status="403"}[5m])) by (job)
+          > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          category: application
+          service: api-gateway
+        annotations:
+          summary: "⚠️ Taux élevé de 403 — {{ $labels.job }}"
+          description: "{{ $value | printf \"%.2f\" }} req/sec interdites (403) sur {{ $labels.job }}."
+
+      # ─── API GATEWAY CIRCUIT BREAKER OUVERT ──────────────────
+      - alert: CircuitBreakerOpen
+        expr: |
+          resilience4j_circuitbreaker_state{state="open"} == 1
+        for: 0m
+        labels:
+          severity: critical
+          category: application
+          service: api-gateway
+        annotations:
+          summary: "🔴 Circuit Breaker OUVERT — {{ $labels.name }}"
+          description: "Le circuit breaker {{ $labels.name }} est ouvert. Le service en aval est probablement en erreur."
+
+      # ─── PDF SERVICE SURCHARGE ───────────────────────────────
+      - alert: PdfServiceHighLoad
+        expr: |
+          increase(nexusaid_pdf_generated_total[5m]) > 50
+        for: 0m
+        labels:
+          severity: warning
+          category: application
+          service: pdf-service
+        annotations:
+          summary: "⚠️ PDF Service en surcharge"
+          description: "{{ $value | printf \"%.0f\" }} PDFs générés en 5 minutes. Charge élevée."
+
+      # ─── UPLOAD MASSIF ───────────────────────────────────────
+      - alert: MassiveUpload
+        expr: |
+          increase(nexusaid_photo_uploaded_total[5m]) > 100
+        for: 0m
+        labels:
+          severity: info
+          category: application
+          service: upload
+        annotations:
+          summary: "📸 Upload massif de photos"
+          description: "{{ $value | printf \"%.0f\" }} photos uploadées en 5 minutes."
+
+      # ─── ÉVALUATIONS RCP ANORMALES ───────────────────────────
+      - alert: RcpEvaluationAnomaly
+        expr: |
+          increase(nexusaid_rcp_evaluations_total[1h]) > 500
+        for: 0m
+        labels:
+          severity: info
+          category: application
+          service: rcp
+        annotations:
+          summary: "ℹ️ Volume RCP inhabituel"
+          description: "{{ $value | printf \"%.0f\" }} évaluations RCP en 1 heure (volume inhabituel)."

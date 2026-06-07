@@ -1,0 +1,115 @@
+{
+  "id": null,
+  "uid": "nexusaid-audit-user",
+  "title": "👤 NexusAid — Audit Utilisateur",
+  "description": "Traçabilité complète des actions utilisateurs : connexions, déconnexions, uploads, PDFs, modifications",
+  "tags": ["nexusaid", "audit", "users"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "1m",
+  "time": { "from": "now-24h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "loki_ds", "type": "datasource", "pluginId": "loki",
+        "current": { "text": "Loki", "value": "Loki" }, "hide": 2
+      },
+      {
+        "name": "log_type",
+        "type": "custom",
+        "label": "Type d'événement",
+        "options": [
+          { "text": "Tous", "value": "" },
+          { "text": "🔑 Connexion", "value": "LOGIN_SUCCESS" },
+          { "text": "❌ Échec Login", "value": "LOGIN_FAILURE" },
+          { "text": "🚪 Déconnexion", "value": "LOGOUT" },
+          { "text": "📄 PDF Téléchargé", "value": "PDF" },
+          { "text": "📸 Photo Upload", "value": "UPLOAD" },
+          { "text": "🗑️ Suppression", "value": "DELETE" },
+          { "text": "✏️ Modification", "value": "UPDATE" }
+        ],
+        "current": { "text": "Tous", "value": "" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1, "title": "🔑 Connexions (24h)", "type": "stat",
+      "gridPos": { "x": 0, "y": 0, "w": 4, "h": 3 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "green" } } },
+      "targets": [{ "datasource": { "type": "prometheus" }, "expr": "increase(http_server_requests_seconds_count{job=\"core-service\",uri=~\"/api/v1/auth/login.*\",status=\"200\"}[24h]) or vector(0)", "legendFormat": "Connexions" }]
+    },
+    {
+      "id": 2, "title": "🚪 Déconnexions (24h)", "type": "stat",
+      "gridPos": { "x": 4, "y": 0, "w": 4, "h": 3 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "purple" } } },
+      "targets": [{ "datasource": { "type": "prometheus" }, "expr": "increase(nexusaid_logout_total[24h]) or vector(0)", "legendFormat": "Déconnexions" }]
+    },
+    {
+      "id": 3, "title": "📄 PDFs Générés (24h)", "type": "stat",
+      "gridPos": { "x": 8, "y": 0, "w": 4, "h": 3 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "blue" } } },
+      "targets": [{ "datasource": { "type": "prometheus" }, "expr": "increase(nexusaid_pdf_generated_total[24h]) or vector(0)", "legendFormat": "PDFs" }]
+    },
+    {
+      "id": 4, "title": "📸 Photos Uploadées (24h)", "type": "stat",
+      "gridPos": { "x": 12, "y": 0, "w": 4, "h": 3 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "orange" } } },
+      "targets": [{ "datasource": { "type": "prometheus" }, "expr": "increase(nexusaid_photo_uploaded_total[24h]) or vector(0)", "legendFormat": "Uploads" }]
+    },
+    {
+      "id": 5, "title": "🗑️ Suppressions (24h)", "type": "stat",
+      "gridPos": { "x": 16, "y": 0, "w": 4, "h": 3 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "red" } } },
+      "targets": [{ "datasource": { "type": "prometheus" }, "expr": "increase(http_server_requests_seconds_count{job=\"core-service\",method=\"DELETE\",status=\"200\"}[24h]) or vector(0)", "legendFormat": "Suppressions" }]
+    },
+    {
+      "id": 6, "title": "✏️ Modifications (24h)", "type": "stat",
+      "gridPos": { "x": 20, "y": 0, "w": 4, "h": 3 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "teal" } } },
+      "targets": [{ "datasource": { "type": "prometheus" }, "expr": "increase(http_server_requests_seconds_count{job=\"core-service\",method=~\"PUT|PATCH\",status=\"200\"}[24h]) or vector(0)", "legendFormat": "Modifications" }]
+    },
+    {
+      "id": 10,
+      "title": "📊 Activité Utilisateurs par Heure",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 3, "w": 24, "h": 8 },
+      "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "table", "placement": "right", "calcs": ["sum"] } },
+      "fieldConfig": { "defaults": { "custom": { "lineWidth": 2, "fillOpacity": 5 } } },
+      "targets": [
+        { "datasource": { "type": "prometheus" }, "expr": "increase(http_server_requests_seconds_count{job=\"core-service\",uri=~\"/api/v1/auth/login.*\",status=\"200\"}[1h])", "legendFormat": "🔑 Connexions" },
+        { "datasource": { "type": "prometheus" }, "expr": "increase(nexusaid_pdf_generated_total[1h]) or vector(0)", "legendFormat": "📄 PDFs" },
+        { "datasource": { "type": "prometheus" }, "expr": "increase(nexusaid_photo_uploaded_total[1h]) or vector(0)", "legendFormat": "📸 Uploads" },
+        { "datasource": { "type": "prometheus" }, "expr": "increase(http_server_requests_seconds_count{job=\"core-service\",method=\"DELETE\",status=\"200\"}[1h]) or vector(0)", "legendFormat": "🗑️ Suppressions" }
+      ]
+    },
+    {
+      "id": 20,
+      "title": "📋 Journal d'Audit — Logs Temps Réel",
+      "type": "logs",
+      "gridPos": { "x": 0, "y": 11, "w": 24, "h": 12 },
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [{
+        "datasource": { "type": "loki", "uid": "$loki_ds" },
+        "expr": "{container=~\"core-service|admin-service\"} |~ \"$log_type\" | line_format \"[{{.level}}] {{.container}} — {{.message}}\"",
+        "legendFormat": "",
+        "maxLines": 500
+      }]
+    }
+  ]
+}

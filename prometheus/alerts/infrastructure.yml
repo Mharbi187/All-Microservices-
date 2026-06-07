@@ -1,0 +1,118 @@
+groups:
+  # ============================================================
+  # GROUPE : INFRASTRUCTURE — SYSTÈME & SERVICES
+  # ============================================================
+  - name: nexusaid.infrastructure
+    interval: 30s
+    rules:
+
+      # ─── SERVICE INDISPONIBLE ────────────────────────────────
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: infrastructure
+        annotations:
+          summary: "🔴 Service INDISPONIBLE — {{ $labels.job }}"
+          description: |
+            Le service {{ $labels.job }} (instance: {{ $labels.instance }}) est DOWN depuis > 1 minute.
+            Action immédiate requise !
+
+      # ─── CPU ÉLEVÉ ──────────────────────────────────────────
+      - alert: HighCpuUsage
+        expr: |
+          (1 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) by (instance)) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          category: infrastructure
+        annotations:
+          summary: "⚠️ CPU élevé — {{ $labels.instance }}"
+          description: "CPU: {{ $value | printf \"%.1f\" }}% > 80% depuis 5 minutes."
+
+      # ─── CPU CRITIQUE ────────────────────────────────────────
+      - alert: CriticalCpuUsage
+        expr: |
+          (1 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) by (instance)) * 100 > 95
+        for: 2m
+        labels:
+          severity: critical
+          category: infrastructure
+        annotations:
+          summary: "🔴 CPU CRITIQUE — {{ $labels.instance }}"
+          description: "CPU: {{ $value | printf \"%.1f\" }}% > 95%! Intervention urgente requise."
+
+      # ─── RAM ÉLEVÉE ─────────────────────────────────────────
+      - alert: HighMemoryUsage
+        expr: |
+          (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          category: infrastructure
+        annotations:
+          summary: "⚠️ RAM élevée — {{ $labels.instance }}"
+          description: "Mémoire utilisée: {{ $value | printf \"%.1f\" }}% > 85%."
+
+      # ─── DISQUE PLEIN ────────────────────────────────────────
+      - alert: DiskSpaceLow
+        expr: |
+          (1 - (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"})) * 100 > 90
+        for: 5m
+        labels:
+          severity: critical
+          category: infrastructure
+        annotations:
+          summary: "🔴 Disque presque plein — {{ $labels.instance }}"
+          description: "Espace disque utilisé: {{ $value | printf \"%.1f\" }}% > 90%. Nettoyer immédiatement."
+
+      # ─── BASE DE DONNÉES DOWN ────────────────────────────────
+      - alert: PostgreSQLDown
+        expr: pg_up == 0
+        for: 30s
+        labels:
+          severity: critical
+          category: infrastructure
+          service: database
+        annotations:
+          summary: "🔴 PostgreSQL INDISPONIBLE"
+          description: "La base de données PostgreSQL NexusAid est inaccessible. Toutes les opérations sont bloquées."
+
+      # ─── CONNEXIONS PG ÉLEVÉES ───────────────────────────────
+      - alert: PostgreSQLHighConnections
+        expr: |
+          pg_stat_activity_count > (pg_settings_max_connections * 0.8)
+        for: 5m
+        labels:
+          severity: warning
+          category: infrastructure
+          service: database
+        annotations:
+          summary: "⚠️ Connexions PostgreSQL élevées"
+          description: "{{ $value | printf \"%.0f\" }} connexions actives (> 80% du maximum)."
+
+      # ─── JVM HEAP SATURÉE ────────────────────────────────────
+      - alert: JvmHeapSpaceHigh
+        expr: |
+          (jvm_memory_used_bytes{area="heap"} / jvm_memory_max_bytes{area="heap"}) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          category: infrastructure
+        annotations:
+          summary: "⚠️ Heap JVM élevée — {{ $labels.job }}"
+          description: "Heap JVM: {{ $value | printf \"%.1f\" }}% sur {{ $labels.job }}. Risque d'OOM."
+
+      # ─── REDIS DOWN ──────────────────────────────────────────
+      - alert: RedisMayBeDown
+        expr: |
+          absent(redis_connected_clients) == 1
+        for: 2m
+        labels:
+          severity: warning
+          category: infrastructure
+          service: redis
+        annotations:
+          summary: "⚠️ Redis possiblement indisponible"
+          description: "Aucune métrique Redis reçue depuis 2 minutes."
