@@ -11,7 +11,8 @@ import Constants from 'expo-constants';
 const debuggerHost = Constants.expoConfig?.hostUri || Constants.manifest?.hostUri;
 const hostIp = debuggerHost ? debuggerHost.split(':')[0] : '10.0.2.2';
 
-const API_GATEWAY_URL = `http://${hostIp}:8060`;
+// Use local IP for Expo Go, but use Production server domain for compiled APK
+const API_GATEWAY_URL = debuggerHost ? `http://${hostIp}:8060` : 'https://nexus-aid.me';
 
 export const authService = {
     async login(email, password) {

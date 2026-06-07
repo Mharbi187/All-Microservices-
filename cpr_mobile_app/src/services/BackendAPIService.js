@@ -16,8 +16,8 @@ const hostIp = debuggerHost ? debuggerHost.split(':')[0] : '10.0.2.2';
 
 // Configuration API
 const API_CONFIG = {
-    // Automatically uses the PC's IP via Expo Constants
-    BASE_URL: `http://${hostIp}:8000`,
+    // Uses PC's IP via Expo Constants in Dev, Production Domain in APK
+    BASE_URL: debuggerHost ? `http://${hostIp}:8000` : `http://nexus-aid.me:8002`,
 
     // Endpoints
     ENDPOINTS: {
