@@ -8,6 +8,8 @@
 CREATE TABLE IF NOT EXISTS donation_needs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     committee_id UUID NOT NULL,
+    committee_type VARCHAR(255) NOT NULL DEFAULT 'LOCAL',
+    committee_name VARCHAR(255),
     title VARCHAR(255) NOT NULL,
     description TEXT,
     category VARCHAR(255) NOT NULL,
@@ -16,8 +18,17 @@ CREATE TABLE IF NOT EXISTS donation_needs (
     target_quantity INTEGER,
     current_amount DECIMAL(12,2) DEFAULT 0,
     current_quantity INTEGER DEFAULT 0,
-    created_by_role UUID NOT NULL,
+    created_by UUID NOT NULL,
+    created_by_role UUID, -- keep for compatibility
+    creator_name VARCHAR(255),
     creator_role_name VARCHAR(255),
+    validated_by UUID,
+    validator_name VARCHAR(255),
+    validated_at TIMESTAMPTZ,
+    rejected_by UUID,
+    rejector_name VARCHAR(255),
+    rejected_at TIMESTAMPTZ,
+    rejection_reason TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
