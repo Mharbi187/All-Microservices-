@@ -15,7 +15,9 @@ SET client_min_messages TO WARNING;
 -- =============================================================================
 
 DROP TABLE IF EXISTS audit_log              CASCADE;
+DROP TABLE IF EXISTS donation_receipts      CASCADE;
 DROP TABLE IF EXISTS donations              CASCADE;
+DROP TABLE IF EXISTS donation_needs         CASCADE;
 DROP TABLE IF EXISTS donors                CASCADE;
 DROP TABLE IF EXISTS training_records      CASCADE;
 DROP TABLE IF EXISTS certifications        CASCADE;
@@ -96,18 +98,47 @@ CREATE TABLE donors (
     total_donated_amount DECIMAL(12,2) DEFAULT 0
 );
 
+CREATE TABLE donation_needs (
+    id              UUID         DEFAULT gen_random_uuid() PRIMARY KEY,
+    committee_id    UUID         NOT NULL REFERENCES committees(id) ON DELETE CASCADE,
+    type            VARCHAR(255) NOT NULL,
+    priority        VARCHAR(255) NOT NULL,
+    description     TEXT         NOT NULL,
+    quantity_needed VARCHAR(255),
+    beneficiaries   INTEGER,
+    status          VARCHAR(255) NOT NULL,
+    published_at    TIMESTAMPTZ  DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ  DEFAULT NOW()
+);
+
 CREATE TABLE donations (
     id              UUID         DEFAULT gen_random_uuid() PRIMARY KEY,
-    donor_id        UUID         NOT NULL REFERENCES donors(id),
-    committee_id    UUID         REFERENCES committees(id),
+    donation_number VARCHAR(100) UNIQUE,
+    donor_id        UUID         NOT NULL REFERENCES donors(id) ON DELETE CASCADE,
+    need_id         UUID         REFERENCES donation_needs(id) ON DELETE SET NULL,
+    donation_type   VARCHAR(100) NOT NULL,
+    description     TEXT,
+    quantity        VARCHAR(255),
+    note            TEXT,
+    photo_url       TEXT,
+    status          VARCHAR(100) NOT NULL DEFAULT 'CONFIRMED',
+    created_at      TIMESTAMPTZ  DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ  DEFAULT NOW(),
+    -- Old columns for SQL compatibility:
+    committee_id    UUID         REFERENCES committees(id) ON DELETE SET NULL,
     amount          DECIMAL(12,2),
     currency        VARCHAR(5)   DEFAULT 'TND',
-    donation_type   VARCHAR(20)  NOT NULL DEFAULT 'MONETARY'
-                    CHECK (donation_type IN ('MONETARY','IN_KIND')),
-    description     TEXT,
-    donated_at      TIMESTAMPTZ  DEFAULT NOW(),
-    status          VARCHAR(20)  DEFAULT 'CONFIRMED'
-                    CHECK (status IN ('PENDING','CONFIRMED','CANCELLED'))
+    donated_at      TIMESTAMPTZ  DEFAULT NOW()
+);
+
+CREATE TABLE donation_receipts (
+    id              UUID         DEFAULT gen_random_uuid() PRIMARY KEY,
+    receipt_number  VARCHAR(255) UNIQUE NOT NULL,
+    donation_id     UUID         NOT NULL REFERENCES donations(id) ON DELETE CASCADE,
+    validated_at    TIMESTAMPTZ,
+    validated_by_id UUID         REFERENCES users(id) ON DELETE SET NULL,
+    validation_note TEXT,
+    created_at      TIMESTAMPTZ  DEFAULT NOW()
 );
 
 CREATE TABLE skill_categories (

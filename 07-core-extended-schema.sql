@@ -172,3 +172,72 @@ CREATE TABLE IF NOT EXISTS hierarchy_audit_logs (
     timestamp TIMESTAMP NOT NULL DEFAULT NOW(),
     reason TEXT
 );
+
+-- ─── YOUTH SYSTEM ──────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS youth_form_templates (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    questions JSONB NOT NULL,
+    target_level VARCHAR(50),
+    committee_id VARCHAR(50),
+    status VARCHAR(50) NOT NULL DEFAULT 'APPROVED',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS youth_form_responses (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_form_template UUID NOT NULL REFERENCES youth_form_templates(id) ON DELETE CASCADE,
+    id_volunteer UUID NOT NULL REFERENCES volunteers(id) ON DELETE CASCADE,
+    responses JSONB NOT NULL,
+    submitted_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS youth_integration_forms (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    volunteer_id UUID NOT NULL REFERENCES volunteers(id) ON DELETE CASCADE,
+    aspirations JSONB,
+    skills JSONB,
+    aptitudes JSONB,
+    interest_areas JSONB,
+    submitted_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS micro_projects (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title VARCHAR(255) NOT NULL,
+    theme VARCHAR(255) NOT NULL,
+    description TEXT,
+    lead_volunteer_id UUID NOT NULL REFERENCES volunteers(id) ON DELETE CASCADE,
+    committee_id UUID REFERENCES committees(id) ON DELETE SET NULL,
+    participants JSONB,
+    status VARCHAR(50) NOT NULL,
+    start_date DATE,
+    end_date DATE,
+    results JSONB
+);
+
+CREATE TABLE IF NOT EXISTS youth_recommendations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    form_id UUID,
+    committee_id UUID REFERENCES committees(id) ON DELETE CASCADE,
+    title VARCHAR(255),
+    description TEXT,
+    category VARCHAR(255),
+    target VARCHAR(255),
+    priority VARCHAR(255),
+    status VARCHAR(255),
+    date_creation TIMESTAMPTZ,
+    recommended_training_ia JSONB,
+    recommended_missions JSONB,
+    confidence_score DOUBLE PRECISION,
+    generated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS youth_domain_options (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    option_type VARCHAR(255) NOT NULL,
+    label VARCHAR(255) NOT NULL,
+    value VARCHAR(255) NOT NULL,
+    color VARCHAR(50)
+);
