@@ -22,13 +22,52 @@ public class EventPublisher {
 
     private final RabbitTemplate rabbitTemplate;
 
-    public void publishDonationReceived(UUID donationId, UUID donorId, String donationType, double amount) {
+    public void publishDonationReceived(UUID donationId, UUID donorId, String donationType, double amount, UUID committeeId) {
         Map<String, Object> event = buildEvent("DONATION_RECEIVED");
         event.put("donationId", donationId.toString());
-        event.put("donorId", donorId.toString());
+        event.put("donorId", donorId != null ? donorId.toString() : "");
         event.put("donationType", donationType);
         event.put("amount", amount);
+        event.put("committeeId", committeeId != null ? committeeId.toString() : "");
         publish(RabbitMQConfig.DONATION_RECEIVED_KEY, event);
+    }
+
+    public void publishDonationNeedCreated(UUID needId, UUID committeeId, String title, UUID createdBy) {
+        Map<String, Object> event = buildEvent("DONATION_NEED_CREATED");
+        event.put("needId", needId.toString());
+        event.put("committeeId", committeeId.toString());
+        event.put("title", title);
+        event.put("createdBy", createdBy.toString());
+        publish(RabbitMQConfig.DONATION_NEED_CREATED_KEY, event);
+    }
+
+    public void publishDonationNeedValidated(UUID needId, UUID committeeId, String title, UUID validatedBy, UUID createdBy) {
+        Map<String, Object> event = buildEvent("DONATION_NEED_VALIDATED");
+        event.put("needId", needId.toString());
+        event.put("committeeId", committeeId.toString());
+        event.put("title", title);
+        event.put("validatedBy", validatedBy.toString());
+        event.put("createdBy", createdBy.toString());
+        publish(RabbitMQConfig.DONATION_NEED_VALIDATED_KEY, event);
+    }
+
+    public void publishDonationNeedRejected(UUID needId, String title, UUID rejectedBy, String reason, UUID createdBy) {
+        Map<String, Object> event = buildEvent("DONATION_NEED_REJECTED");
+        event.put("needId", needId.toString());
+        event.put("title", title);
+        event.put("rejectedBy", rejectedBy.toString());
+        event.put("reason", reason);
+        event.put("createdBy", createdBy.toString());
+        publish(RabbitMQConfig.DONATION_NEED_REJECTED_KEY, event);
+    }
+
+    public void publishDonationFiscalReceipt(UUID donationId, UUID donorId, String receiptLink, String donorEmail) {
+        Map<String, Object> event = buildEvent("DONATION_FISCAL_RECEIPT");
+        event.put("donationId", donationId.toString());
+        event.put("donorId", donorId != null ? donorId.toString() : "");
+        event.put("receiptLink", receiptLink);
+        event.put("donorEmail", donorEmail != null ? donorEmail : "");
+        publish(RabbitMQConfig.DONATION_FISCAL_RECEIPT_KEY, event);
     }
 
     public void publishReportPublished(UUID reportId, UUID committeeId, String reportType) {

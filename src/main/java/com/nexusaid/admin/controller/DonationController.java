@@ -7,18 +7,24 @@ import com.nexusaid.admin.entity.MonetaryDonation;
 import com.nexusaid.admin.repository.InKindDonationRepository;
 import com.nexusaid.admin.repository.MonetaryDonationRepository;
 import com.nexusaid.admin.security.UserDetailsImpl;
+import com.nexusaid.admin.service.CommitteeHierarchyService;
 import com.nexusaid.admin.service.DonationService;
 import com.nexusaid.admin.service.PdfReceiptGeneratorService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/admin/donations")
@@ -29,50 +35,106 @@ public class DonationController {
     private final PdfReceiptGeneratorService pdfService;
     private final MonetaryDonationRepository monetaryDocRepo;
     private final InKindDonationRepository inKindDocRepo;
+    private final CommitteeHierarchyService hierarchyService;
 
-    // 1. Map Endpoint (Can be visible to public or anyone depending on
-    // SecurityConfig rules)
+    // ─── 1. Public (Donateurs) ───────────────────────────────────────────────
+
     @GetMapping("/needs/active")
     public ResponseEntity<List<DonationNeed>> getActiveNeeds() {
-        return ResponseEntity.ok(donationService.getActiveNeeds());
+        return ResponseEntity.ok(donationService.getActivePublicNeeds());
     }
 
-    // 2. Publish a new Need
+    // ─── 2. Responsables de Comité (Création & Suivi) ─────────────────────────
+
     @PostMapping("/needs")
+    @PreAuthorize("hasAnyRole('RESP_CATASTROPHES', 'RESP_ACTION_SOCIALE', 'RESP_SANTE', 'PRESIDENT', 'VICE_PRESIDENT')")
     public ResponseEntity<DonationNeed> createExpectedNeed(
             @RequestBody CreateNeedRequest request,
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
 
-        // We extract user info for tracing who published the need
-        String roleName = userDetails.getAuthorities().isEmpty() ? "UNKNOWN"
-                : userDetails.getAuthorities().iterator().next().getAuthority();
-        DonationNeed need = donationService.createNeed(request, userDetails.getUser().getId(), roleName);
+        String roleName = userDetails.getAuthorities().isEmpty() ? "UNKNOWN" : userDetails.getAuthorities().iterator().next().getAuthority();
+        String creatorName = "Responsable"; // Can be mapped from user profile or Feign later
+        DonationNeed need = donationService.createNeed(request, userDetails.getUser().getId(), creatorName, roleName);
         return ResponseEntity.status(HttpStatus.CREATED).body(need);
     }
 
-    // 3. Process Monetary Donation (On-Site by Volunteer)
+    @GetMapping("/needs/my")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<DonationNeed>> getMyCreatedNeeds(
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        return ResponseEntity.ok(donationService.getMyCreatedNeeds(userDetails.getUser().getId()));
+    }
+
+    // ─── 3. Présidents & VP (Validation & Rejet) ──────────────────────────────
+
+    @GetMapping("/needs/pending")
+    @PreAuthorize("hasAnyRole('PRESIDENT', 'VICE_PRESIDENT')")
+    public ResponseEntity<Page<DonationNeed>> getPendingNeeds(
+            HttpServletRequest req,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+                
+        String authHeader = req.getHeader("Authorization");
+        List<UUID> accessibleIds = hierarchyService.getAccessibleCommitteeIds(authHeader);
+        return ResponseEntity.ok(donationService.getPendingNeeds(accessibleIds, PageRequest.of(page, size)));
+    }
+
+    @GetMapping("/needs/committee")
+    @PreAuthorize("hasAnyRole('PRESIDENT', 'VICE_PRESIDENT')")
+    public ResponseEntity<Page<DonationNeed>> getCommitteeNeeds(
+            HttpServletRequest req,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+                
+        String authHeader = req.getHeader("Authorization");
+        List<UUID> accessibleIds = hierarchyService.getAccessibleCommitteeIds(authHeader);
+        return ResponseEntity.ok(donationService.getCommitteeNeeds(accessibleIds, PageRequest.of(page, size)));
+    }
+
+    @PutMapping("/needs/{id}/validate")
+    @PreAuthorize("hasAnyRole('PRESIDENT', 'VICE_PRESIDENT') and @donationSecurity.canValidateNeedFor(#id, authentication)")
+    public ResponseEntity<DonationNeed> validateNeed(
+            @PathVariable UUID id,
+            @RequestBody ValidateNeedRequest request,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        
+        request.setValidatorName("Président/VP"); 
+        DonationNeed need = donationService.validateNeed(id, userDetails.getUser().getId(), request);
+        return ResponseEntity.ok(need);
+    }
+
+    // ─── 4. Statistiques ──────────────────────────────────────────────────────
+
+    @GetMapping("/stats")
+    @PreAuthorize("hasAnyRole('PRESIDENT', 'VICE_PRESIDENT')")
+    public ResponseEntity<DonationStatsResponse> getStats(HttpServletRequest req) {
+        String authHeader = req.getHeader("Authorization");
+        List<UUID> accessibleIds = hierarchyService.getAccessibleCommitteeIds(authHeader);
+        return ResponseEntity.ok(donationService.getStats(accessibleIds));
+    }
+
+    // ─── 5. Réception de Dons & Reçus ─────────────────────────────────────────
+
     @PostMapping("/monetary")
+    @PreAuthorize("hasAnyRole('PRESIDENT', 'VICE_PRESIDENT', 'RESP_CATASTROPHES', 'RESP_ACTION_SOCIALE')")
     public ResponseEntity<DonationReceiptResponse> processMonetaryDonation(
             @RequestBody CreateMonetaryDonationRequest request,
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
 
-        DonationReceiptResponse response = donationService.processMonetaryDonation(request,
-                userDetails.getUser().getId());
+        DonationReceiptResponse response = donationService.processMonetaryDonation(request, userDetails.getUser().getId());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    // 4. Process In-Kind Donation (On-Site by Volunteer)
     @PostMapping("/in-kind")
+    @PreAuthorize("hasAnyRole('PRESIDENT', 'VICE_PRESIDENT', 'RESP_CATASTROPHES', 'RESP_ACTION_SOCIALE')")
     public ResponseEntity<DonationReceiptResponse> processInKindDonation(
             @RequestBody CreateInKindDonationRequest request,
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
 
-        DonationReceiptResponse response = donationService.processInKindDonation(request,
-                userDetails.getUser().getId());
+        DonationReceiptResponse response = donationService.processInKindDonation(request, userDetails.getUser().getId());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    // 5. Verify receipt authenticity (QR scan endpoint)
     @GetMapping("/receipts/{receiptNumber}/verify")
     public ResponseEntity<?> verifyReceipt(@PathVariable String receiptNumber) {
         MonetaryDonation mDoc = monetaryDocRepo.findAll().stream()
@@ -80,9 +142,7 @@ public class DonationController {
 
         if (mDoc != null) {
             return ResponseEntity.ok(java.util.Map.of(
-                    "valid", true,
-                    "type", "MONETARY",
-                    "receiptNumber", receiptNumber,
+                    "valid", true, "type", "MONETARY", "receiptNumber", receiptNumber,
                     "amount", mDoc.getAmount() + " " + mDoc.getCurrency(),
                     "date", mDoc.getReceiptDate().toString(),
                     "donor", mDoc.getDonorName() != null ? mDoc.getDonorName() : "Anonyme"));
@@ -93,9 +153,7 @@ public class DonationController {
 
         if (kDoc != null) {
             return ResponseEntity.ok(java.util.Map.of(
-                    "valid", true,
-                    "type", "IN_KIND",
-                    "receiptNumber", receiptNumber,
+                    "valid", true, "type", "IN_KIND", "receiptNumber", receiptNumber,
                     "date", kDoc.getReceiptDate().toString(),
                     "donor", kDoc.getDonorName() != null ? kDoc.getDonorName() : "Anonyme"));
         }
@@ -103,11 +161,9 @@ public class DonationController {
         return ResponseEntity.ok(java.util.Map.of("valid", false, "message", "Receipt not found"));
     }
 
-    // 6. Download the auto-generated PDF receipt
     @GetMapping("/receipts/pdf/{receiptNumber}")
     public ResponseEntity<byte[]> downloadPdfReceipt(@PathVariable String receiptNumber) {
 
-        // Find monetary or inKind
         String donorName = "Anonyme";
         String amountOrItems = "";
         String date = "";
@@ -127,7 +183,7 @@ public class DonationController {
 
             if (kDoc != null) {
                 donorName = kDoc.getDonorName();
-                amountOrItems = "Don en nature (Voir JSON)"; // Could parse the JSONB here
+                amountOrItems = "Don en nature (Voir JSON)"; 
                 date = kDoc.getReceiptDate().format(DateTimeFormatter.ISO_DATE);
                 qrData = kDoc.getQrCodeData();
             } else {
