@@ -73,6 +73,11 @@ const volunteerService = {
         const { data } = await apiClient.delete<string>(`/profiles/trainers/${trainerId}`);
         return data;
     },
+
+    getDonors: async (): Promise<any[]> => {
+        const { data } = await apiClient.get<any[]>('/profiles/donors');
+        return data;
+    },
 };
 
 export default volunteerService;

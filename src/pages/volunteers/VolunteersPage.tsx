@@ -17,7 +17,7 @@ import {
     StarOutlined, EyeOutlined, ApartmentOutlined,
     ReloadOutlined, StopOutlined, IdcardOutlined,
     FieldTimeOutlined, EditOutlined, DeleteOutlined,
-    WarningOutlined, CalendarOutlined,
+    WarningOutlined, CalendarOutlined, HeartOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import type { ColumnsType } from 'antd/es/table';
@@ -91,6 +91,7 @@ const VolunteersPage: React.FC = () => {
     const canValidate = isPresident || isRespJeunesse;
     const canManageTrainers = isPresident || isRespJeunesse || isVicePresident;
 
+    const [volunteers, setVolunteers] = useState<VolunteerRecord[]>([]);
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState<string | null>(null);
     const [committeeFilter, setCommitteeFilter] = useState<string | null>(null);
@@ -98,8 +99,9 @@ const VolunteersPage: React.FC = () => {
     const [skillsFilter, setSkillsFilter] = useState<string>('');
     const [loading, setLoading] = useState(true);
     const [trainersLoading, setTrainersLoading] = useState(false);
-    const [volunteers, setVolunteers] = useState<VolunteerRecord[]>([]);
     const [trainers, setTrainers] = useState<TrainerDto[]>([]);
+    const [donors, setDonors] = useState<any[]>([]);
+    const [donorsLoading, setDonorsLoading] = useState(false);
     const [committees, setCommittees] = useState<CommitteeOverview[]>([]);
     const [actionLoading, setActionLoading] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<string>('all');
@@ -173,8 +175,22 @@ const VolunteersPage: React.FC = () => {
         }
     }, [canManageTrainers]);
 
+    const fetchDonors = useCallback(async () => {
+        if (!isPresident && !isVicePresident) return;
+        setDonorsLoading(true);
+        try {
+            const data = await volunteerService.getDonors();
+            setDonors(data);
+        } catch {
+            setDonors([]);
+        } finally {
+            setDonorsLoading(false);
+        }
+    }, [isPresident, isVicePresident]);
+
     useEffect(() => { fetchData(); }, [fetchData]);
     useEffect(() => { if (activeTab === 'trainers') fetchTrainers(); }, [activeTab, fetchTrainers]);
+    useEffect(() => { if (activeTab === 'donors') fetchDonors(); }, [activeTab, fetchDonors]);
 
     // ---- Actions ----
     const handleApprove = async (volunteerId: string) => {
@@ -301,6 +317,54 @@ const VolunteersPage: React.FC = () => {
         const matchCommittee = !committeeFilter || t.committeeId === committeeFilter;
         return matchSearch && matchCommittee;
     });
+
+    const filteredDonors = donors.filter(d => {
+        const matchSearch = !search ||
+            d.fullName?.toLowerCase().includes(search.toLowerCase()) ||
+            d.email?.toLowerCase().includes(search.toLowerCase()) ||
+            d.cin?.toLowerCase().includes(search.toLowerCase()) ||
+            d.phone?.toLowerCase().includes(search.toLowerCase());
+        return matchSearch;
+    });
+
+    const donorColumns: ColumnsType<any> = [
+        {
+            title: 'Donateur', key: 'name',
+            sorter: (a, b) => (a.fullName || '').localeCompare(b.fullName || ''),
+            render: (_, r) => (
+                <Space>
+                    <Avatar style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }} size={38} icon={<UserOutlined />} />
+                    <div>
+                        <Text strong style={{ fontSize: 13 }}>{r.fullName}</Text>
+                        <div><Text style={{ fontSize: 11, color: '#999' }}>{r.email}</Text></div>
+                    </div>
+                </Space>
+            ),
+        },
+        { title: 'CIN', dataIndex: 'cin', key: 'cin', render: (c: string) => c ? <Tag bordered={false}>{c}</Tag> : <Text type="secondary">—</Text> },
+        { title: 'Téléphone', dataIndex: 'phone', key: 'phone', render: (p: string) => p ? <Text>{p}</Text> : <Text type="secondary">—</Text> },
+        { 
+            title: 'Zones cibles', dataIndex: 'targetZones', key: 'zones',
+            render: (zones: string[]) => (
+                <Space wrap size={[4, 4]}>
+                    {zones && zones.length > 0 ? zones.map(z => <Tag key={z} bordered={false} color="blue" style={{ fontSize: 11 }}>{z}</Tag>) : <Text type="secondary">—</Text>}
+                </Space>
+            )
+        },
+        {
+            title: 'Catégories préférées', dataIndex: 'preferredCategories', key: 'categories',
+            render: (cats: string[]) => (
+                <Space wrap size={[4, 4]}>
+                    {cats && cats.length > 0 ? cats.map(c => <Tag key={c} bordered={false} color="purple" style={{ fontSize: 11 }}>{c}</Tag>) : <Text type="secondary">—</Text>}
+                </Space>
+            )
+        },
+        { 
+            title: 'Nombre de dons', dataIndex: 'totalDonationsCount', key: 'count',
+            sorter: (a, b) => (a.totalDonationsCount || 0) - (b.totalDonationsCount || 0),
+            render: (c: number) => <Tag color="green" style={{ fontWeight: 'bold' }}>{c || 0} dons</Tag> 
+        },
+    ];
 
     // ---- Volunteer Columns ----
     const columns: ColumnsType<VolunteerRecord> = [
@@ -458,7 +522,7 @@ const VolunteersPage: React.FC = () => {
                     <Text type="secondary">Gestion des volontaires et formateurs du CRT</Text>
                 </div>
                 <Space>
-                    <Button icon={<ReloadOutlined />} onClick={() => { fetchData(); fetchTrainers(); }} loading={loading}>Actualiser</Button>
+                    <Button icon={<ReloadOutlined />} onClick={() => { fetchData(); fetchTrainers(); fetchDonors(); }} loading={loading}>Actualiser</Button>
                     <Button icon={<DownloadOutlined />}>Exporter</Button>
                 </Space>
             </div>
@@ -516,22 +580,23 @@ const VolunteersPage: React.FC = () => {
                     { key: 'pending', label: <Space><ClockCircleOutlined />En attente <Badge count={pending} style={{ backgroundColor: '#f59e0b' }} /></Space> },
                     { key: 'approved', label: <Space><CheckCircleOutlined />Approuvés <Badge count={approved} style={{ backgroundColor: '#16a34a' }} /></Space> },
                     { key: 'trainers', label: <Space><StarOutlined />Formateurs <Badge count={trainers.length} style={{ backgroundColor: '#7c3aed' }} /></Space> },
+                    ...((isPresident || isVicePresident) ? [{ key: 'donors', label: <Space><HeartOutlined />Donateurs <Badge count={donors.length} style={{ backgroundColor: '#10b981' }} /></Space> }] : []),
                 ]} />
 
                 {/* Filters */}
                 <div className="flex flex-wrap items-center gap-3 mb-4">
                     <Input
                         prefix={<SearchOutlined style={{ color: '#bbb' }} />}
-                        placeholder={activeTab === 'trainers' ? 'Rechercher par nom, email, domaine...' : 'Rechercher par nom, email, matricule...'}
+                        placeholder={activeTab === 'trainers' ? 'Rechercher par nom, email, domaine...' : activeTab === 'donors' ? 'Rechercher par nom, email, CIN...' : 'Rechercher par nom, email, matricule...'}
                         value={search} onChange={(e) => setSearch(e.target.value)}
                         style={{ width: 280 }} allowClear
                     />
-                    {activeTab !== 'trainers' && (
+                    {activeTab !== 'trainers' && activeTab !== 'donors' && (
                         <Select placeholder="Groupe Sanguin" allowClear style={{ width: 140 }} value={bloodFilter} onChange={setBloodFilter}
                             options={['A+','A-','B+','B-','AB+','AB-','O+','O-'].map(v => ({ value: v, label: v }))}
                         />
                     )}
-                    {activeTab !== 'trainers' && (
+                    {activeTab !== 'trainers' && activeTab !== 'donors' && (
                         <Input placeholder="Compétence / expertise..." value={skillsFilter} onChange={(e) => setSkillsFilter(e.target.value)} style={{ width: 180 }} allowClear />
                     )}
                     {activeTab === 'all' && (
@@ -544,7 +609,7 @@ const VolunteersPage: React.FC = () => {
                             ]}
                         />
                     )}
-                    {committeeOptions.length > 1 && (
+                    {committeeOptions.length > 1 && activeTab !== 'donors' && (
                         <Select placeholder="Comité" allowClear style={{ width: 200 }} value={committeeFilter} onChange={setCommitteeFilter}
                             suffixIcon={<ApartmentOutlined />} options={committeeOptions} showSearch
                             filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
@@ -553,6 +618,8 @@ const VolunteersPage: React.FC = () => {
                     <Text style={{ fontSize: 12, color: '#999', marginLeft: 'auto' }}>
                         {activeTab === 'trainers'
                             ? `${filteredTrainers.length} formateur${filteredTrainers.length > 1 ? 's' : ''}`
+                            : activeTab === 'donors'
+                            ? `${filteredDonors.length} donateur${filteredDonors.length > 1 ? 's' : ''}`
                             : `${filtered.length} volontaire${filtered.length > 1 ? 's' : ''} · ${totalHours.toLocaleString()}h total`}
                     </Text>
                 </div>
@@ -573,6 +640,21 @@ const VolunteersPage: React.FC = () => {
                         />
                     ) : (
                         <Empty description="Aucun formateur trouvé" />
+                    )
+                ) : activeTab === 'donors' ? (
+                    donorsLoading ? (
+                        <div className="flex justify-center py-12"><Spin size="large" /></div>
+                    ) : filteredDonors.length > 0 ? (
+                        <Table
+                            columns={donorColumns}
+                            dataSource={filteredDonors}
+                            rowKey="id"
+                            pagination={{ pageSize: 10, showSizeChanger: true }}
+                            size="middle"
+                            scroll={{ x: 800 }}
+                        />
+                    ) : (
+                        <Empty description="Aucun donateur trouvé" />
                     )
                 ) : loading ? (
                     <div className="flex justify-center py-12"><Spin size="large" /></div>
