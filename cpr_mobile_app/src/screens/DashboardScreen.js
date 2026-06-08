@@ -20,7 +20,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useAuth, ROLE_LABELS, ROLE_COLORS } from '../contexts/AuthContext';
-import { mockDataService } from '../services/MockDataService';
 
 const { width } = Dimensions.get('window');
 
@@ -70,11 +69,31 @@ const getModules = (role, notifCount) => {
         {
             id: 'calendar',
             icon: 'calendar',
-            title: 'Calendrier & Météo',
-            subtitle: 'Activités & prévisions',
+            title: 'Calendrier & Actualités',
+            subtitle: 'Événements & Nouvelles',
             bg: '#FFFFFF',
             textColor: '#111827',
-            screen: 'WeatherCalendar',
+            screen: 'CalendarNews',
+            roles: ['volunteer', 'secouriste', 'ndrt', 'rdrt', 'chef_equipe', 'responsable'],
+        },
+        {
+            id: 'interventions',
+            icon: 'shield',
+            title: 'Interventions',
+            subtitle: 'Mes missions assignées',
+            bg: '#7C3AED',
+            textColor: '#FFFFFF',
+            screen: 'Interventions',
+            roles: ['volunteer', 'secouriste', 'ndrt', 'rdrt', 'chef_equipe', 'responsable'],
+        },
+        {
+            id: 'reports',
+            icon: 'file-text',
+            title: 'Mes Rapports',
+            subtitle: 'Remplir & soumettre',
+            bg: '#0F766E',
+            textColor: '#FFFFFF',
+            screen: 'Reports',
             roles: ['volunteer', 'secouriste', 'ndrt', 'rdrt', 'chef_equipe', 'responsable'],
         },
         {

@@ -1,14 +1,14 @@
 {
   "expo": {
-    "name": "CPR Assistant",
+    "name": "Nexus-Aid",
     "slug": "cpr-croissant-rouge-tunisie",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/logo.jpg",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./assets/logo.jpg",
       "resizeMode": "contain",
       "backgroundColor": "#DC2626"
     },
@@ -17,20 +17,24 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "org.croissantrougetunisie.cprassistant"
+      "bundleIdentifier": "me.nexusaid.app"
     },
     "android": {
       "usesCleartextTraffic": true,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/logo.jpg",
         "backgroundColor": "#DC2626"
       },
-      "package": "org.croissantrougetunisie.cprassistant",
+      "package": "me.nexusaid.app",
       "permissions": [
         "CAMERA",
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
-        "VIBRATE"
+        "VIBRATE",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
       ]
     },
     "plugins": [
@@ -47,7 +51,13 @@
         }
       ],
       "expo-asset",
-      "expo-font"
-    ]
+      "expo-font",
+      "react-native-fast-tflite"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "df39149f-106a-4154-b400-f8e04ff5d999"
+      }
+    }
   }
 }

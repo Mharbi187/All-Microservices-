@@ -25,7 +25,9 @@ import StudyScreen from './screens/StudyScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import NotificationsScreen from './screens/NotificationsScreen';
 import AlertScreen from './screens/AlertScreen';
-import WeatherCalendarScreen from './screens/WeatherCalendarScreen';
+import CalendarNewsScreen from './screens/CalendarNewsScreen';
+import InterventionsScreen from './screens/InterventionsScreen';
+import ReportFormScreen from './screens/ReportFormScreen';
 
 // ── Écrans CPR / métier (accessibles depuis Dashboard) ───────────────────────
 import CPRScreen from './screens/CPRScreen';
@@ -119,9 +121,19 @@ function RootNavigator() {
                         options={{ title: 'Envoyer une Alerte', headerBackTitle: 'Retour' }}
                     />
                     <Stack.Screen
-                        name="WeatherCalendar"
-                        component={WeatherCalendarScreen}
-                        options={{ title: 'Météo & Calendrier', headerBackTitle: 'Retour' }}
+                        name="CalendarNews"
+                        component={CalendarNewsScreen}
+                        options={{ title: 'Calendrier & Actualités', headerBackTitle: 'Retour' }}
+                    />
+                    <Stack.Screen
+                        name="Interventions"
+                        component={InterventionsScreen}
+                        options={{ title: 'Mes Interventions', headerBackTitle: 'Retour' }}
+                    />
+                    <Stack.Screen
+                        name="Reports"
+                        component={ReportFormScreen}
+                        options={{ title: 'Mes Rapports', headerBackTitle: 'Retour' }}
                     />
                     <Stack.Screen
                         name="Settings"

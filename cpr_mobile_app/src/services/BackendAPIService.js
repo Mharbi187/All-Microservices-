@@ -16,8 +16,9 @@ const hostIp = debuggerHost ? debuggerHost.split(':')[0] : '10.0.2.2';
 
 // Configuration API
 const API_CONFIG = {
-    // Uses PC's IP via Expo Constants in Dev, Production Domain in APK
-    BASE_URL: debuggerHost ? `http://${hostIp}:8000` : `http://nexus-aid.me:8002`,
+    // CPR server always runs on Oracle VM (proxied via Caddy over HTTPS)
+    // Change to `http://${hostIp}:8000` only if running the uvicorn server locally on your PC
+    BASE_URL: `https://nexus-aid.me`,
 
     // Endpoints
     ENDPOINTS: {
@@ -55,7 +56,7 @@ class BackendAPIService {
 
     async checkHealth() {
         try {
-            const response = await fetch(`${this.serverUrl}/health`);
+            const response = await fetch(`${this.serverUrl}${API_CONFIG.ENDPOINTS.HEALTH}`);
             const data = await response.json();
             this.isConnected = data.status === 'ok';
             return { connected: this.isConnected, version: data.version };

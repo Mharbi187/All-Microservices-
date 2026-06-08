@@ -4,7 +4,7 @@
  * Croissant Rouge Tunisien
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -17,6 +17,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useAuth, ROLE_LABELS, ROLE_COLORS } from '../contexts/AuthContext';
+import { coreAPI } from '../services/CoreAPIService';
 
 const ROLE_DESCRIPTIONS = {
     volunteer: 'Bénévole actif du Croissant Rouge Tunisien. Participe aux activités locales et aux opérations de sensibilisation.',
@@ -46,14 +47,23 @@ const NDRT_RDRT_BADGE = {
 
 export default function ProfileScreen({ navigation }) {
     const { user, logout, hasRole } = useAuth();
+    const [profileData, setProfileData] = useState(null);
     const [notifEnabled, setNotifEnabled] = useState(true);
     const [soundEnabled, setSoundEnabled] = useState(true);
 
-    const roleColor = ROLE_COLORS[user?.role] || '#6B7280';
-    const roleLabel = ROLE_LABELS[user?.role] || 'Membre';
-    const roleIconName = ROLE_ICONS[user?.role] || 'user';
-    const roleDesc = ROLE_DESCRIPTIONS[user?.role] || '';
-    const specialBadge = NDRT_RDRT_BADGE[user?.role];
+    useEffect(() => {
+        coreAPI.fetchMyProfile()
+            .then(data => setProfileData(data))
+            .catch(e => console.warn('[Profile] fetch error:', e.message));
+    }, []);
+
+    const profile = { ...user, ...(profileData || {}) };
+
+    const roleColor = ROLE_COLORS[profile?.role] || ROLE_COLORS[user?.roles?.[0]] || '#DC2626';
+    const roleLabel = ROLE_LABELS[profile?.role] || profile?.roles?.[0] || 'Membre';
+    const roleIconName = ROLE_ICONS[profile?.role] || 'user';
+    const roleDesc = ROLE_DESCRIPTIONS[profile?.role] || '';
+    const specialBadge = NDRT_RDRT_BADGE[profile?.role];
 
     const handleLogout = () => {
         Alert.alert('Déconnexion', 'Quitter votre espace membre ?', [
@@ -69,9 +79,10 @@ export default function ProfileScreen({ navigation }) {
     };
 
     const INFO_ROWS = [
-        { label: 'Délégation', value: user?.delegation, icon: 'map-pin' },
-        { label: 'Téléphone', value: user?.phone, icon: 'phone' },
-        { label: 'Date d\'adhésion', value: user?.dateAdhesion || '—', icon: 'calendar' },
+        { label: 'Comité / Délégation', value: profile?.delegation || profile?.committeeName || profile?.committee?.name || '—', icon: 'map-pin' },
+        { label: 'Email', value: profile?.email || user?.email || '—', icon: 'mail' },
+        { label: 'Téléphone', value: profile?.phone || profile?.phoneNumber || '—', icon: 'phone' },
+        { label: 'Date d\'adhésion', value: (profile?.dateAdhesion || profile?.createdAt) ? new Date(profile?.dateAdhesion || profile?.createdAt).toLocaleDateString('fr-FR') : '—', icon: 'calendar' },
         { label: 'Ancienneté', value: yearsActive(), icon: 'award' },
     ];
 
@@ -87,9 +98,9 @@ export default function ProfileScreen({ navigation }) {
                     </View>
 
                     <Text style={styles.userName}>
-                        {user?.prenom} {user?.nom}
+                        {profile?.prenom || profile?.firstName || ''} {profile?.nom || profile?.lastName || ''}
                     </Text>
-                    <Text style={styles.userMatricule}>#{user?.matricule}</Text>
+                    <Text style={styles.userMatricule}>#{profile?.matricule || user?.username || '—'}</Text>
 
                     {/* Badge rôle */}
                     <View style={[styles.rolePill, { backgroundColor: roleColor + '20', borderColor: roleColor }]}>
@@ -228,7 +239,7 @@ export default function ProfileScreen({ navigation }) {
                     <Text style={styles.logoutText}>Se déconnecter</Text>
                 </TouchableOpacity>
 
-                <Text style={styles.version}>CRT Secours • Version 1.0.0</Text>
+                <Text style={styles.version}>Nexus-Aid • Version 1.0.0</Text>
             </ScrollView>
         </SafeAreaView>
     );

@@ -156,8 +156,17 @@ export default function CPRScreen({ route, navigation }) {
                 setConnectionStatus({ connected: true });
                 setPhase('READY');
             } else {
-                Alert.alert('Connexion échouée',
-                    'Serveur non trouvé. Assurez-vous que la commande Python uvicorn est bien lancée sur le port 8000.');
+                Alert.alert(
+                    'Serveur CPR inaccessible',
+                    'Impossible de joindre le serveur CPR.\n\n' +
+                    '• En développement: vérifiez que le serveur Python tourne sur votre PC (uvicorn server:app --port 8000)\n' +
+                    '• En production (APK): vérifiez que le conteneur Docker "nexusaid-cpr-assistant" est en marche sur votre VM Oracle.\n\n' +
+                    'Vous pouvez aussi utiliser le Mode Hors-Ligne (sans connexion) pour continuer.',
+                    [
+                        { text: 'Réessayer', onPress: () => connectToServer() },
+                        { text: 'Mode Hors-Ligne', onPress: () => { setPhase('READY'); setConnectionStatus({ connected: true, mode: 'offline' }); } }
+                    ]
+                );
                 setPhase('SETUP');
             }
         } catch (error) {

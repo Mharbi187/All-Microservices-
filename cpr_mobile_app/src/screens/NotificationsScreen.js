@@ -18,7 +18,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import { mockDataService } from '../services/MockDataService';
+import { coreAPI } from '../services/CoreAPIService';
 import { useAuth } from '../contexts/AuthContext';
 
 const { width } = Dimensions.get('window');
@@ -49,41 +49,59 @@ export default function NotificationsScreen({ navigation }) {
         loadNotifications();
     }, []);
 
+    // ── Map backend DonorNotificationDto → local shape ──────────────────────
+    const mapNotification = (n) => ({
+        id: n.id,
+        title: n.type || 'Notification',
+        message: n.message || '',
+        date: n.createdAt ? new Date(n.createdAt).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' }) : '',
+        priority: n.priority?.toLowerCase() || 'normal',
+        status: n.read ? 'read' : 'pending',
+        unread: !n.read,
+        location: n.metadata?.location || null,
+        requiresResponse: n.requiresResponse || false,
+        details: n.metadata || null,
+    });
+
     const loadNotifications = async () => {
         setLoading(true);
-        const data = await mockDataService.getNotifications(user?.id);
-        setNotifications(data);
-        setLoading(false);
+        try {
+            const raw = await coreAPI.fetchNotifications();
+            setNotifications((raw || []).map(mapNotification));
+        } catch (e) {
+            console.warn('[Notifications] load error:', e.message);
+            setNotifications([]);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const onRefresh = async () => {
         setRefreshing(true);
-        const data = await mockDataService.getNotifications(user?.id);
-        setNotifications(data);
+        await loadNotifications();
         setRefreshing(false);
     };
 
     const handleAccept = async (notifId) => {
-        setNotifications((prev) =>
-            prev.map((n) => (n.id === notifId ? { ...n, status: 'accepted' } : n))
-        );
+        setNotifications((prev) => prev.map((n) => (n.id === notifId ? { ...n, status: 'accepted' } : n)));
         setSelected(null);
     };
 
     const handleDecline = async (notifId) => {
-        setNotifications((prev) =>
-            prev.map((n) => (n.id === notifId ? { ...n, status: 'declined' } : n))
-        );
+        setNotifications((prev) => prev.map((n) => (n.id === notifId ? { ...n, status: 'declined' } : n)));
         setSelected(null);
     };
 
-    const markAsRead = (notifId) => {
-        setNotifications((prev) =>
-            prev.map((n) =>
-                n.id === notifId && n.status === 'pending' ? { ...n, unread: false } : n
-            )
-        );
+    const markAsRead = async (notifId) => {
+        setNotifications((prev) => prev.map((n) => n.id === notifId ? { ...n, unread: false, status: n.status === 'pending' ? 'read' : n.status } : n));
+        try { await coreAPI.markNotificationRead(notifId); } catch (_) { }
     };
+
+    const handleMarkAllRead = async () => {
+        setNotifications((prev) => prev.map(n => ({ ...n, unread: false })));
+        try { await coreAPI.markAllNotificationsRead(); } catch (_) { }
+    };
+
 
     const FILTERS = [
         { key: 'all', label: 'Tout' },

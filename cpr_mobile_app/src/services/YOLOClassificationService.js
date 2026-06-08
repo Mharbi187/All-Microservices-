@@ -13,6 +13,9 @@
  */
 
 import { Platform } from 'react-native';
+import * as ImageManipulator from 'expo-image-manipulator';
+import { Buffer } from 'buffer';
+import jpeg from 'jpeg-js';
 
 // ============================================
 // CONFIGURATION
@@ -214,22 +217,37 @@ class YOLOClassificationService {
      * @private
      */
     async _preprocessImage(imageData) {
-        // En production avec react-native-tflite:
-        //   Le modèle TFLite gère le resize automatiquement si configuré
-        //   Sinon, utiliser expo-image-manipulator:
-        //
-        //   import * as ImageManipulator from 'expo-image-manipulator';
-        //   const resized = await ImageManipulator.manipulateAsync(
-        //     imageData.uri,
-        //     [{ resize: { width: 224, height: 224 } }],
-        //     { format: 'jpeg', base64: true }
-        //   );
-        //   return this._base64ToFloat32(resized.base64);
+        if (!imageData || !imageData.uri) {
+            const size = CLASSIFICATION_CONFIG.INPUT_SIZE;
+            const channels = CLASSIFICATION_CONFIG.INPUT_CHANNELS;
+            return new Float32Array(1 * channels * size * size);
+        }
 
-        // Placeholder: retourne un tenseur vide de la bonne forme
         const size = CLASSIFICATION_CONFIG.INPUT_SIZE;
+        
+        // Resize image to 224x224 and get base64
+        const manipResult = await ImageManipulator.manipulateAsync(
+            imageData.uri,
+            [{ resize: { width: size, height: size } }],
+            { format: 'jpeg', base64: true }
+        );
+
+        // Decode base64 JPEG into raw RGBA pixels
+        const jpegData = Buffer.from(manipResult.base64, 'base64');
+        const rawImageData = jpeg.decode(jpegData, { useTArray: true });
+
+        // Build normalized Float32 input - RGB only
         const channels = CLASSIFICATION_CONFIG.INPUT_CHANNELS;
-        return new Float32Array(1 * channels * size * size);
+        const inputTensor = new Float32Array(1 * size * size * channels);
+        
+        let tensorIdx = 0;
+        for (let i = 0; i < rawImageData.data.length; i += 4) {
+            inputTensor[tensorIdx++] = rawImageData.data[i] / 255.0;     // R
+            inputTensor[tensorIdx++] = rawImageData.data[i + 1] / 255.0; // G
+            inputTensor[tensorIdx++] = rawImageData.data[i + 2] / 255.0; // B
+        }
+        
+        return inputTensor;
     }
 
     /**
