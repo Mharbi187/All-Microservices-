@@ -168,34 +168,34 @@ spring:
         - id: admin-templates
           uri: lb://admin-service
           predicates:
-            - Path=/api/v1/admin/templates/**
+            - Path=/api/v1/admin/templates,/api/v1/admin/templates/**
 
         - id: admin-signatures
           uri: lb://admin-service
           predicates:
-            - Path=/api/v1/admin/signatures/**
+            - Path=/api/v1/admin/signatures,/api/v1/admin/signatures/**
 
         - id: admin-reports
           uri: lb://admin-service
           predicates:
-            - Path=/api/v1/admin/reports/**
+            - Path=/api/v1/admin/reports,/api/v1/admin/reports/**
 
         - id: admin-donations
           uri: lb://admin-service
           predicates:
-            - Path=/api/v1/admin/donations/**
+            - Path=/api/v1/admin/donations,/api/v1/admin/donations/**
 
         - id: admin-monthly-reports
           uri: lb://admin-service
           predicates:
-            - Path=/api/v1/admin/monthly-reports/**
+            - Path=/api/v1/admin/monthly-reports,/api/v1/admin/monthly-reports/**
           filters:
             - RewritePath=/api/v1/admin/monthly-reports/(?<path>.*), /api/v1/reports/${path}
 
         - id: admin-dashboard
           uri: lb://admin-service
           predicates:
-            - Path=/api/v1/admin/dashboard/**
+            - Path=/api/v1/admin/dashboard,/api/v1/admin/dashboard/**
 
         - id: admin-event-logs
           uri: lb://admin-service
