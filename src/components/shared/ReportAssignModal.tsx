@@ -106,22 +106,15 @@ const ReportAssignModal: React.FC<Props> = ({ open, onClose, onSuccess, allowedS
       .catch(() => message.error('Impossible de charger les modèles'))
       .finally(() => setLoading(false));
 
-    volunteerService
-      .getVisible()
+    adminReportService
+      .getAssignableUsers()
       .then((data: any[]) => {
-        const users: Volunteer[] = [];
-        data.forEach((committee: any) => {
-          (committee.roles ?? []).forEach((r: any) => {
-            if (r.volunteerId && !users.find((u) => u.id === r.volunteerId)) {
-              users.push({
-                id: r.volunteerId,
-                fullName: r.volunteerName || r.volunteerId,
-                email: r.volunteerEmail || '',
-                committeeId: committee.id,
-              });
-            }
-          });
-        });
+        const users: Volunteer[] = data.map((v) => ({
+          id: v.id,
+          fullName: v.fullName || v.id,
+          email: v.email || '',
+          committeeId: v.committeeId,
+        }));
         setVolunteers(users);
       })
       .catch(() => setVolunteers([]));

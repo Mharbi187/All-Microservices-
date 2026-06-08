@@ -36,6 +36,9 @@ export const adminReportService = {
   getAssigned: () =>
     apiClient.get<ReportInstanceDTO[]>(`${BASE}/assigned`).then((r) => r.data),
 
+  getAssignableUsers: () =>
+    apiClient.get<any[]>(`${BASE}/assignable-users`).then((r) => r.data),
+
   // ── Autosave ───────────────────────────────────────────────
 
   updateFilledData: (reportId: string, filledData: Record<string, unknown>) =>
