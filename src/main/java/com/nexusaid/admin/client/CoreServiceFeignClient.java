@@ -25,15 +25,10 @@ public interface CoreServiceFeignClient {
     @Retry(name = "coreService")
     String getMyProfile(@RequestHeader("Authorization") String authHeader);
 
-    @GetMapping("/api/v1/management/committees/my-accessible")
-    @CircuitBreaker(name = "coreService", fallbackMethod = "fallbackList")
+    @GetMapping("/api/v1/profiles/me/assignable-users")
+    @CircuitBreaker(name = "coreService", fallbackMethod = "fallbackAssignableUsers")
     @Retry(name = "coreService")
-    List<UUID> getMyAccessibleCommitteeIds(@RequestHeader("Authorization") String authHeader);
-
-    @GetMapping("/api/v1/management/committees/{id}/presidents")
-    @CircuitBreaker(name = "coreService", fallbackMethod = "fallbackUserList")
-    @Retry(name = "coreService")
-    List<User> getCommitteePresidents(@PathVariable("id") UUID committeeId, @RequestHeader("Authorization") String authHeader);
+    String getAssignableUsers(@RequestHeader("Authorization") String authHeader);
 
     default String fallbackHierarchy(String authHeader, Throwable t) {
         throw new RuntimeException("Core-service is temporarily unavailable. Please retry.", t);
@@ -43,11 +38,7 @@ public interface CoreServiceFeignClient {
         throw new RuntimeException("Core-service is temporarily unavailable. Please retry.", t);
     }
 
-    default List<UUID> fallbackList(String authHeader, Throwable t) {
-        return Collections.emptyList();
-    }
-
-    default List<User> fallbackUserList(UUID committeeId, String authHeader, Throwable t) {
-        return Collections.emptyList();
+    default String fallbackAssignableUsers(String authHeader, Throwable t) {
+        throw new RuntimeException("Failed to fetch assignable users. Core-service unavailable.", t);
     }
 }

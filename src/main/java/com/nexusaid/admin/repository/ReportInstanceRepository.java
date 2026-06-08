@@ -14,4 +14,7 @@ public interface ReportInstanceRepository extends JpaRepository<ReportInstance, 
     List<ReportInstance> findByTemplateId(UUID templateId);
 
     List<ReportInstance> findByWorkflowStatus(String workflowStatus);
+
+    @org.springframework.data.jpa.repository.Query("SELECT r FROM ReportInstance r JOIN r.assignedUsers u WHERE u = :userId")
+    List<ReportInstance> findByAssignedUsersContaining(@org.springframework.data.repository.query.Param("userId") UUID userId);
 }

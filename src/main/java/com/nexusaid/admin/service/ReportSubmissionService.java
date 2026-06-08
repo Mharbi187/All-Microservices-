@@ -290,6 +290,10 @@ public class ReportSubmissionService {
 
     // ── Helpers ────────────────────────────────────────────────────────────────
 
+    public java.util.List<ReportInstance> getAssignedReports(UUID userId) {
+        return reportRepository.findByAssignedUsersContaining(userId);
+    }
+
     private ReportInstance getAndGuardImmutable(UUID reportId) {
         ReportInstance report = reportRepository.findById(reportId)
                 .orElseThrow(() -> new RuntimeException("Report not found: " + reportId));

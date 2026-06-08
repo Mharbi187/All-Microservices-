@@ -34,6 +34,7 @@ public class ReportController {
     private final ReportInstanceRepository reportRepository;
     private final AuditLogService auditLogService;
     private final FileStorageService fileStorageService;
+    private final com.nexusaid.admin.client.CoreServiceFeignClient coreServiceFeignClient;
 
     // ── v2: Draft creation ────────────────────────────────────────────────────
 
@@ -178,6 +179,19 @@ public class ReportController {
     public ResponseEntity<List<ReportInstance>> getMyReports(
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
         return ResponseEntity.ok(reportRepository.findByFilledBy(userDetails.getUser().getId()));
+    }
+
+    @GetMapping("/assigned")
+    public ResponseEntity<List<ReportInstance>> getAssignedReports(
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        return ResponseEntity.ok(submissionService.getAssignedReports(userDetails.getUser().getId()));
+    }
+
+    @GetMapping(value = "/assignable-users", produces = "application/json")
+    public ResponseEntity<String> getAssignableUsers(
+            @RequestHeader("Authorization") String authHeader) {
+        // Feign call returns the JSON string directly from core-service
+        return ResponseEntity.ok(coreServiceFeignClient.getAssignableUsers(authHeader));
     }
 
     @GetMapping("/dashboard/summary")
