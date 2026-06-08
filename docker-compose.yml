@@ -7,6 +7,7 @@ services:
   eureka-server:
     build: ../eureka-server
     container_name: nexusaid-eureka
+    restart: always
     ports:
       - "8761:8761"
     networks:
@@ -15,6 +16,7 @@ services:
   config-server:
     build: ../config-server
     container_name: nexusaid-config
+    restart: always
     ports:
       - "8888:8888"
     environment:
@@ -27,6 +29,7 @@ services:
   rabbitmq:
     image: rabbitmq:3-management-alpine
     container_name: nexusaid-rabbitmq
+    restart: always
     ports:
       - "5672:5672"
       - "15672:15672"
@@ -39,6 +42,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: nexusaid-redis
+    restart: always
     ports:
       - "6379:6379"
     networks:
@@ -47,6 +51,7 @@ services:
   postgres:
     image: postgres:15-alpine
     container_name: nexusaid-postgres
+    restart: always
     ports:
       - "5432:5432"
     environment:
@@ -63,6 +68,7 @@ services:
   minio:
     image: minio/minio
     container_name: nexusaid-minio
+    restart: always
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -76,6 +82,7 @@ services:
   core-service:
     build: ../core-service
     container_name: nexusaid-core
+    restart: always
     ports:
       - "8080:8080"
     environment:
@@ -88,6 +95,13 @@ services:
       - SPRING_RABBITMQ_PASSWORD=${RABBITMQ_PASS}
       - JWT_PUBLIC_KEY=${JWT_PUBLIC_KEY}
       - JWT_PRIVATE_KEY=${JWT_PRIVATE_KEY}
+      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
+      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
+      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - RECAPTCHA_SITE_KEY=${RECAPTCHA_SITE_KEY}
+      - RECAPTCHA_SECRET_KEY=${RECAPTCHA_SECRET_KEY}
+      - RECAPTCHA_ENABLED=${RECAPTCHA_ENABLED}
     depends_on:
       - postgres
       - eureka-server
@@ -99,6 +113,7 @@ services:
   admin-service:
     build: ../admin-service
     container_name: nexusaid-admin
+    restart: always
     ports:
       - "8081:8081"
     environment:
@@ -121,15 +136,24 @@ services:
   disaster-detection:
     build: ../disaster-detection
     container_name: nexusaid-disaster-detection
+    restart: always
     ports:
       - "8000:8000"
     environment:
       - RABBITMQ_URL=amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672/
       - CORE_SERVICE_URL=http://core-service:8080
+      - ALLOWED_ORIGINS=https://nexus-aid.me,https://www.nexus-aid.me
       - JWT_PUBLIC_KEY=${JWT_PUBLIC_KEY}
       - JWT_PUBLIC_KEY_FILE=${JWT_PUBLIC_KEY_PATH}
       - EUREKA_SERVER_URL=http://eureka-server:8761/eureka
       - DATABASE_URL=postgresql://${SPRING_DATASOURCE_USERNAME}:${SPRING_DATASOURCE_PASSWORD}@postgres:5432/nexusaiddb
+      - OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY}
+      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
+      - TWILIO_PHONE_NUMBER=${TWILIO_PHONE_NUMBER}
+      - SENDGRID_API_KEY=${SENDGRID_API_KEY}
+      - ALERT_EMAIL_FROM=${ALERT_EMAIL_FROM}
+      - GEE_SERVICE_ACCOUNT=${GEE_SERVICE_ACCOUNT}
     depends_on:
       - rabbitmq
       - eureka-server
@@ -138,10 +162,14 @@ services:
       - nexusaid-network
     volumes:
       - disaster-cache:/app/data/cache
+      - ../disaster-detection/detection-478419-fa67745b4754.json:/app/security/detection-478419-fa67745b4754.json:ro
 
   disaster-daemon:
     build: ../disaster-detection
     container_name: nexusaid-disaster-daemon
+    restart: always
+    healthcheck:
+      disable: true
     command: ["python", "-m", "src.daemon"]
     environment:
       - RABBITMQ_URL=amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672/
@@ -150,6 +178,13 @@ services:
       - JWT_PUBLIC_KEY_FILE=${JWT_PUBLIC_KEY_PATH}
       - EUREKA_SERVER_URL=http://eureka-server:8761/eureka
       - DATABASE_URL=postgresql://${SPRING_DATASOURCE_USERNAME}:${SPRING_DATASOURCE_PASSWORD}@postgres:5432/nexusaiddb
+      - OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY}
+      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
+      - TWILIO_PHONE_NUMBER=${TWILIO_PHONE_NUMBER}
+      - SENDGRID_API_KEY=${SENDGRID_API_KEY}
+      - ALERT_EMAIL_FROM=${ALERT_EMAIL_FROM}
+      - GEE_SERVICE_ACCOUNT=${GEE_SERVICE_ACCOUNT}
     depends_on:
       - rabbitmq
       - disaster-detection
@@ -159,10 +194,12 @@ services:
       - nexusaid-network
     volumes:
       - disaster-cache:/app/data/cache
+      - ../disaster-detection/detection-478419-fa67745b4754.json:/app/security/detection-478419-fa67745b4754.json:ro
 
   pdf-service:
     build: ../pdf-service-branch
     container_name: nexusaid-pdf-service
+    restart: always
     ports:
       - "3001:3001"
     environment:
@@ -175,6 +212,7 @@ services:
   cpr-assistant:
     build: ../app-mobile
     container_name: nexusaid-cpr-assistant
+    restart: always
     ports:
       - "8002:8000"
     environment:
@@ -187,6 +225,7 @@ services:
   api-gateway:
     build: ../api-gateway
     container_name: nexusaid-gateway
+    restart: always
     ports:
       - "8060:8060"
     environment:
@@ -198,6 +237,7 @@ services:
       - FRONTEND_URL=http://nexus-aid-frontend:80
       - JWT_PUBLIC_KEY=${JWT_PUBLIC_KEY}
       - JWT_PUBLIC_KEY_PATH=${JWT_PUBLIC_KEY_PATH}
+      - ALLOWED_ORIGINS=https://nexus-aid.me,https://www.nexus-aid.me
     depends_on:
       - eureka-server
       - config-server
@@ -209,11 +249,25 @@ services:
   nexus-aid-frontend:
     build: ../nexus-aid-frontend
     container_name: nexusaid-frontend
-    ports:
-      - "80:80"
+    restart: always
+
     depends_on:
       - api-gateway
       - disaster-detection
+    networks:
+      - nexusaid-network
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: nexusaid-caddy
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
     networks:
       - nexusaid-network
 
@@ -223,3 +277,5 @@ networks:
 
 volumes:
   disaster-cache:
+  caddy_data:
+  caddy_config:

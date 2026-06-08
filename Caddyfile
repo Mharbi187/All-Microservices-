@@ -1,0 +1,15 @@
+nexus-aid.me, www.nexus-aid.me {
+    handle /api/session* {
+        reverse_proxy nexusaid-cpr-assistant:8000
+    }
+    handle /ws/session* {
+        reverse_proxy nexusaid-cpr-assistant:8000
+    }
+    # CPR ML API health endpoint overrides frontend
+    handle /api/health {
+        reverse_proxy nexusaid-cpr-assistant:8000
+    }
+    handle {
+        reverse_proxy nexusaid-frontend:80
+    }
+}
