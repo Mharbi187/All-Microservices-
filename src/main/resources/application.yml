@@ -217,6 +217,20 @@ spring:
           predicates:
             - Path=/api/v1/disasters/**,/api/v1/radar,/api/v1/crisis-room/**,/api/v1/teams/**,/api/v1/logistics/**
 
+        # CPR Assistant - REST API (Health & Session Management)
+        - id: cpr-assistant-api
+          uri: lb://cpr-assistant
+          predicates:
+            - Path=/api/health,/api/session/**
+          filters:
+            - RewritePath=/api/(?<path>.*), /${path}
+
+        # CPR Assistant - WebSocket
+        - id: cpr-assistant-ws
+          uri: lb:ws://cpr-assistant
+          predicates:
+            - Path=/ws/session/**
+
         # WebSocket for real-time disaster data
         - id: disaster-ws
           uri: ${DISASTER_DETECTION_WS_URL:ws://disaster-detection:8000}
