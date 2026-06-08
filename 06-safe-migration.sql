@@ -5,7 +5,7 @@
 -- BCrypt for 'pass': $2a$10$EKsszbFgp692dcbMdE8ZL.KDMoL6x/U0ze8jq7JZjJwnBynHm2NCO
 -- Does NOT change: account_status, user_type, or any other field
 -- =============================================================================
-\c nexusaid_db;
+\c nexusaiddb;
 
 -- Update all user passwords to BCrypt hash for 'pass'
 -- Only updates password column, preserves all statuses intact

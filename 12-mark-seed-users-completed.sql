@@ -6,6 +6,6 @@
 -- newly registered volunteers who get approved via the dashboard.
 -- =============================================================================
 
-\c nexusaid_db;
+\c nexusaiddb;
 
 UPDATE users SET first_login_completed = true WHERE account_status = 'APPROVED';

@@ -1,5 +1,5 @@
 -- NEXUS-AID — Seeding youth simulation data (various Responsables Jeunesse and committees)
-\c nexusaid_db;
+\c nexusaiddb;
 
 DO $$
 DECLARE

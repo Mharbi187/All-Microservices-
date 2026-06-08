@@ -1,6 +1,6 @@
-\c nexusaid_db;
+\c nexusaiddb;
 -- Migration script for event_logs table
--- Run this on nexusaid_db (core-service database)
+-- Run this on nexusaiddb (core-service database)
 
 CREATE TABLE IF NOT EXISTS event_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

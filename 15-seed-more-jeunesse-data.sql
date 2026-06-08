@@ -1,5 +1,5 @@
 -- NEXUS-AID — Seeding more realistic simulation data for Youth module
-\c nexusaid_db;
+\c nexusaiddb;
 
 DO $$
 DECLARE
