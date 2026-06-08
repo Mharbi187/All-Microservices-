@@ -115,7 +115,7 @@ public class CatastropheController {
             @RequestParam(required = false) String deadline) {
         java.time.LocalDateTime parsedDeadline = null;
         if (deadline != null && !deadline.isBlank()) {
-            parsedDeadline = java.time.LocalDateTime.parse(deadline);
+            parsedDeadline = parseFlexibleDateTime(deadline);
         }
         return ResponseEntity.ok(catastropheService.assignTemplate(missionId, UUID.fromString(templateId), parsedDeadline));
     }
