@@ -217,7 +217,7 @@ class CrisisRoom(Base):
         self.deactivated_at = None
         if not self.situation_board:
             self.situation_board = SituationBoard(crisis_room_id=self.id)
-        self.video_call_url = f"https://meet.nexusaid.tn/crisis/{self.id}"
+        self.video_call_url = f"https://meet.nexus-aid.me/crisis/{self.id}"
         self._add_system_message(f"🚨 Salle de crise activée pour: {self.disaster_name}")
         return True
 
