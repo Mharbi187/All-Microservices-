@@ -31,7 +31,7 @@ export default function KpiCards({ data }: KpiCardsProps) {
         const totalFires = entries.reduce((sum, w) => sum + (w.satellite?.fire_count ?? 0), 0);
         const sources = data.data_sources;
         const sourceCount = sources
-            ? Object.values(sources).filter(s => s === 'online').length
+            ? Object.entries(sources).filter(([k, v]) => v === true || v === 'online' || (typeof v === 'number' && v <= 14) || (typeof v === 'string' && v !== 'offline')).length
             : 0;
 
         return { total, highRisk: highRisk.length, critical: critical.length, avgRisk, maxTemp, maxWind, safeZones, totalFires, sourceCount };
