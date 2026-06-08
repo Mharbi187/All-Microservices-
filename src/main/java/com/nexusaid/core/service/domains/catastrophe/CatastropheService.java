@@ -132,7 +132,8 @@ public class CatastropheService {
     }
 
     public void notifyVolunteers(UUID missionId, boolean sendEmail) {
-        // Implementation replaced by notifyMissionAssignment logic
+        DisasterMission mission = getMissionById(missionId);
+        notifyMissionAssignment(mission);
     }
 
     private void notifyMissionAssignment(DisasterMission mission) {
@@ -312,7 +313,20 @@ public class CatastropheService {
         report.setVolunteerId(volunteerId);
         report.setStatus("SUBMITTED");
         report.setSubmittedAt(LocalDateTime.now());
-        return fieldReportRepository.save(report);
+        DisasterFieldReport saved = fieldReportRepository.save(report);
+
+        // Notify Team Chief
+        if (mission.getTeamChiefId() != null) {
+            userRepository.findById(mission.getTeamChiefId()).ifPresent(chief -> {
+                String volunteerName = userRepository.findById(volunteerId).map(User::getFullName).orElse("Un volontaire");
+                String subject = "📝 Nouveau rapport soumis : " + mission.getTitle();
+                String msg = volunteerName + " a soumis un rapport pour la mission. Veuillez le valider.";
+                String link = "/catastrophes/missions/" + mission.getId();
+                notificationService.sendNotification(chief, "INFO", subject, msg, link);
+            });
+        }
+
+        return saved;
     }
 
     @Transactional
@@ -320,6 +334,18 @@ public class CatastropheService {
         DisasterFieldReport report = getFieldReportById(reportId);
         report.setStatus("VALIDATED");
         report.setValidatorNotes(notes);
-        return fieldReportRepository.save(report);
+        DisasterFieldReport saved = fieldReportRepository.save(report);
+
+        // Notify Volunteer
+        if (report.getVolunteerId() != null) {
+            userRepository.findById(report.getVolunteerId()).ifPresent(vol -> {
+                String subject = "✅ Rapport validé : " + (report.getMission() != null ? report.getMission().getTitle() : "Mission");
+                String msg = "Votre rapport a été validé par le superviseur.";
+                String link = report.getMission() != null ? "/catastrophes/missions/" + report.getMission().getId() : "/catastrophes";
+                notificationService.sendNotification(vol, "SUCCESS", subject, msg, link);
+            });
+        }
+
+        return saved;
     }
 }

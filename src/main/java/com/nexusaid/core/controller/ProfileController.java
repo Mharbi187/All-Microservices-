@@ -56,6 +56,12 @@ public class ProfileController {
         return ResponseEntity.ok(profileService.getMyVisibleVolunteers(userDetails.getUser().getId()));
     }
 
+    @GetMapping("/me/assignable-users")
+    public ResponseEntity<List<Map<String, Object>>> getAssignableUsers(
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        return ResponseEntity.ok(profileService.getAssignableUsers(userDetails.getUser().getId()));
+    }
+
     // === COMMITTEE-SCOPED ENDPOINTS (President actions) ===
 
     @GetMapping("/committees/{committeeId}/pending-volunteers")

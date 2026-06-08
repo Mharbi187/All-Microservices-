@@ -22,8 +22,7 @@ public class CatastropheController {
     private final CatastropheService catastropheService;
     private final JwtService jwtService;
 
-    private static final String RESP_CATASTRO_ROLES =
-            "'PRESIDENT', 'VICE_PRESIDENT', 'RESP_CATASTROPHES', " +
+    private static final String RESP_CATASTRO_ROLES = "'PRESIDENT', 'VICE_PRESIDENT', 'RESP_CATASTROPHES', " +
             "'PRESIDENT_LOCAL', 'PRESIDENT_REGIONAL', 'PRESIDENT_NATIONAL'";
 
     // ─── Missions ────────────────────────────────────────────────────────────
@@ -117,7 +116,8 @@ public class CatastropheController {
         if (deadline != null && !deadline.isBlank()) {
             parsedDeadline = parseFlexibleDateTime(deadline);
         }
-        return ResponseEntity.ok(catastropheService.assignTemplate(missionId, UUID.fromString(templateId), parsedDeadline));
+        return ResponseEntity
+                .ok(catastropheService.assignTemplate(missionId, UUID.fromString(templateId), parsedDeadline));
     }
 
     /**
@@ -224,10 +224,14 @@ public class CatastropheController {
     @SuppressWarnings("unchecked")
     private DisasterMission buildMissionFromBody(Map<String, Object> body) {
         DisasterMission mission = new DisasterMission();
-        if (body.get("title") != null) mission.setTitle((String) body.get("title"));
-        if (body.get("description") != null) mission.setDescription((String) body.get("description"));
-        if (body.get("missionType") != null) mission.setMissionType((String) body.get("missionType"));
-        if (body.get("status") != null) mission.setStatus((String) body.get("status"));
+        if (body.get("title") != null)
+            mission.setTitle((String) body.get("title"));
+        if (body.get("description") != null)
+            mission.setDescription((String) body.get("description"));
+        if (body.get("missionType") != null)
+            mission.setMissionType((String) body.get("missionType"));
+        if (body.get("status") != null)
+            mission.setStatus((String) body.get("status"));
         if (body.get("startDatetime") != null)
             mission.setStartDatetime(parseFlexibleDateTime((String) body.get("startDatetime")));
         if (body.get("endDatetime") != null)
@@ -236,19 +240,22 @@ public class CatastropheController {
             mission.setLocationGps((Map<String, Object>) body.get("locationGps"));
         if (body.get("teamChiefId") != null)
             mission.setTeamChiefId(UUID.fromString((String) body.get("teamChiefId")));
-        if (body.get("teamChiefName") != null) mission.setTeamChiefName((String) body.get("teamChiefName"));
+        if (body.get("teamChiefName") != null)
+            mission.setTeamChiefName((String) body.get("teamChiefName"));
         if (body.get("assignedVolunteers") != null)
             mission.setAssignedVolunteers((List<Map<String, Object>>) body.get("assignedVolunteers"));
         if (body.get("requiredMaterials") != null)
             mission.setRequiredMaterials((List<String>) body.get("requiredMaterials"));
-        if (body.get("instructions") != null) mission.setInstructions((String) body.get("instructions"));
+        if (body.get("instructions") != null)
+            mission.setInstructions((String) body.get("instructions"));
         if (body.get("reportTemplateId") != null)
             mission.setReportTemplateId(UUID.fromString((String) body.get("reportTemplateId")));
         return mission;
     }
 
     /**
-     * Parse a datetime string that may be in ISO-8601 Instant format (with Z or offset)
+     * Parse a datetime string that may be in ISO-8601 Instant format (with Z or
+     * offset)
      * or plain LocalDateTime format. Handles JavaScript's toISOString() output.
      */
     private java.time.LocalDateTime parseFlexibleDateTime(String text) {

@@ -368,6 +368,28 @@ public class ProfileService {
         }).filter(o -> o != null).collect(Collectors.toList());
     }
 
+    /**
+     * Retrieves a flat list of all approved volunteers within the visible committees of the requesting user.
+     * This is an efficient bulk fetch for report assignment dropdowns.
+     */
+    public List<Map<String, Object>> getAssignableUsers(UUID requestingUserId) {
+        List<UUID> visibleCommitteeIds = getVisibleCommitteeIds(requestingUserId);
+        
+        return visibleCommitteeIds.stream()
+                .flatMap(committeeId -> volunteerRepository.findByCommitteeId(committeeId).stream())
+                .filter(v -> v.getAccountStatus() == com.nexusaid.core.entity.enums.AccountStatus.APPROVED)
+                .map(v -> {
+                    Map<String, Object> map = new java.util.LinkedHashMap<>();
+                    map.put("id", v.getId());
+                    map.put("fullName", v.getFullName());
+                    map.put("email", v.getEmail());
+                    map.put("committeeId", v.getCommitteeId());
+                    return map;
+                })
+                .distinct()
+                .collect(Collectors.toList());
+    }
+
     @Transactional
     public void updateAvatarUrl(UUID userId, String avatarUrl, String publicId) {
         User user = userRepository.findById(userId)
