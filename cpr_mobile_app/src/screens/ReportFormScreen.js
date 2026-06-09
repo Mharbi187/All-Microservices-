@@ -32,36 +32,120 @@ const STATUS_CONFIG = {
 };
 
 // ─── Field renderer ───────────────────────────────────────────────────────────
+// Handles all TemplateElement types: text_input, textarea, checkbox, radio, date_picker, etc.
 function DynamicField({ field, value, onChange, disabled }) {
     const key = field.key || field.id || field.name || '';
+    const currentVal = value !== undefined && value !== null ? value : '';
+
+    const renderInput = () => {
+        switch (field.type) {
+            case 'textarea':
+                return (
+                    <TextInput
+                        style={[styles.input, styles.textarea, disabled && styles.inputDisabled]}
+                        value={String(currentVal)}
+                        onChangeText={(t) => onChange(key, t)}
+                        multiline
+                        numberOfLines={4}
+                        placeholder={field.placeholder || ''}
+                        placeholderTextColor="#6B7280"
+                        editable={!disabled}
+                    />
+                );
+            case 'checkbox':
+                return (
+                    <View style={styles.optionGroup}>
+                        {(field.options || []).map((opt) => {
+                            const selected = Array.isArray(currentVal)
+                                ? currentVal.includes(opt.value || opt.id)
+                                : currentVal === (opt.value || opt.id);
+                            return (
+                                <TouchableOpacity
+                                    key={opt.id || opt.value}
+                                    style={[styles.optionRow, selected && styles.optionRowActive]}
+                                    onPress={() => {
+                                        if (disabled) return;
+                                        const arr = Array.isArray(currentVal) ? [...currentVal] : [];
+                                        const v = opt.value || opt.id;
+                                        onChange(key, arr.includes(v) ? arr.filter(x => x !== v) : [...arr, v]);
+                                    }}
+                                    activeOpacity={0.7}
+                                >
+                                    <View style={[styles.checkBox, selected && styles.checkBoxActive]}>
+                                        {selected && <Feather name="check" size={11} color="#FFF" />}
+                                    </View>
+                                    <Text style={[styles.optionLabel, selected && styles.optionLabelActive]}>{opt.label}</Text>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </View>
+                );
+            case 'radio':
+                return (
+                    <View style={styles.optionGroup}>
+                        {(field.options || []).map((opt) => {
+                            const selected = currentVal === (opt.value || opt.id);
+                            return (
+                                <TouchableOpacity
+                                    key={opt.id || opt.value}
+                                    style={[styles.optionRow, selected && styles.optionRowActive]}
+                                    onPress={() => { if (!disabled) onChange(key, opt.value || opt.id); }}
+                                    activeOpacity={0.7}
+                                >
+                                    <View style={[styles.radioCircle, selected && styles.radioCircleActive]}>
+                                        {selected && <View style={styles.radioDot} />}
+                                    </View>
+                                    <Text style={[styles.optionLabel, selected && styles.optionLabelActive]}>{opt.label}</Text>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </View>
+                );
+            case 'date_picker':
+                return (
+                    <TextInput
+                        style={[styles.input, disabled && styles.inputDisabled]}
+                        value={String(currentVal)}
+                        onChangeText={(t) => onChange(key, t)}
+                        placeholder={field.format || 'JJ/MM/AAAA'}
+                        placeholderTextColor="#6B7280"
+                        keyboardType="numeric"
+                        editable={!disabled}
+                    />
+                );
+            case 'number':
+                return (
+                    <TextInput
+                        style={[styles.input, disabled && styles.inputDisabled]}
+                        value={String(currentVal)}
+                        onChangeText={(t) => onChange(key, t)}
+                        placeholder={field.placeholder || ''}
+                        placeholderTextColor="#6B7280"
+                        keyboardType="numeric"
+                        editable={!disabled}
+                    />
+                );
+            default: // text_input and fallback
+                return (
+                    <TextInput
+                        style={[styles.input, disabled && styles.inputDisabled]}
+                        value={String(currentVal)}
+                        onChangeText={(t) => onChange(key, t)}
+                        placeholder={field.placeholder || ''}
+                        placeholderTextColor="#6B7280"
+                        editable={!disabled}
+                    />
+                );
+        }
+    };
+
     return (
         <View style={styles.fieldContainer}>
             <Text style={styles.fieldLabel}>
                 {field.label || key}
                 {field.required && <Text style={{ color: '#EF4444' }}> *</Text>}
             </Text>
-            {field.type === 'textarea' ? (
-                <TextInput
-                    style={[styles.input, styles.textarea]}
-                    value={value || ''}
-                    onChangeText={(t) => onChange(key, t)}
-                    multiline
-                    numberOfLines={4}
-                    placeholder={field.placeholder || ''}
-                    placeholderTextColor="#6B7280"
-                    editable={!disabled}
-                />
-            ) : (
-                <TextInput
-                    style={[styles.input, disabled && styles.inputDisabled]}
-                    value={value !== undefined && value !== null ? String(value) : ''}
-                    onChangeText={(t) => onChange(key, t)}
-                    placeholder={field.placeholder || ''}
-                    placeholderTextColor="#6B7280"
-                    keyboardType={field.type === 'number' ? 'numeric' : 'default'}
-                    editable={!disabled}
-                />
-            )}
+            {renderInput()}
             {field.description && <Text style={styles.fieldHint}>{field.description}</Text>}
         </View>
     );
@@ -246,11 +330,28 @@ function ReportFormView({ reportSummary, onBack }) {
         </View>
     );
 
-    // Extract schema fields (supports template schema or flat fields array)
-    const fields = report?.template?.schema?.fields
-        || report?.templateVersion?.schema?.fields
-        || report?.fields
+    // Extract fillable fields from the pinned TemplateVersion structure.
+    // The backend stores structure as TemplateElement[] (id, type, props).
+    // We filter to input-type elements and map props into field descriptors.
+    const FILLABLE_TYPES = ['text_input', 'textarea', 'checkbox', 'radio', 'date_picker', 'number'];
+    const rawElements = report?.templateVersion?.structure
+        || report?.template?.structure
         || [];
+    const fields = Array.isArray(rawElements)
+        ? rawElements
+            .filter(el => FILLABLE_TYPES.includes(el.type))
+            .map(el => ({
+                key: el.id,
+                id: el.id,
+                type: el.type,
+                label: el.props?.label || el.id,
+                placeholder: el.props?.placeholder || '',
+                required: el.props?.required || false,
+                description: el.props?.description || '',
+                options: el.props?.options || [],
+                format: el.props?.format || '',
+            }))
+        : [];
 
     const sc = STATUS_CONFIG[report?.workflowStatus] || STATUS_CONFIG.DRAFT;
 
@@ -394,6 +495,30 @@ const styles = StyleSheet.create({
     },
     textarea: { height: 110, textAlignVertical: 'top', paddingTop: 11 },
     inputDisabled: { backgroundColor: '#111827', color: '#6B7280' },
+
+    // Option groups (checkbox & radio)
+    optionGroup: { gap: 8 },
+    optionRow: {
+        flexDirection: 'row', alignItems: 'center', gap: 10,
+        backgroundColor: '#1F2937', borderWidth: 1, borderColor: '#374151',
+        borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12,
+    },
+    optionRowActive: { borderColor: '#DC2626', backgroundColor: '#DC262611' },
+    optionLabel: { color: '#9CA3AF', fontSize: 14, flex: 1 },
+    optionLabelActive: { color: '#F9FAFB', fontWeight: '600' },
+    // Checkbox
+    checkBox: {
+        width: 20, height: 20, borderRadius: 5, borderWidth: 2, borderColor: '#4B5563',
+        alignItems: 'center', justifyContent: 'center',
+    },
+    checkBoxActive: { backgroundColor: '#DC2626', borderColor: '#DC2626' },
+    // Radio
+    radioCircle: {
+        width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: '#4B5563',
+        alignItems: 'center', justifyContent: 'center',
+    },
+    radioCircleActive: { borderColor: '#DC2626' },
+    radioDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: '#DC2626' },
 
     submitBar: {
         position: 'absolute', bottom: 0, left: 0, right: 0,
