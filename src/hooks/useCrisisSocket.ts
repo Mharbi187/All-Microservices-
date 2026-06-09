@@ -37,8 +37,10 @@ export function useCrisisSocket(roomId: string | null) {
     const [error, setError] = useState<string | null>(null);
     const [participants, setParticipants] = useState<any[]>([]);
     const [latestCprMetrics, setLatestCprMetrics] = useState<any | null>(null);
+    const [typingUsers, setTypingUsers] = useState<Record<string, string>>({}); // userId -> userName
     const wsRef = useRef<WebSocket | null>(null);
     const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const typingTimeoutRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
     // Connect to WebSocket
     useEffect(() => {
@@ -64,11 +66,40 @@ export function useCrisisSocket(roomId: string | null) {
                         } else if (payload.event === 'TEAM_DEPLOYED') {
                             console.log('[Crisis Room] Team deployed:', payload.data);
                         } else if (payload.event === 'PARTICIPANT_JOINED') {
-                            setParticipants(prev => [...prev, payload.data]);
+                            setParticipants(prev => {
+                                if (prev.find(p => p.user_id === payload.data.user_id)) return prev;
+                                return [...prev, payload.data];
+                            });
                         } else if (payload.event === 'PARTICIPANT_LEFT') {
                             setParticipants(prev => prev.filter(p => p.user_id !== payload.data.user_id));
+                        } else if (payload.event === 'PARTICIPANT_UPDATED') {
+                            setParticipants(prev => prev.map(p => p.user_id === payload.data.user_id ? payload.data : p));
                         } else if (payload.event === 'CPR_METRICS_UPDATE') {
                             setLatestCprMetrics(payload.data);
+                        } else if (payload.event === 'TYPING_START') {
+                            const { sender_id, sender_name } = payload.data;
+                            setTypingUsers(prev => ({ ...prev, [sender_id]: sender_name }));
+                            
+                            // Clear existing timeout
+                            if (typingTimeoutRef.current[sender_id]) {
+                                clearTimeout(typingTimeoutRef.current[sender_id]);
+                            }
+                            
+                            // Auto-remove after 3 seconds
+                            typingTimeoutRef.current[sender_id] = setTimeout(() => {
+                                setTypingUsers(prev => {
+                                    const next = { ...prev };
+                                    delete next[sender_id];
+                                    return next;
+                                });
+                            }, 3000);
+                        } else if (payload.event === 'TYPING_STOP') {
+                            const { sender_id } = payload.data;
+                            setTypingUsers(prev => {
+                                const next = { ...prev };
+                                delete next[sender_id];
+                                return next;
+                            });
                         }
                     } catch (e) {
                         console.error('[Crisis Room WS] Parse error:', e);
@@ -138,6 +169,20 @@ export function useCrisisSocket(roomId: string | null) {
         }
     }, []);
 
+    const sendTypingIndicator = useCallback((senderId: string, senderName: string, isTyping: boolean) => {
+        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+        try {
+            wsRef.current.send(JSON.stringify({
+                type: isTyping ? 'TYPING_START' : 'TYPING_STOP',
+                sender_id: senderId,
+                sender_name: senderName,
+                timestamp: new Date().toISOString()
+            }));
+        } catch (e) {
+            console.error('[Crisis Room] Typing indicator error:', e);
+        }
+    }, []);
+
     // Send read receipt
     const sendReadReceipt = useCallback((messageId: string) => {
         if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
@@ -160,14 +205,21 @@ export function useCrisisSocket(roomId: string | null) {
         setMessages(msgs);
     };
 
+    const setInitialParticipants = (parts: any[]) => {
+        setParticipants(parts);
+    };
+
     return {
         messages,
         isConnected,
         error,
         participants,
         latestCprMetrics,
+        typingUsers,
         sendMessage,
+        sendTypingIndicator,
         sendReadReceipt,
-        setInitialMessages
+        setInitialMessages,
+        setInitialParticipants
     };
 }

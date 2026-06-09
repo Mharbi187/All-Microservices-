@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Layout, Typography, Row, Col, Button, Spin, Result, Card, Tag } from 'antd';
+import { Layout, Typography, Row, Col, Button, Spin, Result, Card, Tag, notification, Modal, Input } from 'antd';
 import {
     ArrowLeftOutlined, VideoCameraOutlined, FullscreenExitOutlined,
     FullscreenOutlined, TeamOutlined, HeartOutlined, AlertOutlined,
@@ -17,7 +17,7 @@ import LogisticsProcurement from '@/components/crisis/LogisticsProcurement';
 import CrisisMessagingPanel from '@/components/crisis/CrisisMessagingPanel';
 import ParticipantInviteModal from '@/components/crisis/ParticipantInviteModal';
 import { useRadar } from '@/hooks/useRadar';
-import { useUIStore } from '@/stores';
+import { useAuthStore, useUIStore } from '@/stores';
 import { makeRadarTheme, rp, rr, rfont } from '@/components/crisis/radarTheme';
 
 const { Content, Header } = Layout;
@@ -29,7 +29,9 @@ interface RoomSummary {
         disaster_id: string;
         disaster_name: string;
         video_call_url: string;
+        status: string;
     };
+    participants?: any[];
     recent_messages: any[];
     situation_board: any;
 }
@@ -186,6 +188,10 @@ export default function CrisisRoomPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [inviteModalVisible, setInviteModalVisible] = useState(false);
+    const [closeModalVisible, setCloseModalVisible] = useState(false);
+    const [finalReport, setFinalReport] = useState('');
+    const [userLoc, setUserLoc] = useState<{lat: number, lon: number} | null>(null);
+    const { user } = useAuthStore();
 
     const isFullscreen = location.pathname.endsWith('/fullscreen');
     const radarPath = isFullscreen ? '/radar/fullscreen' : '/radar';
@@ -195,7 +201,7 @@ export default function CrisisRoomPage() {
         injectCrisisMapStyles();
     }, []);
 
-    useEffect(() => {
+    const loadSummary = () => {
         if (!id) return;
         setLoading(true);
         crisisApi.getRoomSummary(id)
@@ -209,7 +215,43 @@ export default function CrisisRoomPage() {
             .finally(() => {
                 setLoading(false);
             });
+    };
+
+    const currentUserRole = useMemo(() => {
+        if (!summary?.participants || !user?.id) return null;
+        const participant = (summary.participants as any[]).find((p) => p.user_id === user.id);
+        return participant?.role;
+    }, [summary, user?.id]);
+
+    const isFullAccess = useMemo(() => {
+        if (user?.type === 'ADMIN') return true;
+        if (!currentUserRole) return false;
+        const fullAccessRoles = ['president', 'vice_president', 'catastrophe_manager', 'commander', 'coordinator', 'team_leader'];
+        return fullAccessRoles.includes(currentUserRole.toLowerCase());
+    }, [currentUserRole, user?.type]);
+
+    const isClosed = summary?.room?.status === 'closed';
+    const canManage = isFullAccess && !isClosed;
+    const canWrite = !isClosed;
+
+    useEffect(() => {
+        loadSummary();
     }, [id]);
+
+    const handleCloseRoom = async () => {
+        if (!id || !user) return;
+        try {
+            await crisisApi.closeCrisisRoom(id, {
+                closed_by: user.id,
+                final_report: finalReport
+            });
+            notification.success({ message: 'Intervention clôturée avec succès' });
+            setCloseModalVisible(false);
+            loadSummary(); // Re-fetch to show read-only status
+        } catch (e: any) {
+            notification.error({ message: 'Erreur lors de la clôture', description: String(e) });
+        }
+    };
 
     const target = useMemo<CrisisTarget>(() => {
         if (!radarData?.wilayats) return DEFAULT_COORDS;
@@ -238,6 +280,27 @@ export default function CrisisRoomPage() {
 
         return DEFAULT_COORDS;
     }, [radarData, summary?.room?.disaster_name]);
+
+    // Request GPS location when room is active
+    useEffect(() => {
+        if (summary && navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    setUserLoc({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+                    notification.info({
+                        message: 'Localisation Active',
+                        description: 'Votre position GPS a été synchronisée avec le centre de commandement.'
+                    });
+                },
+                (err) => {
+                    console.log('User denied or failed GPS:', err);
+                }
+            );
+        }
+    }, [summary]);
+
+    // Use user location if available, else disaster target
+    const displayTarget = userLoc ? { ...target, lat: userLoc.lat, lon: userLoc.lon, label: 'Ma Position (GPS)' } : target;
 
     // Deployed responders list based on target location
     const responders = useMemo(() => {
@@ -340,16 +403,19 @@ export default function CrisisRoomPage() {
                                 height: 12,
                                 width: 12,
                                 borderRadius: '50%',
-                                background: rp.red500,
-                                border: `2px solid ${isDark ? rp.red600 : '#FFFFFF'}`,
-                                animation: 'pulse 2s infinite',
-                                boxShadow: `0 0 10px ${rp.red500}`,
+                                background: summary.room.status === 'closed' ? '#52c41a' : rp.red500,
+                                border: `2px solid ${isDark ? (summary.room.status === 'closed' ? '#389e0d' : rp.red600) : '#FFFFFF'}`,
+                                animation: summary.room.status === 'closed' ? 'none' : 'pulse 2s infinite',
+                                boxShadow: `0 0 10px ${summary.room.status === 'closed' ? '#52c41a' : rp.red500}`,
                             }}
                         />
                         SALLE DE CRISE VIRTUELLLE : {summary.room.disaster_name.toUpperCase()}
+                        {summary.room.status === 'closed' && (
+                            <Tag color="green" style={{ marginLeft: 8 }}>CLÔTURÉE</Tag>
+                        )}
                     </Title>
                 </div>
-                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
                     <Button
                         icon={isFullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
                         onClick={() => navigate(`/crisis-room/${id}${isFullscreen ? '' : '/fullscreen'}`)}
@@ -357,37 +423,56 @@ export default function CrisisRoomPage() {
                     >
                         {isFullscreen ? 'Quitter Plein Écran' : 'Plein Écran'}
                     </Button>
-                    <Button
-                        type="primary"
-                        onClick={() => setInviteModalVisible(true)}
-                        style={{
-                            background: `linear-gradient(135deg, ${rp.amb600}, ${rp.amb500})`,
-                            color: '#fff',
-                            border: 'none',
-                            fontFamily: rfont.body,
-                            borderRadius: rr.sm,
-                            fontWeight: 700,
-                            boxShadow: '0 2px 8px rgba(245,158,11,0.25)',
-                        }}
-                    >
-                        + Sync Officer
-                    </Button>
-                    <Button
-                        type="primary"
-                        icon={<VideoCameraOutlined />}
-                        href={summary.room.video_call_url}
-                        target="_blank"
-                        style={{
-                            background: `linear-gradient(135deg, ${rp.blu600}, ${rp.blu500})`,
-                            border: 'none',
-                            fontFamily: rfont.body,
-                            borderRadius: rr.sm,
-                            fontWeight: 700,
-                            boxShadow: '0 2px 8px rgba(59,130,246,0.25)',
-                        }}
-                    >
-                        Rejoindre Conférence Vidéo
-                    </Button>
+                    {canManage && (
+                        <>
+                            <Button
+                                type="primary"
+                                onClick={() => setInviteModalVisible(true)}
+                                style={{
+                                    background: `linear-gradient(135deg, ${rp.amb600}, ${rp.amb500})`,
+                                    color: '#fff',
+                                    border: 'none',
+                                    fontFamily: rfont.body,
+                                    borderRadius: rr.sm,
+                                    fontWeight: 700,
+                                    boxShadow: '0 2px 8px rgba(245,158,11,0.25)',
+                                }}
+                            >
+                                + Ajouter un Membre
+                            </Button>
+                            <Button
+                                type="primary"
+                                icon={<VideoCameraOutlined />}
+                                href={summary.room.video_call_url}
+                                target="_blank"
+                                style={{
+                                    background: `linear-gradient(135deg, ${rp.blu600}, ${rp.blu500})`,
+                                    border: 'none',
+                                    fontFamily: rfont.body,
+                                    borderRadius: rr.sm,
+                                    fontWeight: 700,
+                                    boxShadow: '0 2px 8px rgba(59,130,246,0.25)',
+                                }}
+                            >
+                                Rejoindre Conférence Vidéo
+                            </Button>
+                        </>
+                    )}
+                    {canManage && (user?.rawRoles?.some((r: any) => ['NATIONAL', 'REGIONAL'].includes(r.committeeType)) || user?.type === 'ADMIN') && (
+                        <Button
+                            type="primary"
+                            danger
+                            onClick={() => setCloseModalVisible(true)}
+                            style={{
+                                fontFamily: rfont.body,
+                                borderRadius: rr.sm,
+                                fontWeight: 700,
+                                boxShadow: '0 2px 8px rgba(220,38,38,0.25)',
+                            }}
+                        >
+                            Clôturer l'Intervention
+                        </Button>
+                    )}
                 </div>
             </Header>
 
@@ -451,7 +536,7 @@ export default function CrisisRoomPage() {
                                     />
 
                                     {/* Fly-to controller for centering */}
-                                    <MapController target={target} />
+                                    <MapController target={displayTarget} />
 
                                     {/* 1. Couche Thermique (Heatmap radial-gradient animée) */}
                                     <Marker
@@ -491,22 +576,42 @@ export default function CrisisRoomPage() {
                                             </Popup>
                                         </Marker>
                                     ))}
+
+                                    {/* Couche Position de l'utilisateur si disponible */}
+                                    {userLoc && (
+                                        <Marker
+                                            position={[userLoc.lat, userLoc.lon]}
+                                            icon={L.divIcon({
+                                                className: 'custom-leaflet-marker',
+                                                html: `<div style="width: 16px; height: 16px; background-color: #3B82F6; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 10px rgba(59,130,246,0.8);"></div>`,
+                                                iconSize: [16, 16]
+                                            })}
+                                        >
+                                            <Popup>
+                                                <div style={{ fontFamily: rfont.body, minWidth: 100 }}>
+                                                    <strong style={{ color: rp.blu500 }}>📍 Ma Position</strong>
+                                                </div>
+                                            </Popup>
+                                        </Marker>
+                                    )}
                                 </MapContainer>
                             </div>
                         </Card>
                     </Col>
 
                     <Col xs={24} xl={10} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                        {isFullAccess && (
+                            <div style={{ flex: 1, minHeight: 280 }}>
+                                <TeamDispatcher roomId={summary.room.id} disasterLat={target.lat} disasterLon={target.lon} isClosed={isClosed} />
+                            </div>
+                        )}
                         <div style={{ flex: 1, minHeight: 280 }}>
-                            <TeamDispatcher disasterLat={target.lat} disasterLon={target.lon} />
-                        </div>
-                        <div style={{ flex: 1, minHeight: 280 }}>
-                            <LogisticsProcurement disasterId={summary.room.disaster_id} />
+                            <LogisticsProcurement disasterId={summary.room.disaster_id} isClosed={isClosed} isFullAccess={isFullAccess} />
                         </div>
                     </Col>
 
                     <Col xs={24} xl={8} style={{ display: 'flex', flexDirection: 'column' }}>
-                        <CrisisMessagingPanel roomId={summary.room.id} initialMessages={summary.recent_messages} />
+                        <CrisisMessagingPanel roomId={summary.room.id} initialMessages={summary.recent_messages} initialParticipants={summary.participants} isClosed={isClosed} canWrite={canWrite} isStrategicAllowed={canManage} />
                     </Col>
                 </Row>
             </Content>
@@ -525,6 +630,29 @@ export default function CrisisRoomPage() {
                 onCancel={() => setInviteModalVisible(false)}
                 onSuccess={() => setInviteModalVisible(false)}
             />
+
+            <Modal
+                title="Clôturer l'intervention de crise"
+                open={closeModalVisible}
+                onOk={handleCloseRoom}
+                onCancel={() => setCloseModalVisible(false)}
+                okText="Clôturer définitivement"
+                cancelText="Annuler"
+                okButtonProps={{ danger: true }}
+            >
+                <div style={{ marginBottom: 16 }}>
+                    <AlertOutlined style={{ color: rp.red500, marginRight: 8 }} />
+                    <Text strong>Attention :</Text> Cette action libérera toutes les équipes déployées et passera la salle en lecture seule.
+                </div>
+                <Text>Veuillez fournir un bref rapport final de l'intervention :</Text>
+                <Input.TextArea
+                    rows={4}
+                    value={finalReport}
+                    onChange={(e) => setFinalReport(e.target.value)}
+                    placeholder="Bilan de l'intervention, victimes, ressources consommées..."
+                    style={{ marginTop: 8 }}
+                />
+            </Modal>
         </Layout>
     );
 }

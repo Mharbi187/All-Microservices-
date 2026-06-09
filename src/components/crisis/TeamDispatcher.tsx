@@ -7,20 +7,32 @@ import { makeRadarTheme, rp, rr, rfont } from '@/components/crisis/radarTheme';
 
 const { Text } = Typography;
 
+interface TeamMember {
+    id?: string;
+    name: string;
+    role: string;
+    is_available: boolean;
+}
+
 interface TeamRecord {
     id: string;
     name: string;
     team_type: string;
     base_location_name?: string;
     status?: string;
+    base_location?: { lat: number; lon: number };
+    distance_km?: number;
+    members?: TeamMember[];
 }
 
 interface TeamDispatcherProps {
+    roomId?: string;
     disasterLat?: number;
     disasterLon?: number;
+    isClosed?: boolean;
 }
 
-export default function TeamDispatcher({ disasterLat = 36.8, disasterLon = 10.18 }: TeamDispatcherProps) {
+export default function TeamDispatcher({ roomId, disasterLat = 36.8, disasterLon = 10.18, isClosed }: TeamDispatcherProps) {
     const [teams, setTeams] = useState<TeamRecord[]>([]);
     const [loading, setLoading] = useState(true);
     const [deployingId, setDeployingId] = useState<string | null>(null);
@@ -30,12 +42,45 @@ export default function TeamDispatcher({ disasterLat = 36.8, disasterLon = 10.18
     const isDark = themeMode === 'dark';
     const t = makeRadarTheme(isDark);
 
+    // Haversine formula
+    const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+        const R = 6371; // Earth radius in km
+        const dLat = (lat2 - lat1) * (Math.PI / 180);
+        const dLon = (lon2 - lon1) * (Math.PI / 180);
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+    };
+
     const loadTeams = useCallback(async () => {
         try {
             setLoading(true);
             setError(null);
-            const data = await crisisApi.getAvailableTeams();
-            setTeams(Array.isArray(data) ? data : []);
+            const data = await crisisApi.getAllTeams();
+            let loadedTeams = Array.isArray(data) ? data : [];
+            
+            // Calculate distance and sort
+            if (disasterLat && disasterLon) {
+                loadedTeams = loadedTeams.map(t => {
+                    if (t.base_location?.lat && t.base_location?.lon) {
+                        t.distance_km = calculateDistance(disasterLat, disasterLon, t.base_location.lat, t.base_location.lon);
+                    }
+                    return t;
+                });
+                
+                loadedTeams.sort((a, b) => {
+                    // Sort available teams first, then by distance
+                    if (a.status === 'available' && b.status !== 'available') return -1;
+                    if (b.status === 'available' && a.status !== 'available') return 1;
+                    const distA = a.distance_km ?? 9999;
+                    const distB = b.distance_km ?? 9999;
+                    return distA - distB;
+                });
+            }
+            
+            setTeams(loadedTeams);
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : 'Unable to fetch team list';
             setError(message);
@@ -43,16 +88,20 @@ export default function TeamDispatcher({ disasterLat = 36.8, disasterLon = 10.18
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [disasterLat, disasterLon]);
 
     useEffect(() => {
         void loadTeams();
     }, [loadTeams]);
 
     const handleDeploy = useCallback(async (team: TeamRecord) => {
+        if (!roomId) {
+            notification.error({ message: 'Erreur', description: 'ID de la salle introuvable.' });
+            return;
+        }
         try {
             setDeployingId(team.id);
-            await crisisApi.dispatchTeam(team.id, disasterLat, disasterLon);
+            await crisisApi.dispatchTeam(team.id, disasterLat, disasterLon, roomId);
             notification.success({ message: 'Équipe déployée', description: `${team.name} est en route.` });
             setTeams((prev) => prev.filter((item) => item.id !== team.id));
         } catch (err: unknown) {
@@ -90,33 +139,47 @@ export default function TeamDispatcher({ disasterLat = 36.8, disasterLon = 10.18
             ),
         },
         {
-            title: 'Base',
+            title: 'Base & Distance',
             dataIndex: 'base_location_name',
             key: 'base',
-            render: (base: string) => <Text style={{ color: t.textSub, fontFamily: rfont.body, fontSize: 12 }}>{base || 'Base inconnue'}</Text>,
+            render: (base: string, record: TeamRecord) => (
+                <div>
+                    <Text style={{ color: t.textSub, fontFamily: rfont.body, fontSize: 12 }}>{base || 'Base inconnue'}</Text>
+                    {record.distance_km !== undefined && (
+                        <div style={{ color: rp.amb500, fontSize: 11, fontWeight: 600 }}>
+                            {record.distance_km.toFixed(1)} km
+                        </div>
+                    )}
+                </div>
+            ),
         },
         {
             title: 'Action',
             key: 'action',
-            render: (_: unknown, record: TeamRecord) => (
+            render: (_: unknown, record: TeamRecord) => {
+                if (isClosed) return <Tag color="default">Clôturé</Tag>;
+                return (
                 <Button
                     type="primary"
                     icon={<RocketOutlined />}
                     onClick={() => void handleDeploy(record)}
                     loading={deployingId === record.id}
                     size="small"
+                    disabled={record.status !== 'available' && record.status !== undefined}
                     style={{
-                        background: `linear-gradient(90deg, ${rp.red600}, ${rp.red500})`,
-                        borderColor: rp.red600,
+                        background: record.status !== 'available' && record.status !== undefined ? t.cardBg : `linear-gradient(90deg, ${rp.red600}, ${rp.red500})`,
+                        borderColor: record.status !== 'available' && record.status !== undefined ? t.divider : rp.red600,
+                        color: record.status !== 'available' && record.status !== undefined ? t.textSub : '#fff',
                         borderRadius: rr.sm,
                         fontFamily: rfont.body,
                         fontWeight: 700,
-                        boxShadow: '0 2px 6px rgba(220,38,38,0.2)',
+                        boxShadow: record.status !== 'available' && record.status !== undefined ? 'none' : '0 2px 6px rgba(220,38,38,0.2)',
                     }}
                 >
-                    Déployer
+                    {record.status !== 'available' && record.status !== undefined ? 'Indisponible' : 'Déployer'}
                 </Button>
-            ),
+                );
+            },
         },
     ];
 
@@ -188,13 +251,34 @@ export default function TeamDispatcher({ disasterLat = 36.8, disasterLon = 10.18
                 )}
                 <Table
                     className="dispatcher-table"
-                    dataSource={teams.map((team) => ({ ...team, key: team.id }))}
+                    dataSource={teams}
                     columns={columns}
-                    pagination={false}
-                    loading={loading}
-                    size="small"
-                    scroll={{ y: 220 }}
-                    style={{ flex: 1 }}
+                    rowKey="id"
+                    pagination={{ pageSize: 5 }}
+                    size="middle"
+                    style={{ background: 'transparent' }}
+                    expandable={{
+                        expandedRowRender: (record) => (
+                            <div style={{ padding: '8px 16px', background: isDark ? 'rgba(0,0,0,0.2)' : '#fafafa', borderRadius: 8 }}>
+                                <Text strong style={{ color: t.text }}>Membres de l'équipe :</Text>
+                                {record.members && record.members.length > 0 ? (
+                                    <ul style={{ marginTop: 8, paddingLeft: 20 }}>
+                                        {record.members.map((m, idx) => (
+                                            <li key={m.id || idx} style={{ color: t.textSub, fontFamily: rfont.body, marginBottom: 4 }}>
+                                                <span style={{ fontWeight: 600 }}>{m.name}</span> - {m.role} 
+                                                {m.is_available ? 
+                                                    <span style={{ color: rp.grn500, marginLeft: 8, fontSize: 11 }}>● Disponible</span> : 
+                                                    <span style={{ color: rp.red500, marginLeft: 8, fontSize: 11 }}>● Indisponible</span>
+                                                }
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : (
+                                    <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>Aucun membre enregistré.</Text>
+                                )}
+                            </div>
+                        ),
+                    }}
                 />
             </Card>
         </>

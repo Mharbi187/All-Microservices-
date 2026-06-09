@@ -21,7 +21,7 @@ interface LogisticsResult {
     }>;
 }
 
-export default function LogisticsProcurement({ disasterId }: { disasterId: string }) {
+export default function LogisticsProcurement({ disasterId, isClosed, isFullAccess = true }: { disasterId: string, isClosed?: boolean, isFullAccess?: boolean }) {
     const [data, setData] = useState<LogisticsResult | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -68,12 +68,12 @@ export default function LogisticsProcurement({ disasterId }: { disasterId: strin
             key: 'quantity',
             render: (val: number, record: { Unit: string }) => <Text strong style={{ color: isDark ? '#38bdf8' : rp.blu600, fontFamily: rfont.data }}>{val} {record.Unit}</Text>,
         },
-        {
+        isFullAccess ? {
             title: 'Est. Cost',
             dataIndex: 'Est_Cost_USD',
             key: 'cost',
             render: (val: number) => <Text style={{ color: isDark ? '#4ade80' : rp.grn600, fontFamily: rfont.data, fontWeight: 700 }}>${(val || 0).toLocaleString()}</Text>,
-        },
+        } : null,
         {
             title: 'Priority',
             dataIndex: 'Priority',
@@ -93,7 +93,7 @@ export default function LogisticsProcurement({ disasterId }: { disasterId: strin
                 </Tag>
             ),
         },
-    ];
+    ].filter(Boolean) as any;
 
     return (
         <>
@@ -165,15 +165,17 @@ export default function LogisticsProcurement({ disasterId }: { disasterId: strin
                         style={{ margin: 12 }}
                     />
                 )}
-                <div style={{ padding: '16px', background: isDark ? 'rgba(15,23,42,0.4)' : '#F8FAFC', borderBottom: `1px solid ${t.divider}` }}>
-                    <Statistic
-                        title={<Text style={{ color: t.textSub, fontFamily: rfont.body, fontSize: 12 }}>Total operation cost</Text>}
-                        value={data?.total_cost_usd || 0}
-                        precision={2}
-                        prefix={<DollarOutlined style={{ color: isDark ? '#4ade80' : rp.grn600 }} />}
-                        valueStyle={{ color: isDark ? '#4ade80' : rp.grn600, fontFamily: rfont.data, fontWeight: 700, fontSize: 24 }}
-                    />
-                </div>
+                {isFullAccess && (
+                    <div style={{ padding: '16px', background: isDark ? 'rgba(15,23,42,0.4)' : '#F8FAFC', borderBottom: `1px solid ${t.divider}` }}>
+                        <Statistic
+                            title={<Text style={{ color: t.textSub, fontFamily: rfont.body, fontSize: 12 }}>Total operation cost</Text>}
+                            value={data?.total_cost_usd || 0}
+                            precision={2}
+                            prefix={<DollarOutlined style={{ color: isDark ? '#4ade80' : rp.grn600 }} />}
+                            valueStyle={{ color: isDark ? '#4ade80' : rp.grn600, fontFamily: rfont.data, fontWeight: 700, fontSize: 24 }}
+                        />
+                    </div>
+                )}
                 <Table
                     className="logistics-table"
                     dataSource={data?.procurement_plan.map((row, index) => ({ ...row, key: index })) || []}
