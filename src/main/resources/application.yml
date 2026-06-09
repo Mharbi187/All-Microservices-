@@ -218,24 +218,26 @@ spring:
             - Path=/api/v1/disasters/**,/api/v1/radar,/api/v1/crisis-room/**,/api/v1/teams/**,/api/v1/logistics/**
 
         # CPR Assistant - REST API (Health & Session Management)
+        # Uses direct container URL to avoid Eureka registration race condition
         - id: cpr-assistant-api
-          uri: lb://cpr-assistant
+          uri: http://nexusaid-cpr-assistant:8000
           predicates:
             - Path=/api/health,/api/session/**
           filters:
             - RewritePath=/api/(?<path>.*), /${path}
 
-        # CPR Assistant - WebSocket
+        # CPR Assistant - WebSocket (must come BEFORE disaster-ws to avoid route shadowing)
         - id: cpr-assistant-ws
-          uri: lb:ws://cpr-assistant
+          uri: ws://nexusaid-cpr-assistant:8000
           predicates:
             - Path=/ws/session/**
 
-        # WebSocket for real-time disaster data
+        # WebSocket for real-time disaster data (excludes /ws/session/** which goes to CPR)
         - id: disaster-ws
           uri: ${DISASTER_DETECTION_WS_URL:ws://disaster-detection:8000}
           predicates:
             - Path=/ws/**
+            - Not=Path=/ws/session/**
 
         # Swagger UI Aggregation - Core Service
         - id: core-swagger
