@@ -267,7 +267,16 @@ function ReportFormView({ reportSummary, onBack }) {
             try {
                 const full = await coreAPI.fetchReportById(reportSummary.id);
                 setReport(full);
-                setFilledData(full.filledData || {});
+                
+                let data = full.filledData || {};
+                if (typeof data === 'string') {
+                    try {
+                        data = JSON.parse(data);
+                    } catch (e) {
+                        data = {};
+                    }
+                }
+                setFilledData(data);
             } catch (e) {
                 Alert.alert('Erreur', 'Impossible de charger le rapport: ' + e.message);
             } finally {
@@ -334,9 +343,18 @@ function ReportFormView({ reportSummary, onBack }) {
     // The backend stores structure as TemplateElement[] (id, type, props).
     // We filter to input-type elements and map props into field descriptors.
     const FILLABLE_TYPES = ['text_input', 'textarea', 'checkbox', 'radio', 'date_picker', 'number'];
-    const rawElements = report?.templateVersion?.structure
+    let rawElements = report?.templateVersion?.structure
         || report?.template?.structure
         || [];
+
+    if (typeof rawElements === 'string') {
+        try {
+            rawElements = JSON.parse(rawElements);
+        } catch (e) {
+            rawElements = [];
+        }
+    }
+
     const fields = Array.isArray(rawElements)
         ? rawElements
             .filter(el => FILLABLE_TYPES.includes(el.type))
