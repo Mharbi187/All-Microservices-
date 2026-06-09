@@ -291,7 +291,7 @@ export default function CPRScreen({ route, navigation }) {
             const now = Date.now();
             if (now - lastSpeechRef.current > 4000) {
                 const msg = pickVoiceMessage(newMetrics);
-                if (msg && msg !== lastSpokenMsgRef.current) {
+                if (msg) {
                     const lang = language === 'ar' ? 'ar-SA' : language === 'en' ? 'en-US' : 'fr-FR';
                     Speech.speak(msg, { language: lang, pitch: 1.0, rate: 1.1 });
                     lastSpeechRef.current = now;
@@ -307,6 +307,14 @@ export default function CPRScreen({ route, navigation }) {
 
     const handlePipelineError = useCallback((error) => {
         console.warn('[CPRScreen] Pipeline error:', error);
+        if (error?.message === 'INVALID_TOKEN' || error?.message === 'UNAUTHORIZED') {
+            stopCPR();
+            Alert.alert(
+                'Session expirée',
+                'Votre session a expiré. Veuillez vous reconnecter pour utiliser l\'assistance en ligne.',
+                [{ text: 'OK' }]
+            );
+        }
     }, []);
 
     // ──────────────────────────────────────────────────────────────────────────
