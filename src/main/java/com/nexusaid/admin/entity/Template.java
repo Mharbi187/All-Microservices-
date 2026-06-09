@@ -79,12 +79,14 @@ public class Template {
     @OneToMany(mappedBy = "template", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("positionOrder ASC")
     @Builder.Default
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private List<TemplateBlock> blocks = new ArrayList<>();
 
     // ── Template versions (v2 structure) ──────────────────────────────
     @OneToMany(mappedBy = "template", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("versionNumber ASC")
     @Builder.Default
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private List<TemplateVersion> versions = new ArrayList<>();
 
     @Column(name = "created_at", updatable = false)

@@ -12,19 +12,21 @@ import java.util.UUID;
 
 @Repository
 public interface ReportInstanceRepository extends JpaRepository<ReportInstance, UUID> {
-    List<ReportInstance> findByFilledBy(UUID filledBy);
+    @Query("SELECT DISTINCT r FROM ReportInstance r LEFT JOIN FETCH r.template LEFT JOIN FETCH r.templateVersion LEFT JOIN FETCH r.assignedUsers WHERE r.filledBy = :filledBy")
+    List<ReportInstance> findByFilledBy(@Param("filledBy") UUID filledBy);
 
-    List<ReportInstance> findByTemplateId(UUID templateId);
+    @Query("SELECT DISTINCT r FROM ReportInstance r LEFT JOIN FETCH r.template LEFT JOIN FETCH r.templateVersion LEFT JOIN FETCH r.assignedUsers WHERE r.template.id = :templateId")
+    List<ReportInstance> findByTemplateId(@Param("templateId") UUID templateId);
 
-    List<ReportInstance> findByWorkflowStatus(String workflowStatus);
+    @Query("SELECT DISTINCT r FROM ReportInstance r LEFT JOIN FETCH r.template LEFT JOIN FETCH r.templateVersion LEFT JOIN FETCH r.assignedUsers WHERE r.workflowStatus = :workflowStatus")
+    List<ReportInstance> findByWorkflowStatus(@Param("workflowStatus") String workflowStatus);
 
-    @Query("SELECT r FROM ReportInstance r JOIN r.assignedUsers u WHERE u = :userId")
+    @Query("SELECT DISTINCT r FROM ReportInstance r LEFT JOIN FETCH r.template LEFT JOIN FETCH r.templateVersion LEFT JOIN FETCH r.assignedUsers u WHERE u = :userId")
     List<ReportInstance> findByAssignedUsersContaining(@Param("userId") UUID userId);
 
     /**
-     * Eagerly fetches templateVersion (with its JSONB structure) so the mobile
-     * client receives the form schema without triggering a LazyInitializationException.
+     * Eagerly fetches templateVersion and assignedUsers to avoid LazyInitializationException.
      */
-    @Query("SELECT r FROM ReportInstance r LEFT JOIN FETCH r.templateVersion WHERE r.id = :id")
-    Optional<ReportInstance> findByIdWithVersion(@Param("id") UUID id);
+    @Query("SELECT DISTINCT r FROM ReportInstance r LEFT JOIN FETCH r.template LEFT JOIN FETCH r.templateVersion LEFT JOIN FETCH r.assignedUsers WHERE r.id = :id")
+    List<ReportInstance> findByIdWithVersion(@Param("id") UUID id);
 }

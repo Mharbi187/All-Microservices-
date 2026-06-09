@@ -176,7 +176,8 @@ public class ReportController {
 
     @GetMapping("/{id}")
     public ResponseEntity<ReportInstance> getById(@PathVariable UUID id) {
-        ReportInstance report = reportRepository.findByIdWithVersion(id)
+        ReportInstance report = reportRepository.findByIdWithVersion(id).stream()
+                .findFirst()
                 .orElseThrow(() -> new RuntimeException("Report not found"));
         entityManager.detach(report);
         report.setFilledData(submissionService.decryptReportData(report.getFilledData()));

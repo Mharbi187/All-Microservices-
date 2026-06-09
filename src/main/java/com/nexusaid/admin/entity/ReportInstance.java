@@ -99,6 +99,7 @@ public class ReportInstance {
 
     @OneToMany(mappedBy = "report", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private List<ReportBlockData> dataBlocks = new ArrayList<>();
 
     @Column(name = "submitted_at")
