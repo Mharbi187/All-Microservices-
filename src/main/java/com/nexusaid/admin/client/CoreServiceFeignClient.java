@@ -41,4 +41,22 @@ public interface CoreServiceFeignClient {
     default String fallbackAssignableUsers(String authHeader, Throwable t) {
         throw new RuntimeException("Failed to fetch assignable users. Core-service unavailable.", t);
     }
+
+    @GetMapping("/api/v1/management/committees/my-accessible")
+    @CircuitBreaker(name = "coreService", fallbackMethod = "fallbackAccessibleIds")
+    @Retry(name = "coreService")
+    List<UUID> getMyAccessibleCommitteeIds(@RequestHeader("Authorization") String authHeader);
+
+    @GetMapping("/api/v1/management/committees/{id}/presidents")
+    @CircuitBreaker(name = "coreService", fallbackMethod = "fallbackCommitteePresidents")
+    @Retry(name = "coreService")
+    List<User> getCommitteePresidents(@PathVariable("id") UUID committeeId, @RequestHeader("Authorization") String authHeader);
+
+    default List<UUID> fallbackAccessibleIds(String authHeader, Throwable t) {
+        return Collections.emptyList();
+    }
+
+    default List<User> fallbackCommitteePresidents(UUID committeeId, String authHeader, Throwable t) {
+        return Collections.emptyList();
+    }
 }

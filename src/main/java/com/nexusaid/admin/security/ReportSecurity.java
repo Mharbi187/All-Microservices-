@@ -21,6 +21,11 @@ public class ReportSecurity {
         return false; // VOLUNTEER cannot generate official PDF
     }
 
+    public boolean canArchive(Authentication authentication) {
+        return hasRole(authentication, "PRESIDENT");
+    }
+
+
     public boolean canDownload(Authentication authentication, UUID reportId) {
         if (hasRole(authentication, "PRESIDENT") || hasRole(authentication, "SECRETAIRE_GENERAL")) {
             return true;

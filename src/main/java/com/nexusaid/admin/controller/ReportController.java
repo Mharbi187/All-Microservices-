@@ -84,15 +84,19 @@ public class ReportController {
     }
 
     @PostMapping("/{id}/archive")
+    @PreAuthorize("@reportSecurity.canArchive(authentication)")
     public ResponseEntity<?> archiveReport(
             @PathVariable UUID id,
+            @RequestParam(defaultValue = "false") boolean encrypt,
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
-        ReportInstance archived = submissionService.archiveReport(id, userDetails.getUser().getId());
+
+        ReportInstance archived = submissionService.archiveReport(id, userDetails.getUser().getId(), encrypt);
         return ResponseEntity.ok(Map.of(
                 "message", "Report archived successfully.",
                 "reportId", id,
                 "contentHash", archived.getContentHash(),
-                "pdfStorageKey", archived.getPdfStorageKey()
+                "pdfStorageKey", archived.getPdfStorageKey(),
+                "encrypted", encrypt
         ));
     }
 
@@ -166,7 +170,7 @@ public class ReportController {
 
     @GetMapping("/{id}")
     public ResponseEntity<ReportInstance> getById(@PathVariable UUID id) {
-        return ResponseEntity.ok(reportRepository.findById(id)
+        return ResponseEntity.ok(reportRepository.findByIdWithVersion(id)
                 .orElseThrow(() -> new RuntimeException("Report not found")));
     }
 

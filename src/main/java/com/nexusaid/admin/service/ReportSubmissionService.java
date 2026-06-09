@@ -147,17 +147,27 @@ public class ReportSubmissionService {
      * 3. Logs the transition + publishes RabbitMQ event.
      */
     @Transactional
-    public ReportInstance archiveReport(UUID reportId, UUID archivedBy) {
+    public ReportInstance archiveReport(UUID reportId, UUID archivedBy, boolean encrypt) {
         ReportInstance report = getAndGuardImmutable(reportId);
         if (!"FINALIZED".equals(report.getWorkflowStatus())) {
             throw new IllegalStateException("Only FINALIZED reports can be archived.");
         }
 
-        // 1 — Content hash
+        // 1 — Content hash (on unencrypted plaintext data)
         String filledDataJson = report.getFilledData() != null ? report.getFilledData().toString() : "{}";
         String contentHash = sha256Hex(filledDataJson.getBytes(StandardCharsets.UTF_8));
 
-        // 2 — Update report fields
+        // 2 — Encrypt data if requested
+        if (encrypt && report.getFilledData() != null) {
+            EncryptionService.EncryptedData encryptedData = encryptionService.encrypt(filledDataJson);
+            com.fasterxml.jackson.databind.node.ObjectNode secureNode = new com.fasterxml.jackson.databind.ObjectMapper().createObjectNode();
+            secureNode.put("_encrypted", true);
+            secureNode.put("cipherText", encryptedData.getCipherText());
+            secureNode.put("iv", encryptedData.getIv());
+            report.setFilledData(secureNode);
+        }
+
+        // 3 — Update report fields
         report.setWorkflowStatus("ARCHIVED");
         report.setArchivedBy(archivedBy);
         report.setArchivedAt(LocalDateTime.now());
@@ -167,7 +177,7 @@ public class ReportSubmissionService {
         auditLogService.log(reportId, "ARCHIVED", archivedBy);
         eventPublisher.publishReportArchived(reportId, archivedBy, contentHash);
 
-        log.info("Report archived: id={} contentHash={}", reportId, contentHash);
+        log.info("Report archived: id={} contentHash={} encrypted={}", reportId, contentHash, encrypt);
         return saved;
     }
 
@@ -192,9 +202,22 @@ public class ReportSubmissionService {
 
         long startTime = System.currentTimeMillis();
 
+        com.fasterxml.jackson.databind.JsonNode data = report.getFilledData();
+        if (data != null && data.has("_encrypted") && data.get("_encrypted").asBoolean()) {
+            try {
+                String cipherText = data.get("cipherText").asText();
+                String iv = data.get("iv").asText();
+                String plainText = encryptionService.decrypt(new EncryptionService.EncryptedData(cipherText, iv));
+                data = new com.fasterxml.jackson.databind.ObjectMapper().readTree(plainText);
+            } catch (Exception e) {
+                log.error("Failed to decrypt report data for PDF generation", e);
+                throw new RuntimeException("Cannot generate PDF: Data is encrypted and decryption failed.", e);
+            }
+        }
+
         String html = previewService.renderFilledHtml(
                 report.getTemplateVersion() != null ? report.getTemplateVersion().getStructure() : null,
-                report.getFilledData()
+                data
         );
         byte[] pdfBytes = pdfGenerationService.generateFromHtml(html);
 
@@ -226,9 +249,22 @@ public class ReportSubmissionService {
         ReportInstance report = reportRepository.findById(reportId)
                 .orElseThrow(() -> new RuntimeException("Report not found: " + reportId));
 
+        com.fasterxml.jackson.databind.JsonNode data = report.getFilledData();
+        if (data != null && data.has("_encrypted") && data.get("_encrypted").asBoolean()) {
+            try {
+                String cipherText = data.get("cipherText").asText();
+                String iv = data.get("iv").asText();
+                String plainText = encryptionService.decrypt(new EncryptionService.EncryptedData(cipherText, iv));
+                data = new com.fasterxml.jackson.databind.ObjectMapper().readTree(plainText);
+            } catch (Exception e) {
+                log.error("Failed to decrypt report data for PDF generation", e);
+                throw new RuntimeException("Cannot generate PDF: Data is encrypted and decryption failed.", e);
+            }
+        }
+
         String html = previewService.renderFilledHtml(
                 report.getTemplateVersion() != null ? report.getTemplateVersion().getStructure() : null,
-                report.getFilledData()
+                data
         );
         
         // Add draft watermark to HTML if needed here
