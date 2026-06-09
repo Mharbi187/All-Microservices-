@@ -175,6 +175,7 @@ const ReportDetailPage: React.FC = () => {
       </Modal>
 
       {/* ══════════ HEADER BAR ══════════ */}
+      <Row justify="space-between" align="middle" style={{ marginBottom: 24 }} className="no-print">
         <Col>
           <Space>
             <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/admin-reports')} type="text" />
