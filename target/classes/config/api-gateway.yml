@@ -178,7 +178,7 @@ spring:
           predicates:
             - Path=/api/v1/admin/monthly-reports/**
           filters:
-            - RewritePath=/api/v1/admin/monthly-reports/(?<path>.*), /api/v1/reports/${path}
+            - RewritePath=/api/v1/admin/monthly-reports/(?<segment>.*), /api/v1/reports/$\{segment}
 
         - id: admin-dashboard
           uri: lb://admin-service
@@ -190,7 +190,7 @@ spring:
           predicates:
             - Path=/api/v1/admin/event-logs/**
           filters:
-            - RewritePath=/api/v1/admin/event-logs/(?<path>.*), /api/v1/events/${path}
+            - RewritePath=/api/v1/admin/event-logs/(?<segment>.*), /api/v1/events/$\{segment}
 
         # (Events & News are routed to core-service above)
 
@@ -212,7 +212,7 @@ spring:
           predicates:
             - Path=/api/health,/api/session/**
           filters:
-            - RewritePath=/api/(?<path>.*), /${path}
+            - RewritePath=/api/(?<segment>.*), /$\{segment}
 
         # CPR Assistant WebSocket
         - id: cpr-assistant-ws
