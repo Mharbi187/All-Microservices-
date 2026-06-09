@@ -79,7 +79,7 @@ export const useReportingStore = create<ReportingState>((set, get) => ({
     if (existing && existing.readyState < 2) return; // already open or connecting
 
     // Determine WS URL from the same base as the API (swap http->ws)
-    const apiBase = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api')
+    const apiBase = (import.meta.env.VITE_API_BASE_URL || 'https://nexus-aid.me/api')
       .replace(/^http/, 'ws');
     const wsUrl = `${apiBase}/v1/ws/reports?userId=${userId}&token=${encodeURIComponent(token)}`;
 

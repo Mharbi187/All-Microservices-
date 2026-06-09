@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Table, Tag, Space, Typography, Spin, Select, Input, Empty, message, Dropdown, Button, Avatar } from 'antd';
+import { Card, Table, Tag, Space, Typography, Spin, Select, Input, Empty, message, Dropdown, Button, Avatar, Modal, Switch } from 'antd';
 import {
   FileTextOutlined, EditOutlined, CheckCircleOutlined,
   FilePdfOutlined, LockOutlined, ThunderboltOutlined, SearchOutlined, EyeOutlined, MoreOutlined,
@@ -20,7 +20,8 @@ export default function ReportingListPage() {
   const userRoles: string[] = user?.roles || [];
   const rawRoles: any[] = (user as any)?.rawRoles || [];
   const scope = getUserScope(userRoles, rawRoles);
-  const isManager = canManageReports(userRoles, rawRoles);
+  const isSecGenOrAbove = userRoles.some(r => ['PRESIDENT', 'VICE_PRESIDENT', 'SECRETAIRE_GENERAL'].includes(r));
+  const isManager = canManageReports(userRoles, rawRoles); // Still useful for general management checks if any
 
   const [reports, setReports] = useState<ReportInstanceDTO[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,26 +29,51 @@ export default function ReportingListPage() {
   const [search, setSearch] = useState('');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
+  const [assignableUsers, setAssignableUsers] = useState<any[]>([]);
+
+  const [archiveModalOpen, setArchiveModalOpen] = useState(false);
+  const [encryptArchive, setEncryptArchive] = useState(true);
+  const [activeReportId, setActiveReportId] = useState<string | null>(null);
+
   const fetchReports = useCallback(async () => {
     setLoading(true);
     try {
-      const data = isManager ? await adminReportService.list() : await adminReportService.getMyReports();
+      let data;
+      if (isSecGenOrAbove) {
+        data = await adminReportService.list();
+      } else {
+        const [myReports, assignedReports] = await Promise.all([
+          adminReportService.getMyReports(),
+          adminReportService.getAssigned().catch(() => []) // Fallback in case endpoint is missing
+        ]);
+        // Merge and remove duplicates
+        const all = [...myReports, ...assignedReports];
+        data = Array.from(new Map(all.map(r => [r.id, r])).values());
+      }
       setReports(Array.isArray(data) ? data : ((data as any)?.content || (data as any)?.data || []));
+      
+      adminReportService.getAssignableUsers()
+        .then(users => setAssignableUsers(users))
+        .catch(() => {});
     } catch {
       message.error('Erreur lors du chargement des rapports');
     } finally {
       setLoading(false);
     }
-  }, [isManager]);
+  }, [isSecGenOrAbove]);
 
   useEffect(() => { fetchReports(); }, [fetchReports]);
 
-  const performAction = async (id: string, action: 'validate' | 'finalize' | 'archive') => {
+  const performAction = async (id: string, action: 'validate' | 'finalize' | 'archive', encrypt?: boolean) => {
     setActionLoading(`${action}-${id}`);
     try {
       if (action === 'validate') await adminReportService.validate(id);
       else if (action === 'finalize') await adminReportService.finalize(id);
-      else await adminReportService.archive(id);
+      else {
+        await adminReportService.archive(id, encrypt);
+        setArchiveModalOpen(false);
+        setActiveReportId(null);
+      }
       message.success('Action effectuée avec succès.');
       fetchReports();
     } catch (err: any) {
@@ -55,6 +81,11 @@ export default function ReportingListPage() {
     } finally {
       setActionLoading(null);
     }
+  };
+
+  const handleArchiveClick = (id: string) => {
+    setActiveReportId(id);
+    setArchiveModalOpen(true);
   };
 
   const handleDownloadPdf = async (id: string) => {
@@ -104,10 +135,21 @@ export default function ReportingListPage() {
     },
     {
       title: 'Assigné à',
-      dataIndex: 'assignedToName',
       key: 'assigned',
       responsive: ['lg'] as any,
-      render: (name: string) => name ? <Text style={{ fontSize: 12 }}>{name}</Text> : <Text type="secondary" style={{ fontSize: 12 }}>—</Text>,
+      render: (_: any, r: ReportInstanceDTO) => {
+        if (r.assignedUsers && r.assignedUsers.length > 0) {
+          const names = r.assignedUsers.map(id => {
+            const user = assignableUsers.find(u => u.id === id);
+            return user ? user.fullName || user.email : id;
+          });
+          return <Text style={{ fontSize: 12 }}>{names.join(', ')}</Text>;
+        }
+        if (r.assignedToName) {
+          return <Text style={{ fontSize: 12 }}>{r.assignedToName}</Text>;
+        }
+        return <Text type="secondary" style={{ fontSize: 12 }}>—</Text>;
+      },
     },
     {
       title: 'Créé le',
@@ -120,12 +162,13 @@ export default function ReportingListPage() {
       title: 'Actions',
       key: 'actions',
       render: (_: any, r: ReportInstanceDTO) => {
+        const canArchive = userRoles.some(role => ['PRESIDENT'].includes(role));
         const items: any[] = [
           { key: 'view', icon: <EyeOutlined />, label: 'Voir', onClick: () => navigate(`/reporting/reports/${r.id}`) },
           ...(r.workflowStatus === 'DRAFT' ? [{ key: 'fill', icon: <EditOutlined />, label: 'Remplir', onClick: () => navigate(`/reporting/reports/${r.id}/fill`) }] : []),
-          ...(isManager && r.workflowStatus === 'SUBMITTED' ? [{ key: 'validate', icon: <CheckCircleOutlined />, label: 'Valider', onClick: () => performAction(r.id, 'validate') }] : []),
-          ...(isManager && r.workflowStatus === 'VALIDATED' ? [{ key: 'finalize', icon: <ThunderboltOutlined />, label: 'Finaliser', onClick: () => performAction(r.id, 'finalize') }] : []),
-          ...(isManager && r.workflowStatus === 'FINALIZED' && scope !== 'LOCAL' ? [{ key: 'archive', icon: <LockOutlined />, label: 'Archiver', onClick: () => performAction(r.id, 'archive') }] : []),
+          ...(isSecGenOrAbove && r.workflowStatus === 'SUBMITTED' ? [{ key: 'validate', icon: <CheckCircleOutlined />, label: 'Valider', onClick: () => performAction(r.id, 'validate') }] : []),
+          ...(isSecGenOrAbove && r.workflowStatus === 'VALIDATED' ? [{ key: 'finalize', icon: <ThunderboltOutlined />, label: 'Finaliser', onClick: () => performAction(r.id, 'finalize') }] : []),
+          ...(canArchive && r.workflowStatus === 'FINALIZED' && scope !== 'LOCAL' ? [{ key: 'archive', icon: <LockOutlined />, label: 'Archiver', onClick: () => handleArchiveClick(r.id) }] : []),
           ...(r.workflowStatus === 'ARCHIVED' ? [{ key: 'pdf', icon: <FilePdfOutlined />, label: 'Télécharger PDF', onClick: () => handleDownloadPdf(r.id) }] : []),
         ];
         return (
@@ -139,6 +182,22 @@ export default function ReportingListPage() {
 
   return (
     <div style={{ padding: 24, maxWidth: 1400, margin: '0 auto', animation: 'fadeUp 0.4s ease' }}>
+      <Modal
+        title="Archiver le rapport"
+        open={archiveModalOpen}
+        onOk={() => activeReportId && performAction(activeReportId, 'archive', encryptArchive)}
+        onCancel={() => setArchiveModalOpen(false)}
+        confirmLoading={actionLoading === `archive-${activeReportId}`}
+        okText="Archiver"
+        cancelText="Annuler"
+      >
+        <p>Voulez-vous vraiment archiver ce rapport de façon permanente ?</p>
+        <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Switch checked={encryptArchive} onChange={setEncryptArchive} />
+          <span>Chiffrer les données avec AES-256 (Sécurité renforcée)</span>
+        </div>
+      </Modal>
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div>
           <Title level={2} style={{ margin: 0, color: 'var(--text-primary)' }}>Rapports</Title>

@@ -6,7 +6,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Button, Card, Col, Row, Space, Spin,
-  Timeline, Typography, message, Popconfirm, Alert, Tag, List
+  Timeline, Typography, message, Popconfirm, Alert, Tag, List, Modal, Switch
 } from 'antd';
 import {
   CheckOutlined, LockOutlined, FilePdfOutlined, ArrowLeftOutlined,
@@ -36,6 +36,9 @@ const ReportDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
+  const [archiveModalOpen, setArchiveModalOpen] = useState(false);
+  const [encryptArchive, setEncryptArchive] = useState(true);
+
   const loadData = async () => {
     if (!id) return;
     setLoading(true);
@@ -63,7 +66,10 @@ const ReportDetailPage: React.FC = () => {
     try {
       if (action === 'validate') await adminReportService.validate(id);
       else if (action === 'finalize') await adminReportService.finalize(id);
-      else await adminReportService.archive(id);
+      else {
+        await adminReportService.archive(id, encryptArchive);
+        setArchiveModalOpen(false);
+      }
       message.success('Action effectuée avec succès.');
       await loadData();
     } catch (err: any) {
@@ -129,12 +135,13 @@ const ReportDetailPage: React.FC = () => {
   // RBAC Checks
   const isOwner = report.filledBy === user?.id;
   const isAssigned = report.assignedUsers?.includes(user?.id || '') || false;
-  const isPresidentOrSG = user?.roles?.some(r => r === 'PRESIDENT' || r === 'SECRETAIRE_GENERAL') || false;
+  const isSecGenOrAbove = user?.roles?.some(r => ['PRESIDENT', 'VICE_PRESIDENT', 'SECRETAIRE_GENERAL'].includes(r)) || false;
   const isResponsable = (user?.roles as string[])?.some(r => r === 'RESPONSABLE') || false;
+  const canArchive = (user?.roles as string[])?.some(r => ['PRESIDENT'].includes(r)) || false;
 
-  const canGenerate = (isPresidentOrSG || isResponsable) && (status === 'FINALIZED' || status === 'ARCHIVED');
+  const canGenerate = isSecGenOrAbove && (status === 'FINALIZED' || status === 'ARCHIVED');
   const canDownload = true; // Always allow preview/print of official document
-  const canExportDraft = (isOwner || isAssigned);
+  const canExportDraft = (isOwner || isAssigned) && isResponsable;
   const canFill = (isOwner || isAssigned) && (status === 'DRAFT' || status === 'SUBMITTED');
 
   // ── Dynamic date formatting in Arabic ───────────────────────
@@ -150,8 +157,24 @@ const ReportDetailPage: React.FC = () => {
 
   return (
     <div style={{ padding: 24 }}>
+      {/* Archive Modal */}
+      <Modal
+        title="Archiver le rapport"
+        open={archiveModalOpen}
+        onOk={() => performAction('archive')}
+        onCancel={() => setArchiveModalOpen(false)}
+        confirmLoading={actionLoading === 'archive'}
+        okText="Archiver"
+        cancelText="Annuler"
+      >
+        <p>Voulez-vous vraiment archiver ce rapport de façon permanente ?</p>
+        <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Switch checked={encryptArchive} onChange={setEncryptArchive} />
+          <span>Chiffrer les données avec AES-256 (Sécurité renforcée)</span>
+        </div>
+      </Modal>
+
       {/* ══════════ HEADER BAR ══════════ */}
-      <Row justify="space-between" align="middle" style={{ marginBottom: 16 }} className="no-print">
         <Col>
           <Space>
             <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/admin-reports')} type="text" />
@@ -163,20 +186,18 @@ const ReportDetailPage: React.FC = () => {
         </Col>
         <Col>
           <Space>
-            {status === 'SUBMITTED' && (
+            {isSecGenOrAbove && status === 'SUBMITTED' && (
               <Popconfirm title="Valider ce rapport ?" onConfirm={() => performAction('validate')}>
                 <Button type="primary" icon={<CheckOutlined />} loading={actionLoading === 'validate'}>Valider</Button>
               </Popconfirm>
             )}
-            {status === 'VALIDATED' && (
+            {isSecGenOrAbove && status === 'VALIDATED' && (
               <Popconfirm title="Finaliser ce rapport ?" onConfirm={() => performAction('finalize')}>
                 <Button type="primary" icon={<ThunderboltOutlined />} loading={actionLoading === 'finalize'}>Finaliser</Button>
               </Popconfirm>
             )}
-            {status === 'FINALIZED' && (
-              <Popconfirm title="Archiver ce rapport ?" description="Le rapport sera archivé de façon permanente." onConfirm={() => performAction('archive')}>
-                <Button type="default" icon={<LockOutlined />} loading={actionLoading === 'archive'}>Archiver</Button>
-              </Popconfirm>
+            {canArchive && status === 'FINALIZED' && (
+              <Button type="default" icon={<LockOutlined />} onClick={() => setArchiveModalOpen(true)}>Archiver</Button>
             )}
 
             {canExportDraft && status !== 'ARCHIVED' && (
@@ -190,22 +211,26 @@ const ReportDetailPage: React.FC = () => {
             )}
 
             {/* ★ Preview — aperçu avant impression */}
-            <Button
-              icon={<EyeOutlined />}
-              onClick={handlePreview}
-            >
-              Aperçu
-            </Button>
+            {isSecGenOrAbove && (
+              <Button
+                icon={<EyeOutlined />}
+                onClick={handlePreview}
+              >
+                Aperçu
+              </Button>
+            )}
 
             {/* ★ Official PDF Export — primary action */}
-            <Button
-              type="primary"
-              icon={<PrinterOutlined />}
-              onClick={handlePrintPdf}
-              style={{ background: '#C8102E', borderColor: '#C8102E' }}
-            >
-              Exporter PDF
-            </Button>
+            {isSecGenOrAbove && (
+              <Button
+                type="primary"
+                icon={<PrinterOutlined />}
+                onClick={handlePrintPdf}
+                style={{ background: '#C8102E', borderColor: '#C8102E' }}
+              >
+                Exporter PDF
+              </Button>
+            )}
 
             {canFill && (
               <Button onClick={() => navigate(`/admin-reports/${id}/fill`)}>Remplir</Button>
@@ -235,55 +260,67 @@ const ReportDetailPage: React.FC = () => {
       <Row gutter={16}>
         {/* ══════════ OFFICIAL DOCUMENT PREVIEW ══════════ */}
         <Col span={16}>
-          <Card
-            title="Document Officiel"
-            className="no-print"
-            styles={{ body: { padding: 0, background: '#f5f5f5' } }}
-            style={{ overflow: 'hidden' }}
-          >
-            <div style={{ padding: 24, overflowX: 'auto', display: 'flex', justifyContent: 'center' }}>
-              {(() => {
-                const structure = (report as any).templateVersion?.structure ?? [];
-                const pageGroups: any[][] = [];
-                let currentGroup: any[] = [];
-                structure.forEach((el: any) => {
-                  if (el.type === 'page_break') { pageGroups.push(currentGroup); currentGroup = []; }
-                  else { currentGroup.push(el); }
-                });
-                pageGroups.push(currentGroup);
-                return (
-                  <OfficialDocumentWrapper
-                    header={{ logoUrl: '/logos/logo_symbole.png', primaryColor: '#C8102E' }}
-                    meta={{
-                      reference: `${new Date(report.createdAt).getMonth() + 1}/${new Date(report.createdAt).getFullYear().toString().slice(-2)}`,
-                      dateAr: formatDateAr(report.createdAt),
-                      location: 'تونس',
-                      senderName: report.assignedToName || undefined,
-                      senderRole: report.reportLevel === 'URGENT' ? 'تقرير عاجل' : undefined,
-                      recipient: report.committeeName || undefined,
-                    }}
-                    signature={{
-                      name: report.assignedToName || undefined,
-                      closingFormula: 'مع فائق التقدير',
-                      showStamp: true,
-                    }}
-                    showSender={!!(report.assignedToName || report.committeeName)}
-                    showSignature={status === 'FINALIZED' || status === 'ARCHIVED'}
-                    pageGroups={pageGroups.map((group, idx) => (
-                      <PrintRenderer
-                        key={idx}
-                        structure={group}
-                        filledData={(report.filledData as Record<string, unknown>) ?? {}}
-                        mode="readonly"
-                        showLetterhead={false}
-                        showShell={false}
-                      />
-                    ))}
-                  />
-                );
-              })()}
-            </div>
-          </Card>
+          {isSecGenOrAbove ? (
+            <Card
+              title="Document Officiel"
+              className="no-print"
+              styles={{ body: { padding: 0, background: '#f5f5f5' } }}
+              style={{ overflow: 'hidden' }}
+            >
+              <div style={{ padding: 24, overflowX: 'auto', display: 'flex', justifyContent: 'center' }}>
+                {(() => {
+                  const structure = (report as any).templateVersion?.structure ?? [];
+                  const pageGroups: any[][] = [];
+                  let currentGroup: any[] = [];
+                  structure.forEach((el: any) => {
+                    if (el.type === 'page_break') { pageGroups.push(currentGroup); currentGroup = []; }
+                    else { currentGroup.push(el); }
+                  });
+                  pageGroups.push(currentGroup);
+                  return (
+                    <OfficialDocumentWrapper
+                      header={{ logoUrl: '/logos/logo_symbole.png', primaryColor: '#C8102E' }}
+                      meta={{
+                        reference: `${new Date(report.createdAt).getMonth() + 1}/${new Date(report.createdAt).getFullYear().toString().slice(-2)}`,
+                        dateAr: formatDateAr(report.createdAt),
+                        location: 'تونس',
+                        senderName: report.assignedToName || undefined,
+                        senderRole: report.reportLevel === 'URGENT' ? 'تقرير عاجل' : undefined,
+                        recipient: report.committeeName || undefined,
+                      }}
+                      signature={{
+                        name: report.assignedToName || undefined,
+                        closingFormula: 'مع فائق التقدير',
+                        showStamp: true,
+                      }}
+                      showSender={!!(report.assignedToName || report.committeeName)}
+                      showSignature={status === 'FINALIZED' || status === 'ARCHIVED'}
+                      pageGroups={pageGroups.map((group, idx) => (
+                        <PrintRenderer
+                          key={idx}
+                          structure={group}
+                          filledData={(report.filledData as Record<string, unknown>) ?? {}}
+                          mode="readonly"
+                          showLetterhead={false}
+                          showShell={false}
+                        />
+                      ))}
+                    />
+                  );
+                })()}
+              </div>
+            </Card>
+          ) : (
+            <Card title="Données du rapport" className="no-print">
+              <PrintRenderer
+                structure={(report as any).templateVersion?.structure ?? []}
+                filledData={(report.filledData as Record<string, unknown>) ?? {}}
+                mode="readonly"
+                showLetterhead={false}
+                showShell={false}
+              />
+            </Card>
+          )}
         </Col>
 
         {/* ══════════ SIDEBAR — Signatures + Audit ══════════ */}

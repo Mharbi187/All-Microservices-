@@ -17,8 +17,17 @@ export default function ReportingNotificationsPage() {
   const fetchAssigned = useCallback(async () => {
     setLoading(true);
     try {
-      const myReports = await adminReportService.getMyReports();
-      setAssignedReports(Array.isArray(myReports) ? myReports : ((myReports as any)?.content || (myReports as any)?.data || []));
+      const [my, assigned] = await Promise.all([
+        adminReportService.getMyReports().catch(() => []),
+        adminReportService.getAssigned().catch(() => [])
+      ]);
+      const myArr = Array.isArray(my) ? my : ((my as any)?.content || (my as any)?.data || []);
+      const assignedArr = Array.isArray(assigned) ? assigned : ((assigned as any)?.content || (assigned as any)?.data || []);
+      
+      const all = [...myArr, ...assignedArr];
+      const deduplicated = Array.from(new Map(all.map(r => [r.id, r])).values());
+      
+      setAssignedReports(deduplicated);
     } catch {
       // ignore
     } finally {

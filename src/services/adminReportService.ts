@@ -57,8 +57,8 @@ export const adminReportService = {
   finalize: (id: string) =>
     apiClient.post(`${BASE}/${id}/finalize`).then((r) => r.data),
 
-  archive: (id: string) =>
-    apiClient.post(`${BASE}/${id}/archive`).then((r) => r.data),
+  archive: (id: string, encrypt?: boolean) =>
+    apiClient.post(`${BASE}/${id}/archive${encrypt ? '?encrypt=true' : ''}`).then((r) => r.data),
 
   // ── PDF & Audit ────────────────────────────────────────────
 
