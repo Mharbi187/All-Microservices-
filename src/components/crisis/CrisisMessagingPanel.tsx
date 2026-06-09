@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Card, Input, Button, Typography, Space, Tag, Upload, Image, message, Tabs, List, Avatar, Popconfirm, Select } from 'antd';
-import { SendOutlined, WarningOutlined, CheckCircleOutlined, AlertOutlined, AuditOutlined, MessageOutlined, CameraOutlined, LoadingOutlined, PictureOutlined, TeamOutlined, AudioOutlined, DeleteOutlined, UserOutlined, StopOutlined, PauseOutlined, CaretRightOutlined } from '@ant-design/icons';
+import { SendOutlined, WarningOutlined, CheckCircleOutlined, AlertOutlined, AuditOutlined, MessageOutlined, CameraOutlined, LoadingOutlined, PictureOutlined, TeamOutlined, AudioOutlined, DeleteOutlined, UserOutlined, StopOutlined } from '@ant-design/icons';
 import { crisisApi } from '@/services/crisisApi';
 import { useCrisisSocket } from '@/hooks/useCrisisSocket';
 import { useAuthStore, useUIStore } from '@/stores';
@@ -8,137 +8,6 @@ import { makeRadarTheme, rp, rr, rfont } from '@/components/crisis/radarTheme';
 
 const { Text } = Typography;
 const { Option } = Select;
-
-function TacticalAudioPlayer({ src, isSelf, isDark, theme }: { src: string; isSelf: boolean; isDark: boolean; theme: any }) {
-    const audioRef = useRef<HTMLAudioElement>(null);
-    const [isPlaying, setIsPlaying] = useState(false);
-    const [currentTime, setCurrentTime] = useState(0);
-    const [duration, setDuration] = useState(0);
-
-    const togglePlay = () => {
-        if (audioRef.current) {
-            if (isPlaying) {
-                audioRef.current.pause();
-            } else {
-                audioRef.current.play();
-            }
-        }
-    };
-
-    useEffect(() => {
-        const audio = audioRef.current;
-        if (!audio) return;
-
-        const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
-        const handleDurationChange = () => setDuration(audio.duration || 0);
-        const handlePlay = () => setIsPlaying(true);
-        const handlePause = () => setIsPlaying(false);
-        const handleEnded = () => {
-            setIsPlaying(false);
-            setCurrentTime(0);
-        };
-
-        audio.addEventListener('timeupdate', handleTimeUpdate);
-        audio.addEventListener('durationchange', handleDurationChange);
-        audio.addEventListener('play', handlePlay);
-        audio.addEventListener('pause', handlePause);
-        audio.addEventListener('ended', handleEnded);
-
-        return () => {
-            audio.removeEventListener('timeupdate', handleTimeUpdate);
-            audio.removeEventListener('durationchange', handleDurationChange);
-            audio.removeEventListener('play', handlePlay);
-            audio.removeEventListener('pause', handlePause);
-            audio.removeEventListener('ended', handleEnded);
-        };
-    }, []);
-
-    const formatTime = (time: number) => {
-        if (isNaN(time)) return '0:00';
-        const mins = Math.floor(time / 60);
-        const secs = Math.floor(time % 60);
-        return `${mins}:${secs.toString().padStart(2, '0')}`;
-    };
-
-    const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
-
-    const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
-        if (audioRef.current && duration > 0) {
-            const rect = e.currentTarget.getBoundingClientRect();
-            const clickX = e.clientX - rect.left;
-            const width = rect.width;
-            const newTime = (clickX / width) * duration;
-            audioRef.current.currentTime = newTime;
-        }
-    };
-
-    return (
-        <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            padding: '8px 12px',
-            borderRadius: 14,
-            background: isSelf ? 'rgba(255,255,255,0.12)' : (isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'),
-            minWidth: 200,
-            maxWidth: 260,
-            marginTop: 4,
-            backdropFilter: 'blur(4px)',
-            border: isSelf ? '1px solid rgba(255,255,255,0.1)' : `1px solid ${theme.divider}`,
-            boxShadow: '0 2px 6px rgba(0,0,0,0.05)',
-        }}>
-            <audio ref={audioRef} src={src} preload="metadata" />
-            
-            <Button
-                type="text"
-                shape="circle"
-                size="small"
-                icon={isPlaying ? <PauseOutlined style={{ color: isSelf ? '#fff' : rp.red500, fontSize: 12 }} /> : <CaretRightOutlined style={{ color: isSelf ? '#fff' : rp.red500, fontSize: 14, marginLeft: 2 }} />}
-                onClick={togglePlay}
-                style={{
-                    background: isSelf ? 'rgba(255,255,255,0.2)' : 'rgba(220,38,38,0.1)',
-                    border: 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: 30,
-                    height: 30,
-                    minWidth: 30,
-                    transition: 'all 0.2s ease',
-                }}
-                className="rd-action"
-            />
-
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <div 
-                    onClick={handleProgressClick}
-                    style={{
-                        height: 4,
-                        width: '100%',
-                        background: isSelf ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.08)',
-                        borderRadius: 2,
-                        position: 'relative',
-                        cursor: 'pointer',
-                    }}
-                >
-                    <div style={{
-                        height: '100%',
-                        width: `${progress}%`,
-                        background: isSelf ? '#fff' : rp.red500,
-                        borderRadius: 2,
-                        transition: 'width 0.1s linear',
-                    }} />
-                </div>
-                
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, opacity: 0.8, color: isSelf ? '#fff' : theme.textSub, fontFamily: rfont.data }}>
-                    <span>{formatTime(currentTime)}</span>
-                    <span>{formatTime(duration || 0)}</span>
-                </div>
-            </div>
-        </div>
-    );
-}
-
 
 export default function CrisisMessagingPanel({ roomId, initialMessages, initialParticipants = [], isClosed, canWrite = true, isStrategicAllowed = true }: { roomId: string, initialMessages: any[], initialParticipants?: any[], isClosed?: boolean, canWrite?: boolean, isStrategicAllowed?: boolean }) {
     const { user } = useAuthStore();
@@ -317,83 +186,31 @@ export default function CrisisMessagingPanel({ roomId, initialMessages, initialP
 
         if (isSystem) {
             return (
-                <div style={{ textAlign: 'center', margin: '12px 0' }} key={msg.id} className="rd-fade-up">
-                    <Tag style={{ background: isDark ? 'rgba(255,255,255,0.03)' : '#F1F5F9', borderColor: t.cardBorder, color: t.textSub, borderRadius: 12, padding: '4px 12px', fontSize: 11, border: 'none' }}>
+                <div style={{ textAlign: 'center', margin: '8px 0' }} key={msg.id}>
+                    <Tag style={{ background: t.cardBg, borderColor: t.cardBorder, color: t.textSub, borderRadius: 12, padding: '4px 12px', fontSize: 11 }}>
                         {msg.content}
                     </Tag>
                 </div>
             );
         }
 
-        let bg = '';
-        let borderColor = 'transparent';
-        let textColor = '';
+        let bg = isSelf ? 'rgba(220,38,38,0.1)' : t.cardBg;
+        let borderColor = isSelf ? 'rgba(220,38,38,0.3)' : t.cardBorder;
+        let textColor = isSelf ? t.text : t.textSub;
         let label = null;
-        let shadow = 'none';
-
-        if (isSelf) {
-            bg = `linear-gradient(135deg, ${rp.red500} 0%, #B91C1C 100%)`;
-            textColor = '#FFFFFF';
-            shadow = '0 3px 10px rgba(220,38,38,0.15)';
-        } else {
-            bg = isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9';
-            textColor = isDark ? '#F0F4FF' : '#1E293B';
-            shadow = '0 1px 2px rgba(0,0,0,0.02)';
-        }
 
         if (isAlert) {
-            bg = isDark ? 'rgba(239, 68, 68, 0.08)' : '#FEF2F2';
-            borderColor = rp.red500;
-            textColor = isDark ? '#F87171' : '#B91C1C';
-            label = (
-                <Tag 
-                    color="error" 
-                    icon={<WarningOutlined className="rd-pulse-red" />} 
-                    style={{ 
-                        fontFamily: rfont.display, 
-                        fontWeight: 700, 
-                        borderRadius: rr.sm, 
-                        fontSize: 9, 
-                        letterSpacing: '0.04em',
-                        border: 'none',
-                        background: isDark ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.15)',
-                        color: isDark ? '#F87171' : '#B91C1C',
-                        marginBottom: 6
-                    }}
-                >
-                    ALERTE TACTIQUE
-                </Tag>
-            );
-            shadow = '0 4px 12px rgba(239, 68, 68, 0.08)';
+            bg = isDark ? 'rgba(245, 158, 11, 0.1)' : '#FEF3C7';
+            borderColor = isDark ? 'rgba(245, 158, 11, 0.3)' : '#FDE68A';
+            textColor = isDark ? '#FCD34D' : '#D97706';
+            label = <Tag color="warning" icon={<WarningOutlined />} style={{ fontFamily: rfont.data, fontWeight: 700, borderRadius: rr.sm, fontSize: 9 }}>ALERTE TACTIQUE</Tag>;
         }
         if (isDecision) {
-            bg = isDark ? 'rgba(34, 197, 94, 0.08)' : '#F0FDF4';
-            borderColor = rp.grn500;
-            textColor = isDark ? '#4ADE80' : '#15803D';
-            label = (
-                <Tag 
-                    color="success" 
-                    icon={<CheckCircleOutlined />} 
-                    style={{ 
-                        fontFamily: rfont.display, 
-                        fontWeight: 700, 
-                        borderRadius: rr.sm, 
-                        fontSize: 9, 
-                        letterSpacing: '0.04em',
-                        border: 'none',
-                        background: isDark ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.15)',
-                        color: isDark ? '#4ADE80' : '#15803D',
-                        marginBottom: 6
-                    }}
-                >
-                    DÉCISION OFFICIELLE
-                </Tag>
-            );
-            shadow = '0 4px 12px rgba(34, 197, 94, 0.08)';
+            bg = isDark ? 'rgba(16, 185, 129, 0.1)' : '#D1FAE5';
+            borderColor = isDark ? 'rgba(16, 185, 129, 0.3)' : '#A7F3D0';
+            textColor = isDark ? '#6EE7B7' : '#059669';
+            label = <Tag color="green" icon={<CheckCircleOutlined />} style={{ fontFamily: rfont.data, fontWeight: 700, borderRadius: rr.sm, fontSize: 9 }}>DÉCISION OFFICIELLE</Tag>;
         }
-
-        const leftBorderWidth = (isAlert || isDecision) ? '4px' : '0px';
-        const leftBorderColor = isAlert ? rp.red500 : (isDecision ? rp.grn500 : 'transparent');
 
         let renderedContent: React.ReactNode = msg.content;
         if (msg.content) {
@@ -410,45 +227,45 @@ export default function CrisisMessagingPanel({ roomId, initialMessages, initialP
                 const urlMatch = msg.content.match(/!\[audio\]\((.*?)\)/);
                 if (urlMatch && urlMatch[1]) {
                     renderedContent = (
-                        <TacticalAudioPlayer src={urlMatch[1]} isSelf={isSelf} isDark={isDark} theme={t} />
+                        <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <audio controls src={urlMatch[1]} style={{ height: 40, outline: 'none', maxWidth: 220 }} />
+                        </div>
                     );
                 }
             }
         }
 
         return (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: isSelf ? 'flex-end' : 'flex-start', margin: '8px 0' }} key={msg.id} className="rd-fade-up">
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: isSelf ? 'flex-end' : 'flex-start', margin: '8px 0' }} key={msg.id}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 2 }}>
                     <Text style={{ fontSize: 11, color: t.textSub, fontFamily: rfont.body, fontWeight: 600 }}>{msg.sender_name}</Text>
-                    {msg.sent_at && <Text style={{ fontSize: 9, color: t.textSub, opacity: 0.6 }}>{new Date(msg.sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>}
+                    {msg.sent_at && <Text style={{ fontSize: 9, color: t.textSub, opacity: 0.7 }}>{new Date(msg.sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>}
                 </div>
                 <div style={{
                     background: bg,
-                    border: (isAlert || isDecision) ? `1px solid ${borderColor}` : 'none',
-                    borderLeft: (isAlert || isDecision) ? `${leftBorderWidth} solid ${leftBorderColor}` : 'none',
-                    padding: '10px 14px',
+                    border: '1px solid ' + borderColor,
+                    padding: '8px 14px',
                     borderRadius: 16,
                     borderBottomRightRadius: isSelf ? 2 : 16,
                     borderBottomLeftRadius: !isSelf ? 2 : 16,
                     maxWidth: '85%',
-                    boxShadow: shadow,
-                    transition: 'all 0.2s ease',
+                    boxShadow: isSelf ? '0 2px 8px rgba(220,38,38,0.2)' : 'none',
                 }}>
                     {label && <div style={{ marginBottom: 4 }}>{label}</div>}
-                    <div style={{ color: textColor, fontFamily: rfont.body, fontSize: 13, lineHeight: '1.4' }}>{renderedContent}</div>
+                    <div style={{ color: textColor, fontFamily: rfont.body, fontSize: 13 }}>{renderedContent}</div>
                 </div>
             </div >
         );
     };
 
     const chatContent = (
-        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '16px', background: isDark ? 'rgba(15,23,42,0.4)' : '#F8FAFC', borderBottom: `1px solid ${t.divider}` }} className="rd-scroll">
                 {visibleMessages.map(renderBubble)}
                 {Object.keys(typingUsers).length > 0 && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, padding: '0 4px' }} className="rd-fade-up">
-                        <LoadingOutlined style={{ color: t.textSub, fontSize: 11 }} />
-                        <Text style={{ fontSize: 11, color: t.textSub, fontStyle: 'italic', fontFamily: rfont.body }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+                        <LoadingOutlined style={{ color: t.textSub, fontSize: 12 }} />
+                        <Text style={{ fontSize: 11, color: t.textSub, fontStyle: 'italic' }}>
                             {Object.values(typingUsers).join(', ')} tape...
                         </Text>
                     </div>
@@ -456,7 +273,7 @@ export default function CrisisMessagingPanel({ roomId, initialMessages, initialP
             </div>
             {canWrite && (
                 <div style={{ padding: '12px 16px', background: isDark ? 'rgba(30,41,59,0.95)' : '#FFFFFF', borderTop: `1px solid ${t.divider}` }}>
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: (isStrategicAllowed && inputValue.trim()) ? 10 : 0 }}>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: isStrategicAllowed ? 12 : 0 }}>
                         <Upload
                             showUploadList={false}
                             beforeUpload={(file) => { handleImageUpload({ file }); return false; }}
@@ -466,18 +283,8 @@ export default function CrisisMessagingPanel({ roomId, initialMessages, initialP
                                 type="text" 
                                 shape="circle"
                                 disabled={isClosed || uploading || isRecording} 
-                                icon={uploading ? <LoadingOutlined style={{ color: rp.red500 }} /> : <CameraOutlined style={{ fontSize: 16, color: t.textSub }} />} 
-                                style={{ 
-                                    width: 36,
-                                    height: 36,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    background: isDark ? 'rgba(255,255,255,0.05)' : '#F1F5F9',
-                                    border: 'none',
-                                    transition: 'all 0.2s ease',
-                                }}
-                                className="rd-action"
+                                icon={uploading ? <LoadingOutlined /> : <CameraOutlined style={{ fontSize: 18 }} />} 
+                                style={{ color: t.textSub, background: isDark ? 'rgba(255,255,255,0.05)' : '#F1F5F9' }} 
                             />
                         </Upload>
                         <Button 
@@ -486,23 +293,14 @@ export default function CrisisMessagingPanel({ roomId, initialMessages, initialP
                             shape={isRecording ? "round" : "circle"}
                             disabled={isClosed || uploading} 
                             onClick={isRecording ? stopRecording : startRecording}
-                            icon={isRecording ? <StopOutlined className="rd-pulse-red" /> : <AudioOutlined style={{ fontSize: 16, color: t.textSub }} />} 
+                            icon={isRecording ? <StopOutlined /> : <AudioOutlined style={{ fontSize: 18 }} />} 
                             style={{ 
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: 6,
-                                width: isRecording ? undefined : 36,
-                                height: 36,
                                 color: isRecording ? '#fff' : t.textSub,
                                 background: isRecording ? '#dc2626' : (isDark ? 'rgba(255,255,255,0.05)' : '#F1F5F9'),
-                                minWidth: isRecording ? 84 : 36,
-                                border: 'none',
-                                transition: 'all 0.2s ease',
+                                minWidth: isRecording ? 80 : undefined
                             }} 
-                            className="rd-action"
                         >
-                            {isRecording && <span style={{ fontFamily: rfont.data, fontSize: 11, fontWeight: 700 }}>{Math.floor(recordingTime / 60)}:${(recordingTime % 60).toString().padStart(2, '0')}</span>}
+                            {isRecording && `${Math.floor(recordingTime / 60)}:${(recordingTime % 60).toString().padStart(2, '0')}`}
                         </Button>
                         
                         <Input
@@ -518,9 +316,7 @@ export default function CrisisMessagingPanel({ roomId, initialMessages, initialP
                                 fontFamily: rfont.body,
                                 borderRadius: 20,
                                 padding: '8px 16px',
-                                flex: 1,
-                                border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)'}`,
-                                transition: 'all 0.3s ease',
+                                flex: 1
                             }}
                         />
                         <Button 
@@ -530,40 +326,17 @@ export default function CrisisMessagingPanel({ roomId, initialMessages, initialP
                             disabled={isClosed || isRecording || (!inputValue.trim() && !uploading)} 
                             icon={<SendOutlined />} 
                             onClick={() => handleSend('text')} 
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                width: 36,
-                                height: 36,
-                                minWidth: 36,
-                                background: `linear-gradient(135deg, ${rp.red500} 0%, #B91C1C 100%)`,
-                                border: 'none',
-                                boxShadow: (!inputValue.trim() && !uploading) ? 'none' : '0 3px 8px rgba(220,38,38,0.25)',
-                                transition: 'all 0.2s ease',
-                            }}
-                            className="rd-action"
                         />
                     </div>
-                    {isStrategicAllowed && inputValue.trim() && (
-                        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4 }} className="rd-fade-up">
+                    {isStrategicAllowed && (
+                        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                             <Button 
                                 size="small"
                                 danger 
                                 disabled={isClosed || isRecording || !inputValue.trim()} 
                                 icon={<AlertOutlined />} 
                                 onClick={() => handleSend('alert')}
-                                style={{ 
-                                    borderRadius: 14, 
-                                    fontSize: 11, 
-                                    fontWeight: 700,
-                                    fontFamily: rfont.display,
-                                    padding: '4px 12px',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    boxShadow: '0 2px 6px rgba(220,38,38,0.15)',
-                                }}
-                                className="rd-action"
+                                style={{ borderRadius: 12, fontSize: 11, fontWeight: 600 }}
                             >
                                 Déclarer Alerte
                             </Button>
@@ -571,21 +344,9 @@ export default function CrisisMessagingPanel({ roomId, initialMessages, initialP
                                 size="small"
                                 type="primary" 
                                 disabled={isClosed || isRecording || !inputValue.trim()} 
-                                style={{ 
-                                    background: `linear-gradient(135deg, ${rp.grn600} 0%, ${rp.grn500} 100%)`, 
-                                    borderColor: 'transparent',
-                                    borderRadius: 14, 
-                                    fontSize: 11, 
-                                    fontWeight: 700, 
-                                    fontFamily: rfont.display,
-                                    padding: '4px 12px',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    boxShadow: '0 2px 6px rgba(34,197,94,0.2)',
-                                }} 
+                                style={{ background: rp.grn500, borderColor: rp.grn500, borderRadius: 12, fontSize: 11, fontWeight: 600 }} 
                                 icon={<AuditOutlined />} 
                                 onClick={() => handleSend('decision')}
-                                className="rd-action"
                             >
                                 Noter Décision
                             </Button>
@@ -597,13 +358,13 @@ export default function CrisisMessagingPanel({ roomId, initialMessages, initialP
     );
 
     const mediaContent = (
-        <div style={{ padding: '16px', overflowY: 'auto', flex: 1, minHeight: 0 }} className="rd-scroll">
+        <div style={{ padding: '16px', overflowY: 'auto', height: '100%' }} className="rd-scroll">
             {mediaMessages.length === 0 ? (
-                <div style={{ textAlign: 'center', marginTop: 40, color: t.textSub, fontFamily: rfont.body }}>Aucun média partagé.</div>
+                <div style={{ textAlign: 'center', marginTop: 40, color: t.textSub }}>Aucun média partagé.</div>
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                     {mediaMessages.map(msg => (
-                        <div key={msg.id} style={{ padding: 12, background: isDark ? 'rgba(255,255,255,0.02)' : '#f8fafc', borderRadius: 8, border: `1px solid ${t.cardBorder}` }} className="rd-fade-up">
+                        <div key={msg.id} style={{ padding: 12, background: isDark ? 'rgba(255,255,255,0.02)' : '#f8fafc', borderRadius: 8, border: `1px solid ${t.cardBorder}` }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                                 <Text style={{ fontSize: 12, fontWeight: 600, color: t.text }}>{msg.sender_name}</Text>
                                 {msg.sent_at && <Text style={{ fontSize: 10, color: t.textSub }}>{new Date(msg.sent_at).toLocaleDateString()} {new Date(msg.sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>}
@@ -617,13 +378,12 @@ export default function CrisisMessagingPanel({ roomId, initialMessages, initialP
     );
 
     const participantsContent = (
-        <div style={{ padding: '16px', overflowY: 'auto', flex: 1, minHeight: 0 }} className="rd-scroll">
+        <div style={{ padding: '16px', overflowY: 'auto', height: '100%' }} className="rd-scroll">
             <List
                 itemLayout="horizontal"
                 dataSource={participants}
                 renderItem={item => (
                     <List.Item
-                        className="rd-fade-up"
                         actions={isStrategicAllowed ? [
                             <Select 
                                 size="small" 
@@ -667,16 +427,16 @@ export default function CrisisMessagingPanel({ roomId, initialMessages, initialP
         <Card
             title={
                 <Space>
-                    <MessageOutlined style={{ color: rp.red500, fontSize: 16 }} />
+                    <MessageOutlined style={{ color: rp.red500 }} />
                     <Text style={{ fontFamily: rfont.display, fontWeight: 700, fontSize: 15, color: t.text, letterSpacing: '-0.02em' }}>Communications & Tactique</Text>
                 </Space>
             }
             bodyStyle={{ 
-                padding: 0, 
-                flex: 1, 
-                display: 'flex', 
-                flexDirection: 'column', 
-                overflow: 'hidden' 
+                padding: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                flex: 1,
+                overflow: 'hidden'
             }}
             style={{
                 borderRadius: rr.lg,
@@ -685,51 +445,57 @@ export default function CrisisMessagingPanel({ roomId, initialMessages, initialP
                 boxShadow: t.cardShadow,
                 borderWidth: 2,
                 overflow: 'hidden',
+                height: 480,
                 display: 'flex',
-                flexDirection: 'column',
-                height: '100%',
-                minHeight: 550
+                flexDirection: 'column'
             }}
             headStyle={{ borderBottom: `1px solid ${t.divider}`, background: t.cardBg, minHeight: 48 }}
         >
-            <style>{`
-                .nexus-tabs-full-height {
-                    display: flex !important;
-                    flex-direction: column !important;
-                    height: 100% !important;
-                    flex: 1 !important;
-                }
-                .nexus-tabs-full-height > .ant-tabs-nav {
-                    margin-bottom: 0 !important;
-                    padding: 0 8px !important;
-                }
-                .nexus-tabs-full-height > .ant-tabs-content-holder {
-                    flex: 1 !important;
-                    display: flex !important;
-                    flex-direction: column !important;
-                    min-height: 0 !important;
-                }
-                .nexus-tabs-full-height .ant-tabs-content {
-                    height: 100% !important;
-                    display: flex !important;
-                    flex-direction: column !important;
-                }
-                .nexus-tabs-full-height .ant-tabs-tabpane {
-                    display: flex !important;
-                    flex-direction: column !important;
-                    height: 100% !important;
-                    min-height: 0 !important;
-                }
-            `}</style>
             <Tabs 
                 defaultActiveKey="1" 
-                className="nexus-tabs-full-height"
+                style={{ padding: '0 8px' }}
+                className="crisis-messaging-tabs"
                 items={[
-                    { key: '1', label: <span style={{ padding: '0 8px', fontFamily: rfont.display, fontWeight: 600, fontSize: 13 }}><MessageOutlined /> Chat</span>, children: chatContent },
-                    { key: '2', label: <span style={{ padding: '0 8px', fontFamily: rfont.display, fontWeight: 600, fontSize: 13 }}><PictureOutlined /> Médias</span>, children: mediaContent },
-                    { key: '3', label: <span style={{ padding: '0 8px', fontFamily: rfont.display, fontWeight: 600, fontSize: 13 }}><TeamOutlined /> Participants</span>, children: participantsContent }
+                    { key: '1', label: <span style={{ padding: '0 8px' }}><MessageOutlined /> Chat</span>, children: chatContent },
+                    { key: '2', label: <span style={{ padding: '0 8px' }}><PictureOutlined /> Médias</span>, children: mediaContent },
+                    { key: '3', label: <span style={{ padding: '0 8px' }}><TeamOutlined /> Participants</span>, children: participantsContent }
                 ]}
             />
+            <style>{`
+                .crisis-messaging-tabs {
+                    height: 100%;
+                    display: flex;
+                    flex-direction: column;
+                }
+                .crisis-messaging-tabs .ant-tabs-content-holder {
+                    flex: 1;
+                    min-height: 0;
+                    display: flex;
+                    flex-direction: column;
+                }
+                .crisis-messaging-tabs .ant-tabs-content {
+                    height: 100%;
+                }
+                .crisis-messaging-tabs .ant-tabs-tabpane {
+                    height: 100%;
+                }
+                /* Custom modern scrollbar matching the tactical C2 theme */
+                .crisis-messaging-tabs .rd-scroll::-webkit-scrollbar {
+                    width: 5px;
+                    height: 5px;
+                }
+                .crisis-messaging-tabs .rd-scroll::-webkit-scrollbar-track {
+                    background: transparent;
+                }
+                .crisis-messaging-tabs .rd-scroll::-webkit-scrollbar-thumb {
+                    background: ${isDark ? 'rgba(220, 38, 38, 0.3)' : 'rgba(220, 38, 38, 0.25)'};
+                    border-radius: 999px;
+                    transition: background 0.15s ease;
+                }
+                .crisis-messaging-tabs .rd-scroll::-webkit-scrollbar-thumb:hover {
+                    background: rgba(220, 38, 38, 0.6) !important;
+                }
+            `}</style>
         </Card>
     );
 }
