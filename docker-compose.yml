@@ -217,6 +217,7 @@ services:
       - "8002:8000"
     environment:
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka
+      - JWT_PUBLIC_KEY=${JWT_PUBLIC_KEY}
     depends_on:
       - eureka-server
     networks:

@@ -9,6 +9,9 @@ nexus-aid.me, www.nexus-aid.me {
     handle /api/health {
         reverse_proxy nexusaid-cpr-assistant:8000
     }
+    handle /api/* {
+        reverse_proxy nexusaid-gateway:8060
+    }
     handle {
         reverse_proxy nexusaid-frontend:80
     }
