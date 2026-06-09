@@ -303,7 +303,7 @@ class TeamMatchingService:
     
     def __init__(self):
         self.teams: List[ResponseTeam] = []
-        self._sync_with_core_service()
+        self._load_from_db()
 
     def _sync_with_core_service(self, retries: int = 3, delay: int = 5) -> bool:
         """Synchronise les équipes depuis le Core Service (MS1) avec retry."""
@@ -347,95 +347,89 @@ class TeamMatchingService:
                 logger.warning(f"Attempt {attempt}/{retries} — Core Service unreachable: {e}")
             if attempt < retries:
                 time.sleep(delay)
-        logger.error(f"Core Service MS1 unreachable after {retries} attempts. Falling back to Mock Data.")
-        self._load_mock_teams()
+        logger.error(f"Core Service MS1 unreachable after {retries} attempts.")
         return False
 
     def refresh_from_core_service(self) -> bool:
         """Rafraîchir les équipes depuis MS1 (peut être appelé via un endpoint API)."""
         return self._sync_with_core_service()
     
-    def _load_mock_teams(self):
-        """Charger des équipes de démonstration"""
-        # Équipe NDRT Tunis
-        team1 = ResponseTeam(
-            id="ndrt_tunis_01",
-            name="NDRT Tunis Alpha",
-            code="NDRT-TUN-A",
-            team_type=TeamType.NDRT,
-            status=TeamStatus.AVAILABLE,
-            capacity=12,
-            base_location=Location(36.8065, 10.1815, "Siège CRT", "Tunis", "Tunis")
-        )
-        team1.members = [
-            TeamMember(
-                id="m001", volunteer_id="v001", name="Ahmed Ben Salah",
-                phone="+21698123456", email="ahmed@crt.tn",
-                role=MemberRole.TEAM_LEADER,
-                skills=[Skill("leadership", SkillLevel.EXPERT), Skill("first_aid", SkillLevel.ADVANCED)],
-                certifications=["NDRT_L3", "FIRST_AID_TRAINER"],
-                languages=["Arabic", "French", "English"]
-            ),
-            TeamMember(
-                id="m002", volunteer_id="v002", name="Fatma Trabelsi",
-                phone="+21697654321", email="fatma@crt.tn",
-                role=MemberRole.MEDIC,
-                skills=[Skill("medical", SkillLevel.EXPERT), Skill("first_aid", SkillLevel.EXPERT)],
-                certifications=["NURSE_LICENSE", "FIRST_AID_L3"],
-                languages=["Arabic", "French"]
-            ),
-            TeamMember(
-                id="m003", volunteer_id="v003", name="Mohamed Gharbi",
-                phone="+21699111222", email="mohamed@crt.tn",
-                role=MemberRole.LOGISTICS,
-                skills=[Skill("logistics", SkillLevel.ADVANCED), Skill("driving", SkillLevel.EXPERT)],
-                certifications=["LOGISTICS_CERT", "HEAVY_VEHICLE"],
-                languages=["Arabic", "French"]
+    def _load_from_db(self):
+        from src.database import SessionLocal, TeamState
+        session = SessionLocal()
+        try:
+            states = session.query(TeamState).all()
+            if states:
+                self.teams = []
+                for state in states:
+                    t = self._dict_to_team(state.payload)
+                    if t: self.teams.append(t)
+                logger.info(f"Successfully loaded {len(self.teams)} teams from PostgreSQL")
+            else:
+                logger.info("Database empty. Attempting to sync with Core Service MS1...")
+                self._sync_with_core_service()
+        except Exception as e:
+            logger.error(f"Failed to load teams from DB: {e}")
+            self._sync_with_core_service()
+        finally:
+            session.close()
+
+    def _persist_team(self, team: ResponseTeam):
+        from src.database import SessionLocal, TeamState
+        session = SessionLocal()
+        try:
+            state = session.query(TeamState).filter(TeamState.id == team.id).first()
+            if state:
+                state.payload = team.to_dict()
+            else:
+                state = TeamState(id=team.id, payload=team.to_dict())
+                session.add(state)
+            session.commit()
+        except Exception as e:
+            logger.error(f"Failed to persist team {team.id} to DB: {e}")
+            session.rollback()
+        finally:
+            session.close()
+
+    def _dict_to_team(self, d: Dict) -> ResponseTeam:
+        try:
+            loc = None
+            if d.get("base_location"):
+                bd = d["base_location"]
+                loc = Location(bd.get("lat", 0), bd.get("lon", 0), bd.get("address", ""), bd.get("city", ""), bd.get("region", ""))
+            
+            cur_loc = None
+            if d.get("current_location"):
+                cd = d["current_location"]
+                cur_loc = Location(cd.get("lat", 0), cd.get("lon", 0), cd.get("address", ""), cd.get("city", ""), cd.get("region", ""))
+                
+            members = []
+            for m in d.get("members", []):
+                mem = TeamMember(
+                    id=m.get("id"), volunteer_id=m.get("volunteer_id", ""), name=m.get("name", ""),
+                    phone=m.get("phone", ""), email=m.get("email", ""), 
+                    role=MemberRole(m.get("role", "medic")), is_available=m.get("is_available", True)
+                )
+                members.append(mem)
+
+            team_type_val = d.get("team_type", "NDRT")
+            team_type_enum = TeamType.NDRT
+            if team_type_val == "RDRT": team_type_enum = TeamType.RDRT
+            elif team_type_val == "IDRT": team_type_enum = TeamType.IDRT
+                
+            team = ResponseTeam(
+                id=d.get("id"), name=d.get("name"), code=d.get("code"),
+                team_type=team_type_enum, status=TeamStatus(d.get("status", "available")),
+                capacity=d.get("capacity", 10), base_location=loc, current_location=cur_loc,
+                members=members
             )
-        ]
-        
-        # Équipe RDRT Sfax
-        team2 = ResponseTeam(
-            id="rdrt_sfax_01",
-            name="RDRT Sfax Bravo",
-            code="RDRT-SFX-B",
-            team_type=TeamType.RDRT,
-            status=TeamStatus.AVAILABLE,
-            capacity=8,
-            base_location=Location(34.7406, 10.7603, "Comité Sfax", "Sfax", "Sfax")
-        )
-        team2.members = [
-            TeamMember(
-                id="m004", volunteer_id="v004", name="Karim Souissi",
-                phone="+21694555666", email="karim@crt.tn",
-                role=MemberRole.TEAM_LEADER,
-                skills=[Skill("leadership", SkillLevel.ADVANCED), Skill("search_rescue", SkillLevel.EXPERT)],
-                certifications=["RDRT_CERT", "SAR_ADVANCED"],
-                languages=["Arabic", "French"]
-            ),
-            TeamMember(
-                id="m005", volunteer_id="v005", name="Sonia Hamdi",
-                phone="+21693444555", email="sonia@crt.tn",
-                role=MemberRole.COMMUNICATIONS,
-                skills=[Skill("communications", SkillLevel.ADVANCED), Skill("radio", SkillLevel.EXPERT)],
-                certifications=["COMMS_CERT"],
-                languages=["Arabic", "French", "English"]
-            )
-        ]
-        
-        # Équipe déployée (pour test)
-        team3 = ResponseTeam(
-            id="ndrt_sousse_01",
-            name="NDRT Sousse Charlie",
-            code="NDRT-SOU-C",
-            team_type=TeamType.NDRT,
-            status=TeamStatus.DEPLOYED,
-            capacity=10,
-            base_location=Location(35.8245, 10.6346, "Comité Sousse", "Sousse", "Sousse"),
-            current_disaster_id="disaster_flood_2026_01"
-        )
-        
-        self.teams = [team1, team2, team3]
+            if d.get("deployed_at"): team.deployed_at = datetime.fromisoformat(d["deployed_at"])
+            if d.get("returned_at"): team.returned_at = datetime.fromisoformat(d["returned_at"])
+            if d.get("current_disaster_id"): team.current_disaster_id = d["current_disaster_id"]
+            return team
+        except Exception as e:
+            logger.error(f"Error parsing team dict: {e}")
+            return None
     
     def get_all_teams(self) -> List[ResponseTeam]:
         """Obtenir toutes les équipes"""
@@ -592,6 +586,7 @@ class TeamMatchingService:
             return {"success": False, "error": "Team not found"}
         
         if team.deploy(disaster_id, location):
+            self._persist_team(team)
             return {
                 "success": True,
                 "team": team.to_dict(),
@@ -607,6 +602,7 @@ class TeamMatchingService:
             return {"success": False, "error": "Team not found"}
         
         if team.return_to_base():
+            self._persist_team(team)
             return {
                 "success": True,
                 "team": team.to_dict(),
@@ -614,6 +610,16 @@ class TeamMatchingService:
             }
         else:
             return {"success": False, "error": "Team is not deployed"}
+
+    def release_teams_for_disaster(self, disaster_id: str) -> int:
+        """Retourner toutes les équipes déployées sur une catastrophe spécifique"""
+        count = 0
+        for team in self.get_all_teams():
+            if team.current_disaster_id == disaster_id and team.status != TeamStatus.AVAILABLE:
+                if team.return_to_base():
+                    self._persist_team(team)
+                    count += 1
+        return count
 
 
 # ============================================================

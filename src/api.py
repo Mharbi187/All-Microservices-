@@ -17,7 +17,7 @@ import logging
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Depends, Request
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Depends, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -213,6 +213,7 @@ class RealtimeResponse(BaseModel):
 
 class DispatchRequest(BaseModel):
     team_id: str
+    room_id: str | None = None
     lat: float
     lon: float
 
@@ -233,6 +234,8 @@ class AddParticipantRequest(BaseModel):
     name: str
     role: str = "coordinator"
     agency: str = "Red Crescent"
+    email: str = ""
+    phone: str = ""
 
 # ═══════════════════════════════════════════════════════════════
 #  SIMULATION SCENARIOS — Preset multi-wilaya disaster profiles
@@ -975,20 +978,130 @@ def create_crisis_room(req: CreateRoomRequest):
     return room.to_dict()
 
 @app.post("/api/v1/crisis-room/{room_id}/participants")
-def add_participant(room_id: str, req: AddParticipantRequest):
+async def add_participant(room_id: str, req: AddParticipantRequest, background_tasks: BackgroundTasks):
     room = crisis_service.get_crisis_room(room_id)
     if not room:
         raise HTTPException(status_code=404, detail="Room not found")
     
-    prole = ParticipantRole.COORDINATOR
-    if req.role.lower() == "commander": prole = ParticipantRole.COMMANDER
-    elif req.role.lower() == "logistics": prole = ParticipantRole.LOGISTICS
-    elif req.role.lower() == "field_medic": prole = ParticipantRole.FIELD_MEDIC
+    try:
+        prole = ParticipantRole(req.role.lower())
+    except ValueError:
+        prole = ParticipantRole.volunteer
     
-    room = crisis_service.handle_participant_transaction(room_id, req.user_id, req.name, prole, req.agency)
-    if not room:
-       raise HTTPException(status_code=404, detail="Room not found")
+    try:
+        room = crisis_service.handle_participant_transaction(room_id, req.user_id, req.name, prole, req.agency)
+        if not room:
+           raise HTTPException(status_code=404, detail="Room not found")
+           
+        # Envoyer un message système pour annoncer l'arrivée
+        sys_msg = crisis_service.handle_msg_transaction(
+            room_id=room_id,
+            sender_id="system",
+            sender_name="System",
+            content=f"L'utilisateur {req.name} ({req.role}) a été ajouté à la salle de crise.",
+            message_type=MessageType.SYSTEM
+        )
+        if sys_msg:
+            await manager.broadcast(room_id, {
+                "event": "NEW_MESSAGE",
+                "data": sys_msg.to_dict()
+            })
+    except Exception as e:
+        if str(e) == "DuplicateParticipant":
+            raise HTTPException(status_code=400, detail="Ce volontaire est déjà membre de la salle de crise.")
+        raise HTTPException(status_code=500, detail=str(e))
+       
+    # Trigger notifications in background
+    try:
+        from src.notification_service import notify_volunteer
+        background_tasks.add_task(
+            notify_volunteer,
+            name=req.name,
+            role=req.role,
+            room_id=room_id,
+            disaster_name=room.disaster_name,
+            phone=req.phone,
+            email=req.email
+        )
+    except Exception as e:
+        logger.error(f"Failed to add notification task: {e}")
+        
     return room.to_dict()
+
+@app.get("/api/v1/volunteers/{user_id}/crisis-rooms")
+def get_volunteer_crisis_rooms(user_id: str):
+    try:
+        rooms = crisis_service.get_rooms_by_participant(user_id)
+        return rooms
+    except Exception as e:
+        logger.error(f"Error fetching rooms for volunteer {user_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+class UpdateRoleRequest(BaseModel):
+    role: str
+
+@app.delete("/api/v1/crisis-room/{room_id}/participants/{user_id}")
+async def remove_participant(room_id: str, user_id: str):
+    success = crisis_service.remove_participant(room_id, user_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Participant or room not found")
+    
+    # Broadcast participant left
+    await manager.broadcast(room_id, {
+        "event": "PARTICIPANT_LEFT",
+        "data": {"user_id": user_id}
+    })
+    
+    return {"success": True}
+
+@app.put("/api/v1/crisis-room/{room_id}/participants/{user_id}/role")
+async def update_participant_role(room_id: str, user_id: str, req: UpdateRoleRequest):
+    try:
+        new_role = ParticipantRole(req.role.lower())
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid role")
+        
+    success = crisis_service.update_participant_role(room_id, user_id, new_role)
+    if not success:
+        raise HTTPException(status_code=404, detail="Participant or room not found")
+        
+    # Optionnel: Notifier le changement de rôle par websocket
+    sys_msg = crisis_service.handle_msg_transaction(
+        room_id=room_id,
+        sender_id="system",
+        sender_name="System",
+        content=f"Le rôle d'un membre a été mis à jour vers {req.role}.",
+        message_type=MessageType.SYSTEM
+    )
+    if sys_msg:
+        await manager.broadcast(room_id, {
+            "event": "NEW_MESSAGE",
+            "data": sys_msg.to_dict()
+        })
+        
+    return {"success": True}
+
+@app.get("/api/v1/crisis-room/active")
+def get_active_crisis_rooms():
+    from src.database import SessionLocal
+    from src.crisis_room import CrisisRoom, CrisisRoomStatus
+    db = SessionLocal()
+    try:
+        rooms = db.query(CrisisRoom).filter(CrisisRoom.status == CrisisRoomStatus.ACTIVE).all()
+        return [r.to_dict() for r in rooms]
+    finally:
+        db.close()
+
+class CloseRoomRequest(BaseModel):
+    closed_by: str
+    final_report: str
+
+@app.post("/api/v1/crisis-room/{room_id}/close")
+def close_crisis_room(room_id: str, req: CloseRoomRequest):
+    result = crisis_service.close_room(room_id, req.closed_by, req.final_report)
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("error"))
+    return result
 
 @app.get("/api/v1/crisis-room/{room_id}/summary")
 def get_crisis_summary(room_id: str):
@@ -1037,10 +1150,73 @@ async def ingest_cpr_metrics(room_id: str, data: dict):
 def get_available_teams():
     return [t.to_dict() for t in team_service.get_available_teams()]
 
+@app.get("/api/v1/teams/all")
+def get_all_teams():
+    return [t.to_dict() for t in team_service.get_all_teams()]
+
+@app.get("/api/v1/volunteers/search")
+def search_volunteers(q: str = "", room_id: Optional[str] = None):
+    from src.database import SessionLocal
+    from sqlalchemy import text
+    
+    db = SessionLocal()
+    results = []
+    try:
+        query_str = f"%{q.lower()}%"
+        # Search directly in the MS1 users and volunteers tables (by name or email)
+        sql = """
+            SELECT u.id, u.full_name, u.email, dtm.specialty, dtm.team_type, c.name, u.phone
+            FROM users u
+            JOIN volunteers v ON u.id = v.id
+            LEFT JOIN disaster_team_members dtm ON v.id = dtm.volunteer_id
+            LEFT JOIN committees c ON v.committee_id = c.id
+            WHERE (LOWER(u.full_name) LIKE :q OR LOWER(u.email) LIKE :q)
+        """
+        params = {"q": query_str}
+        if room_id:
+            sql += " AND CAST(u.id AS VARCHAR) NOT IN (SELECT user_id FROM room_participants WHERE room_id = :room_id)"
+            params["room_id"] = room_id
+            
+        sql += " LIMIT 20"
+        
+        cursor = db.execute(text(sql), params)
+        for r in cursor:
+            # 0: id, 1: name, 2: email, 3: specialty, 4: team_type, 5: committee_name, 6: phone
+            role = r[3] or "Bénévole"
+            team_type = r[4]
+            committee = r[5]
+            
+            # Construct a rich agency description (e.g. "Comité Régional de Tunis (RDRT)")
+            agency_parts = []
+            if committee:
+                agency_parts.append(committee)
+            if team_type:
+                agency_parts.append(team_type)
+            agency = " - ".join(agency_parts) if agency_parts else "Croissant Rouge"
+            
+            results.append({
+                "id": str(r[0]),
+                "name": r[1],
+                "email": r[2] or "",
+                "role": role,
+                "agency": agency,
+                "phone": r[6] or "21650000000"
+            })
+        return results
+    finally:
+        db.close()
+
 @app.post("/api/v1/teams/dispatch")
 async def dispatch_team(req: DispatchRequest):
     loc = Location(latitude=req.lat, longitude=req.lon)
-    res = team_service.deploy_team(req.team_id, "active_disaster", loc)
+    
+    disaster_id = "active_disaster"
+    if req.room_id:
+        room = crisis_service.get_crisis_room(req.room_id)
+        if room:
+            disaster_id = room.disaster_id
+            
+    res = team_service.deploy_team(req.team_id, disaster_id, loc)
     if not res["success"]:
         raise HTTPException(status_code=400, detail=res["error"])
     
@@ -1088,9 +1264,12 @@ async def crisis_websocket(websocket: WebSocket, room_id: str):
         while True:
             # Receive client messages (typing indicators, read receipts, etc.)
             data = await websocket.receive_json()
-            # Echo back or process
-            if data.get("type") == "READ_RECEIPT":
-                pass
+            # Broadcast typing and read events to other participants
+            if data.get("type") in ["TYPING_START", "TYPING_STOP", "READ_RECEIPT"]:
+                await manager.broadcast(room_id, {
+                    "event": data.get("type"),
+                    "data": data
+                })
     except WebSocketDisconnect:
         manager.disconnect(websocket, room_id)
         logger.info(f"Client disconnected from room {room_id}")
