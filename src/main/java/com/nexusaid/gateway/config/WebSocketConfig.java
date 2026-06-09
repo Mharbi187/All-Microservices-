@@ -9,20 +9,24 @@ import org.springframework.web.reactive.socket.server.support.HandshakeWebSocket
 import org.springframework.web.reactive.socket.server.upgrade.ReactorNettyRequestUpgradeStrategy;
 import reactor.netty.http.client.HttpClient;
 
+import org.springframework.context.annotation.Primary;
+
 @Configuration
 public class WebSocketConfig {
 
     private static final int MAX_FRAME_PAYLOAD_LENGTH = 10 * 1024 * 1024; // 10MB
 
     @Bean
-    public WebSocketClient webSocketClient() {
+    @Primary
+    public WebSocketClient customWebSocketClient() {
         return new ReactorNettyWebSocketClient(HttpClient.create(),
                 () -> reactor.netty.http.client.WebsocketClientSpec.builder()
                         .maxFramePayloadLength(MAX_FRAME_PAYLOAD_LENGTH));
     }
 
     @Bean
-    public WebSocketService webSocketService() {
+    @Primary
+    public WebSocketService customWebSocketService() {
         ReactorNettyRequestUpgradeStrategy strategy = new ReactorNettyRequestUpgradeStrategy();
         strategy.setMaxFramePayloadLength(MAX_FRAME_PAYLOAD_LENGTH);
         return new HandshakeWebSocketService(strategy);
