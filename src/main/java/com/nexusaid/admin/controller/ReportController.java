@@ -91,13 +91,15 @@ public class ReportController {
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
 
         ReportInstance archived = submissionService.archiveReport(id, userDetails.getUser().getId(), encrypt);
-        return ResponseEntity.ok(Map.of(
-                "message", "Report archived successfully.",
-                "reportId", id,
-                "contentHash", archived.getContentHash(),
-                "pdfStorageKey", archived.getPdfStorageKey(),
-                "encrypted", encrypt
-        ));
+        
+        java.util.Map<String, Object> response = new java.util.HashMap<>();
+        response.put("message", "Report archived successfully.");
+        response.put("reportId", id);
+        response.put("contentHash", archived.getContentHash());
+        response.put("pdfStorageKey", archived.getPdfStorageKey());
+        response.put("encrypted", encrypt);
+
+        return ResponseEntity.ok(response);
     }
 
     // ── PDF Export ────────────────────────────────────────────────────────────
