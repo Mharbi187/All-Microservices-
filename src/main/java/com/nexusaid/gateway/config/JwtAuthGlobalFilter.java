@@ -41,7 +41,8 @@ public class JwtAuthGlobalFilter implements GlobalFilter, Ordered {
             "/api/v1/disasters/",
             "/api/v1/teams/",
             "/api/v1/crisis-room/",
-            "/api/v1/logistics/");
+            "/api/v1/logistics/",
+            "/api/health");
 
     // Endpoints GET accessibles sans JWT (lecture publique pour la page d'inscription, etc.)
     private static final List<String> PUBLIC_GET_EXACT_PATHS = List.of(
