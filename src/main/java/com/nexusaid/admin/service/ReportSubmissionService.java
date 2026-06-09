@@ -202,18 +202,7 @@ public class ReportSubmissionService {
 
         long startTime = System.currentTimeMillis();
 
-        com.fasterxml.jackson.databind.JsonNode data = report.getFilledData();
-        if (data != null && data.has("_encrypted") && data.get("_encrypted").asBoolean()) {
-            try {
-                String cipherText = data.get("cipherText").asText();
-                String iv = data.get("iv").asText();
-                String plainText = encryptionService.decrypt(new EncryptionService.EncryptedData(cipherText, iv));
-                data = new com.fasterxml.jackson.databind.ObjectMapper().readTree(plainText);
-            } catch (Exception e) {
-                log.error("Failed to decrypt report data for PDF generation", e);
-                throw new RuntimeException("Cannot generate PDF: Data is encrypted and decryption failed.", e);
-            }
-        }
+        com.fasterxml.jackson.databind.JsonNode data = decryptReportData(report.getFilledData());
 
         String html = previewService.renderFilledHtml(
                 report.getTemplateVersion() != null ? report.getTemplateVersion().getStructure() : null,
@@ -249,18 +238,7 @@ public class ReportSubmissionService {
         ReportInstance report = reportRepository.findById(reportId)
                 .orElseThrow(() -> new RuntimeException("Report not found: " + reportId));
 
-        com.fasterxml.jackson.databind.JsonNode data = report.getFilledData();
-        if (data != null && data.has("_encrypted") && data.get("_encrypted").asBoolean()) {
-            try {
-                String cipherText = data.get("cipherText").asText();
-                String iv = data.get("iv").asText();
-                String plainText = encryptionService.decrypt(new EncryptionService.EncryptedData(cipherText, iv));
-                data = new com.fasterxml.jackson.databind.ObjectMapper().readTree(plainText);
-            } catch (Exception e) {
-                log.error("Failed to decrypt report data for PDF generation", e);
-                throw new RuntimeException("Cannot generate PDF: Data is encrypted and decryption failed.", e);
-            }
-        }
+        com.fasterxml.jackson.databind.JsonNode data = decryptReportData(report.getFilledData());
 
         String html = previewService.renderFilledHtml(
                 report.getTemplateVersion() != null ? report.getTemplateVersion().getStructure() : null,
@@ -325,6 +303,21 @@ public class ReportSubmissionService {
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────────
+
+    public com.fasterxml.jackson.databind.JsonNode decryptReportData(com.fasterxml.jackson.databind.JsonNode data) {
+        if (data != null && data.has("_encrypted") && data.get("_encrypted").asBoolean()) {
+            try {
+                String cipherText = data.get("cipherText").asText();
+                String iv = data.get("iv").asText();
+                String plainText = encryptionService.decrypt(new EncryptionService.EncryptedData(cipherText, iv));
+                return new com.fasterxml.jackson.databind.ObjectMapper().readTree(plainText);
+            } catch (Exception e) {
+                log.error("Failed to decrypt report data", e);
+                throw new RuntimeException("Cannot read data: Data is encrypted and decryption failed.", e);
+            }
+        }
+        return data;
+    }
 
     public java.util.List<ReportInstance> getAssignedReports(UUID userId) {
         return reportRepository.findByAssignedUsersContaining(userId);

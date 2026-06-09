@@ -168,10 +168,16 @@ public class ReportController {
         return ResponseEntity.ok(reportRepository.findAll());
     }
 
+    @Autowired
+    private jakarta.persistence.EntityManager entityManager;
+
     @GetMapping("/{id}")
     public ResponseEntity<ReportInstance> getById(@PathVariable UUID id) {
-        return ResponseEntity.ok(reportRepository.findByIdWithVersion(id)
-                .orElseThrow(() -> new RuntimeException("Report not found")));
+        ReportInstance report = reportRepository.findByIdWithVersion(id)
+                .orElseThrow(() -> new RuntimeException("Report not found"));
+        entityManager.detach(report);
+        report.setFilledData(submissionService.decryptReportData(report.getFilledData()));
+        return ResponseEntity.ok(report);
     }
 
     @GetMapping("/status/{status}")
