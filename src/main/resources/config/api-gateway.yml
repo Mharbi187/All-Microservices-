@@ -205,11 +205,26 @@ spring:
           predicates:
             - Path=/api/v1/disasters/**,/api/v1/radar,/api/v1/crisis-room/**,/api/v1/teams/**,/api/v1/logistics/**
 
-        # Unified FastAPI WebSocket
+        # CPR Assistant - REST API (Health & Session Management)
+        # Uses direct container URL to avoid Eureka registration race condition
+        - id: cpr-assistant-api
+          uri: http://cpr-assistant:8000
+          predicates:
+            - Path=/api/health,/api/session/**
+          filters:
+            - RewritePath=/api/(?<path>.*), /${path}
+
+        # CPR Assistant WebSocket
+        - id: cpr-assistant-ws
+          uri: ${CPR_ASSISTANT_WS_URL:ws://cpr-assistant:8000}
+          predicates:
+            - Path=/ws/session/**
+
+        # Disaster Detection WebSocket
         - id: disaster-ws
           uri: ${DISASTER_DETECTION_WS_URL:ws://disaster-detection:8000}
           predicates:
-            - Path=/ws/**
+            - Path=/ws/crisis/**
 
         # Unified Frontend — all SPA pages + public static assets
         - id: main-frontend
