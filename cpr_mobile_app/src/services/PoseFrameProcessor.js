@@ -8,6 +8,7 @@
  * No simulation stubs — this processes real camera data.
  */
 
+import * as ImageManipulator from 'expo-image-manipulator';
 import { backendAPI } from './BackendAPIService';
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
@@ -22,7 +23,7 @@ const FRAME_CONFIG = {
 
 // ─── SERVICE ──────────────────────────────────────────────────────────────────
 
-class PoseFrameProcessor {
+export class PoseFrameProcessor {
     constructor() {
         this.cameraRef = null;
         this.isProcessing = false;
@@ -109,7 +110,7 @@ class PoseFrameProcessor {
             let photo = null;
             try {
                 photo = await this.cameraRef.current.takePictureAsync({
-                    base64: true,
+                    base64: false, // We will base64 it after resizing
                     quality: FRAME_CONFIG.CAPTURE_QUALITY,
                     skipProcessing: true,
                 });
@@ -120,14 +121,34 @@ class PoseFrameProcessor {
                 return;
             }
 
-            if (!photo?.base64) {
+            if (!photo?.uri) {
+                this.isProcessing = false;
+                return;
+            }
+
+            // Bail if stopped while capturing
+            if (!this.isRunning) {
+                this.isProcessing = false;
+                return;
+            }
+
+            let base64Frame = null;
+            try {
+                const resized = await ImageManipulator.manipulateAsync(
+                    photo.uri,
+                    [{ resize: { width: 480 } }], // Resize down to 480px width to save bandwidth
+                    { compress: 0.5, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+                );
+                base64Frame = resized.base64;
+            } catch (resizeErr) {
+                console.log('[FrameProcessor] Resize failed:', resizeErr.message);
                 this.isProcessing = false;
                 return;
             }
 
             this.framesSent++;
 
-            // Bail if stopped while capturing
+            // Bail again just in case
             if (!this.isRunning) {
                 this.isProcessing = false;
                 return;
@@ -136,7 +157,7 @@ class PoseFrameProcessor {
             // ── 2. Send to backend for ML processing ──
             let backendResponse;
             try {
-                backendResponse = await backendAPI.processFrame(photo.uri, photo.base64);
+                backendResponse = await backendAPI.processFrame(photo.uri, base64Frame);
             } catch (netErr) {
                 this._handleBackendError({ error: netErr.message });
                 this.isProcessing = false;
