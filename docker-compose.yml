@@ -120,6 +120,12 @@ services:
       - SPRING_APPLICATION_NAME=admin-service
       - SPRING_CONFIG_IMPORT=optional:configserver:http://config-server:8888
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/nexusaid_admin
+      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME:-postgres}
+      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD:-postgres}
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_PORT=5672
+      - SPRING_RABBITMQ_USERNAME=${RABBITMQ_USER}
+      - SPRING_RABBITMQ_PASSWORD=${RABBITMQ_PASS}
       - CORE_SERVICE_URL=http://core-service:8080
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - JWT_PUBLIC_KEY=${JWT_PUBLIC_KEY}
@@ -128,6 +134,7 @@ services:
       - AES_MASTER_KEY=${AES_MASTER_KEY}
     depends_on:
       - postgres
+      - rabbitmq
       - eureka-server
       - config-server
     networks:
