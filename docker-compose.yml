@@ -1,0 +1,248 @@
+version: '3.8'
+
+# ─── SHARED NETWORK ─────────────────────────────────────────────
+# Ce réseau est partagé avec le stack monitoring
+# pour que Prometheus/Promtail puissent joindre les services par nom
+networks:
+  nexus-aid-net:
+    driver: bridge
+    name: nexus-aid-net
+
+services:
+  # ─── INFRASTRUCTURE ──────────────────────────────────────────────
+
+  minio:
+    image: minio/minio:latest
+    container_name: nexus-aid-minio
+    command: server /data --console-address ':9001'
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-nexusaid}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-nexusaid_minio_2026}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - nexus-aid-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  postgres-db:
+    image: postgres:15-alpine
+    container_name: nexus-aid-db
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_USER: postgres
+      POSTGRES_DB: nexusaid_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./postgres-init:/docker-entrypoint-initdb.d
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - nexus-aid-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d nexusaid_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: nexus-aid-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-nexusaid}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-nexusaid_secure_2026}
+    ports:
+      - "5673:5672"
+      - "15673:15672"
+    networks:
+      - nexus-aid-net
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    container_name: nexus-aid-redis
+    ports:
+      - "6380:6379"
+    networks:
+      - nexus-aid-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  eureka-server:
+    build: ./eureka-server
+    container_name: eureka-server
+    ports:
+      - "9761:8761"
+    environment:
+      - SERVER_PORT=8761
+    networks:
+      - nexus-aid-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8761/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+      start_period: 60s
+
+  config-server:
+    build: ./config-server
+    container_name: config-server
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    ports:
+      - "9888:8888"
+    environment:
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    networks:
+      - nexus-aid-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8888/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+      start_period: 60s
+
+  # ─── MICROSERVICES ───────────────────────────────────────────────
+  api-gateway:
+    build: ./api-gateway
+    container_name: api-gateway
+    depends_on:
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8060:8060"
+    env_file: .env
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - MANAGEMENT_HEALTH_REDIS_ENABLED=false
+    networks:
+      - nexus-aid-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8060/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+      start_period: 60s
+
+  admin-service:
+    build: ./admin-service
+    container_name: admin-service
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    env_file: .env
+    ports:
+      - "9081:8081"
+    networks:
+      - nexus-aid-net
+    restart: on-failure
+
+  core-service:
+    build: ./core-service
+    container_name: core-service
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    env_file: .env
+    ports:
+      - "9082:8080"
+    networks:
+      - nexus-aid-net
+    restart: on-failure
+
+  disaster-detection:
+    build: ./disaster-detection
+    container_name: disaster-detection
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      core-service:
+        condition: service_started
+    env_file: .env
+    environment:
+      - CORE_SERVICE_URL=http://core-service:8080
+      - DATABASE_URL=postgresql://postgres:postgres@postgres-db:5432/nexusaid_db
+    volumes:
+      - .:/app/config
+    expose:
+      - "8000"
+    networks:
+      - nexus-aid-net
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/status')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: on-failure
+
+  # ─── FRONTEND ────────────────────────────────────────────────────
+  frontend:
+    build: ./nexus-aid-frontend
+    container_name: nexus-aid-frontend
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+    ports:
+      - "9173:80"
+    env_file: .env
+    networks:
+      - nexus-aid-net
+
+  # ─── PDF SERVICE ─────────────────────────────────────────────────
+  pdf-service:
+    build: ./pdf-service
+    container_name: nexus-aid-pdf-service
+    environment:
+      - PORT=3001
+      - CHROMIUM_PATH=/usr/bin/chromium-browser
+    ports:
+      - "3001:3001"
+    networks:
+      - nexus-aid-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3001/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: on-failure
+
+volumes:
+  postgres_data:
+  minio_data:

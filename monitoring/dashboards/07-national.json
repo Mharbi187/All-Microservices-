@@ -1,0 +1,153 @@
+{
+  "id": null,
+  "uid": "nexusaid-national",
+  "title": "🇩🇿 NexusAid — Dashboard National",
+  "description": "Vue nationale — Tous comités, volontaires, formateurs, classements — ADMIN / RESPONSABLE NATIONAL / VP NATIONAL",
+  "tags": ["nexusaid", "national", "admin"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "5m",
+  "time": { "from": "now-30d", "to": "now" },
+  "annotations": {
+    "list": [{
+      "name": "Alertes",
+      "datasource": { "type": "prometheus" },
+      "enable": true,
+      "expr": "ALERTS{job=~\"core-service|api-gateway\"}",
+      "step": "60s",
+      "titleFormat": "{{alertname}}",
+      "textFormat": "{{description}}"
+    }]
+  },
+  "panels": [
+    {
+      "id": 1, "title": "🏛️ Total Comités", "type": "stat",
+      "gridPos": { "x": 0, "y": 0, "w": 4, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "blue" } } },
+      "targets": [{ "datasource": { "type": "prometheus" }, "expr": "nexusaid_committees_total or vector(0)", "legendFormat": "Comités" }]
+    },
+    {
+      "id": 2, "title": "👥 Total Volontaires", "type": "stat",
+      "gridPos": { "x": 4, "y": 0, "w": 4, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "green" } } },
+      "targets": [{ "datasource": { "type": "prometheus" }, "expr": "nexusaid_volunteers_total or vector(0)", "legendFormat": "Volontaires" }]
+    },
+    {
+      "id": 3, "title": "👨‍🏫 Total Formateurs", "type": "stat",
+      "gridPos": { "x": 8, "y": 0, "w": 4, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "orange" } } },
+      "targets": [{ "datasource": { "type": "prometheus" }, "expr": "nexusaid_trainers_total or vector(0)", "legendFormat": "Formateurs" }]
+    },
+    {
+      "id": 4, "title": "🚑 Total Tests RCP", "type": "stat",
+      "gridPos": { "x": 12, "y": 0, "w": 4, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "red" } } },
+      "targets": [{ "datasource": { "type": "prometheus" }, "expr": "nexusaid_rcp_evaluations_total or vector(0)", "legendFormat": "Tests" }]
+    },
+    {
+      "id": 5, "title": "📄 PDFs Total", "type": "stat",
+      "gridPos": { "x": 16, "y": 0, "w": 4, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "purple" } } },
+      "targets": [{ "datasource": { "type": "prometheus" }, "expr": "nexusaid_pdf_generated_total or vector(0)", "legendFormat": "PDFs" }]
+    },
+    {
+      "id": 6, "title": "🌐 Utilisateurs Actifs (24h)", "type": "stat",
+      "gridPos": { "x": 20, "y": 0, "w": 4, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "teal" } } },
+      "targets": [{ "datasource": { "type": "prometheus" }, "expr": "increase(http_server_requests_seconds_count{job=\"core-service\",uri=~\"/api/v1/auth/login.*\",status=\"200\"}[24h]) or vector(0)", "legendFormat": "Actifs" }]
+    },
+    {
+      "id": 10,
+      "title": "📈 Activité Nationale (30 jours)",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 4, "w": 16, "h": 8 },
+      "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "table", "placement": "right", "calcs": ["sum", "mean"] } },
+      "fieldConfig": { "defaults": { "custom": { "lineWidth": 2, "fillOpacity": 5 } } },
+      "targets": [
+        { "datasource": { "type": "prometheus" }, "expr": "increase(http_server_requests_seconds_count{job=\"core-service\",status=\"200\"}[1d])", "legendFormat": "Requêtes Réussies" },
+        { "datasource": { "type": "prometheus" }, "expr": "increase(nexusaid_rcp_evaluations_total[1d]) or vector(0)", "legendFormat": "Évaluations RCP" },
+        { "datasource": { "type": "prometheus" }, "expr": "increase(nexusaid_pdf_generated_total[1d]) or vector(0)", "legendFormat": "PDFs Générés" }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "🔐 Sécurité Nationale",
+      "type": "timeseries",
+      "gridPos": { "x": 16, "y": 4, "w": 8, "h": 8 },
+      "options": { "tooltip": { "mode": "multi" } },
+      "fieldConfig": { "defaults": { "custom": { "lineWidth": 2 } } },
+      "targets": [
+        { "datasource": { "type": "prometheus" }, "expr": "increase(http_server_requests_seconds_count{job=\"core-service\",uri=~\"/api/v1/auth/login.*\",status=\"200\"}[1d])", "legendFormat": "✅ Connexions" },
+        { "datasource": { "type": "prometheus" }, "expr": "increase(http_server_requests_seconds_count{job=\"core-service\",uri=~\"/api/v1/auth/login.*\",status=\"401\"}[1d])", "legendFormat": "❌ Échecs" }
+      ]
+    },
+    {
+      "id": 20,
+      "title": "🏆 Classement Activité par Service",
+      "type": "barchart",
+      "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
+      "options": { "orientation": "horizontal", "xTickLabelRotation": 0, "groupWidth": 0.7, "tooltip": { "mode": "single" } },
+      "targets": [
+        { "datasource": { "type": "prometheus" }, "expr": "sum by (job) (increase(http_server_requests_seconds_count{status=\"200\"}[7d]))", "legendFormat": "{{job}}", "instant": true }
+      ]
+    },
+    {
+      "id": 21,
+      "title": "⚠️ Alertes Actives",
+      "type": "table",
+      "gridPos": { "x": 12, "y": 12, "w": 12, "h": 8 },
+      "options": { "sortBy": [{ "displayName": "Sévérité", "desc": true }] },
+      "fieldConfig": {
+        "defaults": { "custom": { "displayMode": "auto" } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "severity" }, "properties": [
+            { "id": "custom.displayMode", "value": "color-background" },
+            { "id": "mappings", "value": [
+              { "type": "value", "options": { "critical": { "text": "🔴 CRITIQUE", "color": "red" }, "warning": { "text": "⚠️ WARNING", "color": "orange" } } }
+            ]}
+          ]}
+        ]
+      },
+      "targets": [{
+        "datasource": { "type": "prometheus" },
+        "expr": "ALERTS{alertstate=\"firing\"}",
+        "legendFormat": "{{alertname}}",
+        "instant": true,
+        "format": "table"
+      }]
+    },
+    {
+      "id": 30,
+      "title": "📊 Répartition Requêtes par Endpoint National",
+      "type": "piechart",
+      "gridPos": { "x": 0, "y": 20, "w": 12, "h": 8 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "pieType": "donut", "tooltip": { "mode": "single" }, "legend": { "displayMode": "table", "placement": "right" } },
+      "targets": [{
+        "datasource": { "type": "prometheus" },
+        "expr": "topk(8, sum by (uri) (increase(http_server_requests_seconds_count{job=\"core-service\",status=\"200\"}[24h])))",
+        "legendFormat": "{{uri}}",
+        "instant": true
+      }]
+    },
+    {
+      "id": 31,
+      "title": "🕐 Logs Nationaux (dernière heure)",
+      "type": "logs",
+      "gridPos": { "x": 12, "y": 20, "w": 12, "h": 8 },
+      "options": { "dedupStrategy": "none", "enableLogDetails": true, "showTime": true, "sortOrder": "Descending" },
+      "targets": [{
+        "datasource": { "type": "loki" },
+        "expr": "{container=~\"core-service|admin-service|api-gateway\"} | level = \"ERROR\"",
+        "legendFormat": "",
+        "maxLines": 50
+      }]
+    }
+  ]
+}

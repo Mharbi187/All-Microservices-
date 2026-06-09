@@ -1,0 +1,148 @@
+﻿2026-06-05 23:07:25,355 INFO supervisord started with pid 1
+2026-06-05 23:07:25,355 INFO supervisord started with pid 1
+2026-06-05 23:07:26,359 INFO spawned: 'daemon' with pid 7
+2026-06-05 23:07:26,359 INFO spawned: 'daemon' with pid 7
+2026-06-05 23:07:26,361 INFO spawned: 'unified_fastapi' with pid 8
+2026-06-05 23:07:26,361 INFO spawned: 'unified_fastapi' with pid 8
+2026-06-05 23:07:27,364 INFO success: daemon entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+2026-06-05 23:07:27,364 INFO success: daemon entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+2026-06-05 23:07:27,365 INFO success: unified_fastapi entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+2026-06-05 23:07:27,365 INFO success: unified_fastapi entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+2026-06-05 23:07:28,800 WARN exited: unified_fastapi (exit status 1; not expected)
+2026-06-05 23:07:28,800 WARN exited: unified_fastapi (exit status 1; not expected)
+2026-06-05 23:07:29,805 INFO spawned: 'unified_fastapi' with pid 56
+2026-06-05 23:07:29,805 INFO spawned: 'unified_fastapi' with pid 56
+2026-06-05 23:07:30,798 WARN exited: unified_fastapi (exit status 1; not expected)
+2026-06-05 23:07:30,798 WARN exited: unified_fastapi (exit status 1; not expected)
+2026-06-05 23:07:31,803 INFO spawned: 'unified_fastapi' with pid 57
+2026-06-05 23:07:31,803 INFO spawned: 'unified_fastapi' with pid 57
+2026-06-05 23:07:32,806 INFO success: unified_fastapi entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+2026-06-05 23:07:32,806 INFO success: unified_fastapi entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+2026-06-05 23:07:32,884 WARN exited: unified_fastapi (exit status 1; not expected)
+2026-06-05 23:07:32,884 WARN exited: unified_fastapi (exit status 1; not expected)
+2026-06-05 23:07:33,888 INFO spawned: 'unified_fastapi' with pid 58
+2026-06-05 23:07:33,888 INFO spawned: 'unified_fastapi' with pid 58
+2026-06-05 23:07:34,890 INFO success: unified_fastapi entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+2026-06-05 23:07:34,890 INFO success: unified_fastapi entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+2026-06-05 23:07:35,016 WARN exited: unified_fastapi (exit status 1; not expected)
+2026-06-05 23:07:35,016 WARN exited: unified_fastapi (exit status 1; not expected)
+2026-06-05 23:07:36,020 INFO spawned: 'unified_fastapi' with pid 65
+2026-06-05 23:07:36,020 INFO spawned: 'unified_fastapi' with pid 65
+2026-06-05 23:07:37,088 INFO success: unified_fastapi entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+2026-06-05 23:07:37,088 INFO success: unified_fastapi entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+2026-06-05 23:07:37,146 WARN exited: unified_fastapi (exit status 1; not expected)
+2026-06-05 23:07:37,146 WARN exited: unified_fastapi (exit status 1; not expected)
+2026-06-05 23:07:38,150 INFO spawned: 'unified_fastapi' with pid 66
+2026-06-05 23:07:38,150 INFO spawned: 'unified_fastapi' with pid 66
+2026-06-05 23:07:39,045 WARN exited: unified_fastapi (exit status 1; not expected)
+2026-06-05 23:07:39,045 WARN exited: unified_fastapi (exit status 1; not expected)
+2026-06-05 23:07:40,048 INFO spawned: 'unified_fastapi' with pid 67
+2026-06-05 23:07:40,048 INFO spawned: 'unified_fastapi' with pid 67
+2026-06-05 23:07:40,716 WARN exited: unified_fastapi (exit status 1; not expected)
+2026-06-05 23:07:40,716 WARN exited: unified_fastapi (exit status 1; not expected)
+2026-06-05 23:07:43,177 INFO spawned: 'unified_fastapi' with pid 74
+2026-06-05 23:07:43,177 INFO spawned: 'unified_fastapi' with pid 74
+2026-06-05 23:07:44,181 INFO success: unified_fastapi entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+2026-06-05 23:07:44,181 INFO success: unified_fastapi entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+2026-06-05 23:07:44,182 WARN exited: unified_fastapi (exit status 1; not expected)
+2026-06-05 23:07:44,182 WARN exited: unified_fastapi (exit status 1; not expected)
+2026-06-05 23:07:45,171 INFO spawned: 'unified_fastapi' with pid 75
+2026-06-05 23:07:45,171 INFO spawned: 'unified_fastapi' with pid 75
+2026-06-05 23:07:45,900 WARN exited: unified_fastapi (exit status 1; not expected)
+2026-06-05 23:07:45,900 WARN exited: unified_fastapi (exit status 1; not expected)
+2026-06-05 23:07:47,434 INFO spawned: 'unified_fastapi' with pid 82
+2026-06-05 23:07:47,434 INFO spawned: 'unified_fastapi' with pid 82
+2026-06-05 23:07:48,364 WARN exited: unified_fastapi (exit status 1; not expected)
+2026-06-05 23:07:48,364 WARN exited: unified_fastapi (exit status 1; not expected)
+2026-06-05 23:07:50,438 INFO spawned: 'unified_fastapi' with pid 83
+2026-06-05 23:07:50,438 INFO spawned: 'unified_fastapi' with pid 83
+2026-06-05 23:07:51,263 WARN exited: unified_fastapi (exit status 1; not expected)
+2026-06-05 23:07:51,263 WARN exited: unified_fastapi (exit status 1; not expected)
+2026-06-05 23:07:54,270 INFO spawned: 'unified_fastapi' with pid 84
+2026-06-05 23:07:54,270 INFO spawned: 'unified_fastapi' with pid 84
+2026-06-05 23:07:55,049 WARN exited: unified_fastapi (exit status 1; not expected)
+2026-06-05 23:07:55,049 WARN exited: unified_fastapi (exit status 1; not expected)
+2026-06-05 23:07:56,050 INFO gave up: unified_fastapi entered FATAL state, too many start retries too quickly
+2026-06-05 23:07:56,050 INFO gave up: unified_fastapi entered FATAL state, too many start retries too quickly
+2026-06-06 03:08:27,613 WARN received SIGTERM indicating exit request
+2026-06-06 03:08:27,613 WARN received SIGTERM indicating exit request
+2026-06-06 03:08:27,623 INFO waiting for daemon to die
+2026-06-06 03:08:27,623 INFO waiting for daemon to die
+2026-06-06 12:03:22,709 INFO supervisord started with pid 1
+2026-06-06 12:03:22,709 INFO supervisord started with pid 1
+2026-06-06 12:03:23,716 INFO spawned: 'daemon' with pid 7
+2026-06-06 12:03:23,716 INFO spawned: 'daemon' with pid 7
+2026-06-06 12:03:23,721 INFO spawned: 'unified_fastapi' with pid 8
+2026-06-06 12:03:23,721 INFO spawned: 'unified_fastapi' with pid 8
+2026-06-06 12:03:24,725 INFO success: daemon entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+2026-06-06 12:03:24,725 INFO success: daemon entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+2026-06-06 12:03:24,725 INFO success: unified_fastapi entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+2026-06-06 12:03:24,725 INFO success: unified_fastapi entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+2026-06-06 12:03:25,889 WARN exited: unified_fastapi (exit status 1; not expected)
+2026-06-06 12:03:25,889 WARN exited: unified_fastapi (exit status 1; not expected)
+2026-06-06 12:03:26,896 INFO spawned: 'unified_fastapi' with pid 34
+2026-06-06 12:03:26,896 INFO spawned: 'unified_fastapi' with pid 34
+2026-06-06 12:03:27,899 INFO success: unified_fastapi entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+2026-06-06 12:03:27,899 INFO success: unified_fastapi entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+2026-06-06 12:03:28,647 WARN exited: unified_fastapi (exit status 1; not expected)
+2026-06-06 12:03:28,647 WARN exited: unified_fastapi (exit status 1; not expected)
+2026-06-06 12:03:29,650 INFO spawned: 'unified_fastapi' with pid 55
+2026-06-06 12:03:29,650 INFO spawned: 'unified_fastapi' with pid 55
+2026-06-06 12:03:30,651 INFO success: unified_fastapi entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+2026-06-06 12:03:30,651 INFO success: unified_fastapi entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+2026-06-06 12:03:30,651 WARN received SIGTERM indicating exit request
+2026-06-06 12:03:30,651 WARN received SIGTERM indicating exit request
+2026-06-06 12:03:30,652 INFO waiting for daemon, unified_fastapi to die
+2026-06-06 12:03:30,652 INFO waiting for daemon, unified_fastapi to die
+2026-06-06 12:03:30,654 WARN stopped: unified_fastapi (terminated by SIGTERM)
+2026-06-06 12:03:30,654 WARN stopped: unified_fastapi (terminated by SIGTERM)
+2026-06-06 12:03:30,669 WARN stopped: daemon (terminated by SIGTERM)
+2026-06-06 12:03:30,669 WARN stopped: daemon (terminated by SIGTERM)
+2026-06-06 12:04:08,308 INFO supervisord started with pid 1
+2026-06-06 12:04:08,308 INFO supervisord started with pid 1
+2026-06-06 12:04:09,311 INFO spawned: 'daemon' with pid 7
+2026-06-06 12:04:09,311 INFO spawned: 'daemon' with pid 7
+2026-06-06 12:04:09,314 INFO spawned: 'unified_fastapi' with pid 8
+2026-06-06 12:04:09,314 INFO spawned: 'unified_fastapi' with pid 8
+2026-06-06 12:04:10,317 INFO success: daemon entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+2026-06-06 12:04:10,317 INFO success: daemon entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+2026-06-06 12:04:10,317 INFO success: unified_fastapi entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+2026-06-06 12:04:10,317 INFO success: unified_fastapi entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+2026-06-06 12:04:11,543 WARN exited: unified_fastapi (exit status 1; not expected)
+2026-06-06 12:04:11,543 WARN exited: unified_fastapi (exit status 1; not expected)
+2026-06-06 12:04:12,546 INFO spawned: 'unified_fastapi' with pid 49
+2026-06-06 12:04:12,546 INFO spawned: 'unified_fastapi' with pid 49
+2026-06-06 12:04:13,547 INFO success: unified_fastapi entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+2026-06-06 12:04:13,547 INFO success: unified_fastapi entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+2026-06-06 12:04:13,684 WARN exited: unified_fastapi (exit status 1; not expected)
+2026-06-06 12:04:13,684 WARN exited: unified_fastapi (exit status 1; not expected)
+2026-06-06 12:04:14,687 INFO spawned: 'unified_fastapi' with pid 56
+2026-06-06 12:04:14,687 INFO spawned: 'unified_fastapi' with pid 56
+2026-06-06 12:04:15,689 INFO success: unified_fastapi entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+2026-06-06 12:04:15,689 INFO success: unified_fastapi entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+2026-06-06 12:04:15,758 WARN exited: unified_fastapi (exit status 1; not expected)
+2026-06-06 12:04:15,758 WARN exited: unified_fastapi (exit status 1; not expected)
+2026-06-06 12:04:16,761 INFO spawned: 'unified_fastapi' with pid 57
+2026-06-06 12:04:16,761 INFO spawned: 'unified_fastapi' with pid 57
+2026-06-06 12:04:18,323 INFO success: unified_fastapi entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+2026-06-06 12:04:18,323 INFO success: unified_fastapi entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+2026-06-06 12:04:19,698 WARN exited: unified_fastapi (exit status 1; not expected)
+2026-06-06 12:04:19,698 WARN exited: unified_fastapi (exit status 1; not expected)
+2026-06-06 12:04:20,701 INFO spawned: 'unified_fastapi' with pid 64
+2026-06-06 12:04:20,701 INFO spawned: 'unified_fastapi' with pid 64
+2026-06-06 12:04:21,556 WARN exited: unified_fastapi (exit status 1; not expected)
+2026-06-06 12:04:21,556 WARN exited: unified_fastapi (exit status 1; not expected)
+2026-06-06 12:04:22,769 INFO spawned: 'unified_fastapi' with pid 65
+2026-06-06 12:04:22,769 INFO spawned: 'unified_fastapi' with pid 65
+2026-06-06 12:04:23,582 WARN exited: unified_fastapi (exit status 1; not expected)
+2026-06-06 12:04:23,582 WARN exited: unified_fastapi (exit status 1; not expected)
+2026-06-06 12:04:25,585 INFO spawned: 'unified_fastapi' with pid 72
+2026-06-06 12:04:25,585 INFO spawned: 'unified_fastapi' with pid 72
+2026-06-06 12:04:26,216 WARN exited: unified_fastapi (exit status 1; not expected)
+2026-06-06 12:04:26,216 WARN exited: unified_fastapi (exit status 1; not expected)
+2026-06-06 12:04:29,222 INFO spawned: 'unified_fastapi' with pid 73
+2026-06-06 12:04:29,222 INFO spawned: 'unified_fastapi' with pid 73
+2026-06-06 12:04:29,869 WARN exited: unified_fastapi (exit status 1; not expected)
+2026-06-06 12:04:29,869 WARN exited: unified_fastapi (exit status 1; not expected)
+2026-06-06 12:04:30,870 INFO gave up: unified_fastapi entered FATAL state, too many start retries too quickly
+2026-06-06 12:04:30,870 INFO gave up: unified_fastapi entered FATAL state, too many start retries too quickly

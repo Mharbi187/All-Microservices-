@@ -1,0 +1,56 @@
+{
+    "app": {
+        "name": "Nexus-AID",
+        "tagline": "الهلال الأحمر التونسي"
+    },
+    "nav": {
+        "dashboard": "لوحة القيادة",
+        "volunteers": "المتطوعون",
+        "committees": "اللجان",
+        "stocks": "المخزون",
+        "donations": "التبرعات",
+        "firstAid": "الإسعافات الأولية بالذكاء الاصطناعي",
+        "reports": "التقارير",
+        "disasters": "الكوارث",
+        "settings": "الإعدادات",
+        "profile": "ملفي الشخصي"
+    },
+    "auth": {
+        "login": "تسجيل الدخول",
+        "logout": "تسجيل الخروج",
+        "email": "البريد الإلكتروني",
+        "password": "كلمة المرور",
+        "forgotPassword": "هل نسيت كلمة المرور؟",
+        "welcomeBack": "مرحبًا بعودتك",
+        "loginSubtitle": "سجّل الدخول إلى مساحتك في Nexus-AID"
+    },
+    "dashboard": {
+        "title": "لوحة القيادة",
+        "totalVolunteers": "إجمالي المتطوعين",
+        "activeAlerts": "التنبيهات النشطة",
+        "stockItems": "عناصر المخزون",
+        "donations": "تبرعات هذا الشهر",
+        "recentActivity": "النشاط الأخير",
+        "quickActions": "إجراءات سريعة"
+    },
+    "common": {
+        "save": "حفظ",
+        "cancel": "إلغاء",
+        "delete": "حذف",
+        "edit": "تعديل",
+        "add": "إضافة",
+        "search": "بحث",
+        "filter": "تصفية",
+        "export": "تصدير",
+        "loading": "جارٍ التحميل...",
+        "noData": "لا توجد بيانات",
+        "confirm": "تأكيد",
+        "back": "رجوع",
+        "next": "التالي",
+        "actions": "إجراءات",
+        "status": "الحالة",
+        "date": "التاريخ",
+        "name": "الاسم",
+        "description": "الوصف"
+    }
+}

@@ -1,0 +1,146 @@
+server:
+  http_listen_port: 9080
+  log_level: info
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+    batchwait: 1s
+    batchsize: 1048576
+    timeout: 10s
+    backoff_config:
+      min_period: 100ms
+      max_period: 10s
+      max_retries: 10
+
+scrape_configs:
+
+  # ─── DOCKER CONTAINERS — Discovery automatique ───────────────
+  - job_name: 'docker-containers'
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        filters:
+          - name: label
+            values: []
+    relabel_configs:
+      # Utiliser le nom du container comme job
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: 'container'
+      # Utiliser l'image comme service
+      - source_labels: ['__meta_docker_container_image']
+        target_label: 'image'
+      # Filtrer uniquement nos services NexusAid
+      - source_labels: ['container']
+        regex: 'nexus-.*|api-gateway|core-service|admin-service|eureka-server|config-server|disaster-detection'
+        action: keep
+      - source_labels: ['container']
+        target_label: 'job'
+    pipeline_stages:
+      # Parser le format JSON des logs Spring Boot
+      - multiline:
+          firstline: '^\d{4}-\d{2}-\d{2}'
+          max_wait_time: 3s
+      - regex:
+          expression: '^(?P<timestamp>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[^\s]*)\s+(?P<level>[A-Z]+)\s+(?P<pid>\d+)\s+---\s+\[(?P<thread>[^\]]+)\]\s+(?P<logger>[^\s]+)\s+:\s+(?P<message>.*)'
+      - labels:
+          level:
+          logger:
+      - timestamp:
+          source: timestamp
+          format: '2006-01-02T15:04:05.999-07:00'
+      # Enrichir avec labels de sécurité
+      - match:
+          selector: '{container=~"core-service|api-gateway"}'
+          stages:
+            - regex:
+                expression: '(?P<security_event>LOGIN_SUCCESS|LOGIN_FAILURE|BLOCKED_IP|BRUTE_FORCE|SUSPICIOUS|ANOMALY|AUDIT|SECURITY)'
+            - labels:
+                security_event:
+
+  # ─── API GATEWAY logs ───────────────────────────────────────
+  - job_name: 'api-gateway'
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        filters:
+          - name: name
+            values: ['api-gateway']
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: 'container'
+      - target_label: 'job'
+        replacement: 'api-gateway'
+    pipeline_stages:
+      - regex:
+          expression: '(?P<level>ERROR|WARN|INFO|DEBUG)'
+      - labels:
+          level:
+      - match:
+          selector: '{level="ERROR"}'
+          stages:
+            - labels:
+                log_type: 'error'
+      - match:
+          selector: '{container="api-gateway"}'
+          pipeline_name: 'gateway-security'
+          stages:
+            - regex:
+                expression: '(?P<status_code>4\d{2}|5\d{2})'
+            - labels:
+                status_code:
+
+  # ─── CORE SERVICE (Auth + Security) ─────────────────────────
+  - job_name: 'core-service'
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        filters:
+          - name: name
+            values: ['core-service']
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: 'container'
+      - target_label: 'job'
+        replacement: 'core-service'
+    pipeline_stages:
+      - multiline:
+          firstline: '^\d{4}-\d{2}-\d{2}'
+          max_wait_time: 3s
+      - regex:
+          expression: '^(?P<timestamp>[^\s]+)\s+(?P<level>ERROR|WARN|INFO|DEBUG)\s+.*:\s+(?P<message>.*)'
+      - labels:
+          level:
+      # Détecter événements de sécurité
+      - match:
+          selector: '{job="core-service"}'
+          stages:
+            - regex:
+                expression: '(?i)(?P<log_type>LOGIN_SUCCESS|LOGIN_FAILURE|BLOCKED_IP|BRUTE_FORCE|CAPTCHA|SUSPICIOUS|ANOMALY|LOGOUT|TOKEN_REFRESH|ACCOUNT_LOCKED|PASSWORD_RESET)'
+            - labels:
+                log_type:
+
+  # ─── POSTGRESQL LOGS ────────────────────────────────────────
+  - job_name: 'postgresql'
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        filters:
+          - name: name
+            values: ['nexus-aid-db']
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: 'container'
+      - target_label: 'job'
+        replacement: 'postgresql'
+    pipeline_stages:
+      - regex:
+          expression: '(?P<level>ERROR|WARNING|FATAL|LOG|HINT|NOTICE)'
+      - labels:
+          level:

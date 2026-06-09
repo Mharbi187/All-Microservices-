@@ -1,0 +1,456 @@
+// ============================================================
+// NEXUS-AID — Main Layout
+// Dashboard layout with role-based sidebar, header, and content
+// ============================================================
+
+import { Suspense, useMemo } from 'react';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { Layout, Menu, Spin, Avatar, Dropdown, Button, Space, Typography, Badge, Breadcrumb, Tooltip, Tag } from 'antd';
+import {
+    DashboardOutlined,
+    TeamOutlined,
+    ApartmentOutlined,
+    InboxOutlined,
+    FileTextOutlined,
+    SettingOutlined,
+    LogoutOutlined,
+    UserOutlined,
+    MenuFoldOutlined,
+    MenuUnfoldOutlined,
+    MoonOutlined,
+    SunOutlined,
+    GiftOutlined,
+    BellOutlined,
+    MedicineBoxOutlined,
+    SoundOutlined,
+    SmileOutlined,
+    HeartOutlined,
+    HomeOutlined,
+    GlobalOutlined,
+    SafetyOutlined,
+    AuditOutlined,
+    RadarChartOutlined,
+} from '@ant-design/icons';
+import type { MenuProps } from 'antd';
+import { useTranslation } from 'react-i18next';
+import { useUIStore, useAuthStore } from '@/stores';
+import { getUserPermissions } from '@/config/roleConfig';
+
+const { Sider, Header, Content } = Layout;
+const { Text } = Typography;
+
+const MainLayout: React.FC = () => {
+    const { t } = useTranslation();
+    const navigate = useNavigate();
+    const location = useLocation();
+
+    const { sidebarCollapsed, toggleSidebar, themeMode, toggleTheme } = useUIStore();
+    const { user, logout } = useAuthStore();
+
+    // Get permissions based on user type + committee roles
+    const permissions = useMemo(() => {
+        return getUserPermissions(user?.roles || [], user?.type);
+    }, [user?.roles, user?.type]);
+
+    // Helper to check if a route/key is allowed
+    const isAllowed = (key: string) => permissions.sidebarKeys.includes(key);
+
+    // ---- Build role-based sidebar menu items ----
+    const menuItems: MenuProps['items'] = useMemo(() => {
+        const items: MenuProps['items'] = [];
+
+        // Dashboard — always visible
+        items.push({
+            key: '/dashboard',
+            icon: <DashboardOutlined />,
+            label: t('nav.dashboard'),
+        });
+
+        // Volunteer Space
+        const volunteerChildren: MenuProps['items'] = [];
+        if (isAllowed('/volunteer/profile')) {
+            volunteerChildren.push({
+                key: '/volunteer/profile',
+                icon: <UserOutlined />,
+                label: 'Mon Profil',
+            });
+        }
+        if (isAllowed('/volunteer/committee')) {
+            volunteerChildren.push({
+                key: '/volunteer/committee',
+                icon: <ApartmentOutlined />,
+                label: 'Mon Comité',
+            });
+        }
+        if (isAllowed('/volunteer/complaints')) {
+            volunteerChildren.push({
+                key: '/volunteer/complaints',
+                icon: <SoundOutlined />, // or anything else
+                label: 'Réclamations',
+            });
+        }
+        if (isAllowed('/volunteer/resources')) {
+            volunteerChildren.push({
+                key: '/volunteer/resources',
+                icon: <FileTextOutlined />,
+                label: 'Ressources',
+            });
+        }
+        if (isAllowed('/volunteer/youth')) {
+            volunteerChildren.push({
+                key: '/volunteer/youth',
+                icon: <SmileOutlined />,
+                label: 'Intégration Jeunes',
+            });
+        }
+        if (volunteerChildren.length > 0) {
+            items.push({
+                key: 'volunteer_space',
+                icon: <HomeOutlined />,
+                label: 'Mon Espace',
+                children: volunteerChildren,
+            });
+        }
+
+        // Management group (volunteers, committees)
+        const managementChildren: MenuProps['items'] = [];
+        if (isAllowed('/volunteers')) {
+            managementChildren.push({
+                key: '/volunteers',
+                icon: <TeamOutlined />,
+                label: t('nav.volunteers'),
+            });
+        }
+        if (isAllowed('/committees')) {
+            managementChildren.push({
+                key: '/committees',
+                icon: <ApartmentOutlined />,
+                label: t('nav.committees'),
+            });
+        }
+        if (isAllowed('/validation-queue')) {
+            managementChildren.push({
+                key: '/validation-queue',
+                icon: <SafetyOutlined />,
+                label: 'Validation Roles',
+            });
+        }
+        if (isAllowed('/audit-logs')) {
+            managementChildren.push({
+                key: '/audit-logs',
+                icon: <AuditOutlined />,
+                label: 'Audit Trail',
+            });
+        }
+        if (managementChildren.length > 0) {
+            items.push({
+                key: 'management',
+                icon: <TeamOutlined />,
+                label: 'Gestion',
+                children: managementChildren,
+            });
+        }
+
+        // Stocks
+        if (isAllowed('/stocks')) {
+            items.push({
+                key: '/stocks',
+                icon: <InboxOutlined />,
+                label: t('nav.stocks'),
+            });
+        }
+
+        // Donations
+        if (isAllowed('/donations')) {
+            items.push({
+                key: '/donations',
+                icon: <GiftOutlined />,
+                label: t('nav.donations'),
+            });
+        }
+
+        // Reports
+        if (isAllowed('/reports')) {
+            items.push({
+                key: '/reports',
+                icon: <FileTextOutlined />,
+                label: t('nav.reports'),
+            });
+        }
+
+        // Domain-specific pages
+        const domainChildren: MenuProps['items'] = [];
+        if (isAllowed('/secourisme')) {
+            domainChildren.push({
+                key: '/secourisme',
+                icon: <MedicineBoxOutlined />,
+                label: 'Secourisme',
+            });
+        }
+        if (isAllowed('/diffusion')) {
+            domainChildren.push({
+                key: '/diffusion',
+                icon: <SoundOutlined />,
+                label: 'Diffusion',
+            });
+        }
+        if (isAllowed('/jeunesse')) {
+            domainChildren.push({
+                key: '/jeunesse',
+                icon: <SmileOutlined />,
+                label: 'Jeunesse',
+            });
+        }
+        if (isAllowed('/sante')) {
+            domainChildren.push({
+                key: '/sante',
+                icon: <HeartOutlined />,
+                label: 'Santé',
+            });
+        }
+        if (isAllowed('/social')) {
+            domainChildren.push({
+                key: '/social',
+                icon: <HomeOutlined />,
+                label: 'Action Sociale',
+            });
+        }
+        if (isAllowed('/immigration')) {
+            domainChildren.push({
+                key: '/immigration',
+                icon: <GlobalOutlined />,
+                label: 'Immigration',
+            });
+        }
+        if (isAllowed('/vff')) {
+            domainChildren.push({
+                key: '/vff',
+                icon: <SafetyOutlined />,
+                label: 'VFF',
+            });
+        }
+        if (isAllowed('/catastrophes')) {
+            domainChildren.push({
+                key: '/catastrophes',
+                icon: <GlobalOutlined />,
+                label: 'Catastrophes',
+            });
+        }
+        if (isAllowed('/radar')) {
+            domainChildren.push({
+                key: '/radar',
+                icon: <RadarChartOutlined />,
+                label: 'Radar Catastrophes',
+            });
+        }
+
+        if (domainChildren.length > 0) {
+            items.push({
+                key: 'domains',
+                icon: <ApartmentOutlined />,
+                label: 'Domaines',
+                children: domainChildren,
+            });
+        }
+
+        // Divider + Settings
+        items.push({ type: 'divider' });
+        items.push({
+            key: '/settings',
+            icon: <SettingOutlined />,
+            label: t('nav.settings'),
+        });
+
+        return items;
+    }, [permissions, t]);
+
+    // ---- User dropdown menu ----
+    const userMenuItems: MenuProps['items'] = [
+        {
+            key: 'profile',
+            icon: <UserOutlined />,
+            label: t('nav.profile'),
+        },
+        { type: 'divider' },
+        {
+            key: 'logout',
+            icon: <LogoutOutlined />,
+            label: t('auth.logout'),
+            danger: true,
+        },
+    ];
+
+    const handleMenuClick: MenuProps['onClick'] = ({ key }) => {
+        navigate(key);
+    };
+
+    const handleUserMenuClick: MenuProps['onClick'] = ({ key }) => {
+        if (key === 'logout') {
+            logout();
+            navigate('/login');
+        } else if (key === 'profile') {
+            navigate('/settings');
+        }
+    };
+
+    // Build breadcrumb labels including domain pages
+    const breadcrumbLabels: Record<string, string> = {
+        dashboard: t('nav.dashboard'),
+        volunteers: t('nav.volunteers'),
+        committees: t('nav.committees'),
+        stocks: t('nav.stocks'),
+        donations: t('nav.donations'),
+        reports: t('nav.reports'),
+        settings: t('nav.settings'),
+        secourisme: 'Secourisme',
+        diffusion: 'Diffusion',
+        jeunesse: 'Jeunesse',
+        sante: 'Santé',
+        social: 'Action Sociale',
+        immigration: 'Immigration',
+        vff: 'VFF',
+        catastrophes: 'Moniteur Météo',
+        'validation-queue': 'Validation Roles',
+        'audit-logs': 'Audit Trail',
+    };
+
+    return (
+        <Layout className="min-h-screen">
+            {/* ---- Sidebar ---- */}
+            <Sider
+                trigger={null}
+                collapsible
+                collapsed={sidebarCollapsed}
+                width={260}
+                collapsedWidth={80}
+                className="fixed left-0 top-0 bottom-0 z-50"
+                style={{ overflow: 'auto', height: '100vh', position: 'fixed' }}
+            >
+                {/* Logo */}
+                <div className="flex items-center justify-center h-16 border-b border-white/10">
+                    <img src="/logo.jpg" alt="CRT" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
+                    {!sidebarCollapsed && (
+                        <Text strong className="ml-3 text-white text-lg tracking-wide">
+                            Nexus-AID
+                        </Text>
+                    )}
+                </div>
+
+                {/* Navigation Menu */}
+                <Menu
+                    theme="dark"
+                    mode="inline"
+                    selectedKeys={[location.pathname]}
+                    defaultOpenKeys={['volunteer_space', 'management', 'domains']}
+                    items={menuItems}
+                    onClick={handleMenuClick}
+                    className="border-none mt-2"
+                />
+            </Sider>
+
+            {/* ---- Main Content Area ---- */}
+            <Layout style={{ marginLeft: sidebarCollapsed ? 80 : 260, transition: 'margin-left 0.2s' }}>
+                {/* Header */}
+                <Header className="flex items-center justify-between px-6 shadow-sm" style={{ background: 'inherit' }}>
+                    <Space size="middle">
+                        <Button
+                            type="text"
+                            icon={sidebarCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+                            onClick={toggleSidebar}
+                            className="text-lg"
+                        />
+                        <Breadcrumb
+                            items={[
+                                { title: 'Nexus-AID' },
+                                {
+                                    title: (() => {
+                                        const path = location.pathname.replace('/', '');
+                                        return breadcrumbLabels[path] || path;
+                                    })()
+                                },
+                            ]}
+                            className="hidden sm:flex"
+                        />
+                    </Space>
+
+                    <Space size="middle">
+                        {/* Monitor Weather Button */}
+                        {isAllowed('/radar') && user?.roles?.some((r: any) => r.committeeType === 'NATIONAL') && (
+                            <Button
+                                type="primary"
+                                danger
+                                icon={<GlobalOutlined />}
+                                onClick={() => navigate('/radar')}
+                            >
+                                Radar Live
+                            </Button>
+                        )}
+
+                        {/* Theme Toggle */}
+                        <Tooltip title={themeMode === 'dark' ? 'Mode clair' : 'Mode sombre'}>
+                            <Button
+                                type="text"
+                                icon={themeMode === 'dark' ? <SunOutlined /> : <MoonOutlined />}
+                                onClick={toggleTheme}
+                            />
+                        </Tooltip>
+
+                        {/* Notifications */}
+                        <Tooltip title="Notifications">
+                            <Badge count={3} size="small">
+                                <Button type="text" icon={<BellOutlined />} />
+                            </Badge>
+                        </Tooltip>
+
+                        {/* User Avatar & Dropdown */}
+                        <Dropdown
+                            menu={{ items: userMenuItems, onClick: handleUserMenuClick }}
+                            placement="bottomRight"
+                            trigger={['click']}
+                        >
+                            <Space className="cursor-pointer">
+                                <Avatar
+                                    size="small"
+                                    icon={<UserOutlined />}
+                                    src={user?.avatar}
+                                    style={{ backgroundColor: '#C81E1E' }}
+                                />
+                                <div className="hidden sm:block" style={{ lineHeight: 1.3 }}>
+                                    <Text style={{ fontSize: 13, display: 'block' }}>
+                                        {user?.fullName || 'Utilisateur'}
+                                    </Text>
+                                    <Space size={4} align="center">
+                                        <Text style={{ fontSize: 10, color: '#999' }}>
+                                            {permissions.label}
+                                        </Text>
+                                        {user?.roles?.some((r: any) => r.committeeType === 'NATIONAL') && (
+                                            <Tag color="gold" style={{ fontSize: 8, margin: 0, padding: '0 4px', lineHeight: '1.4' }}>NAT</Tag>
+                                        )}
+                                        {user?.roles?.some((r: any) => r.committeeType === 'REGIONAL') && (
+                                            <Tag color="blue" style={{ fontSize: 8, margin: 0, padding: '0 4px', lineHeight: '1.4' }}>REG</Tag>
+                                        )}
+                                    </Space>
+                                </div>
+                            </Space>
+                        </Dropdown>
+                    </Space>
+                </Header>
+
+                {/* Page Content */}
+                <Content className="m-4 sm:m-6">
+                    <Suspense
+                        fallback={
+                            <div className="flex items-center justify-center h-96">
+                                <Spin size="large" tip={t('common.loading')} />
+                            </div>
+                        }
+                    >
+                        <Outlet />
+                    </Suspense>
+                </Content>
+            </Layout>
+        </Layout>
+    );
+};
+
+export default MainLayout;

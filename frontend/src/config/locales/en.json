@@ -1,0 +1,56 @@
+{
+    "app": {
+        "name": "Nexus-AID",
+        "tagline": "Tunisian Red Crescent"
+    },
+    "nav": {
+        "dashboard": "Dashboard",
+        "volunteers": "Volunteers",
+        "committees": "Committees",
+        "stocks": "Inventory",
+        "donations": "Donations",
+        "firstAid": "AI First Aid",
+        "reports": "Reports",
+        "disasters": "Disasters",
+        "settings": "Settings",
+        "profile": "My Profile"
+    },
+    "auth": {
+        "login": "Log in",
+        "logout": "Log out",
+        "email": "Email address",
+        "password": "Password",
+        "forgotPassword": "Forgot password?",
+        "welcomeBack": "Welcome back",
+        "loginSubtitle": "Sign in to your Nexus-AID workspace"
+    },
+    "dashboard": {
+        "title": "Dashboard",
+        "totalVolunteers": "Total Volunteers",
+        "activeAlerts": "Active Alerts",
+        "stockItems": "Stock Items",
+        "donations": "Donations this month",
+        "recentActivity": "Recent Activity",
+        "quickActions": "Quick Actions"
+    },
+    "common": {
+        "save": "Save",
+        "cancel": "Cancel",
+        "delete": "Delete",
+        "edit": "Edit",
+        "add": "Add",
+        "search": "Search",
+        "filter": "Filter",
+        "export": "Export",
+        "loading": "Loading...",
+        "noData": "No data",
+        "confirm": "Confirm",
+        "back": "Back",
+        "next": "Next",
+        "actions": "Actions",
+        "status": "Status",
+        "date": "Date",
+        "name": "Name",
+        "description": "Description"
+    }
+}

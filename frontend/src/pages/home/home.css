@@ -1,0 +1,606 @@
+/* ============================================================
+   NEXUS-AID — Homepage Styles
+   Neumorphic + Glassmorphic design system for landing page
+   ============================================================ */
+
+/* ---- Base ---- */
+.home-root {
+  position: relative;
+  min-height: 100vh;
+  background: linear-gradient(180deg, #F0F0F0 0%, #F5F5F5 100%);
+  overflow-x: hidden;
+  font-family: 'Inter', 'Roboto', 'Open Sans', system-ui, sans-serif;
+  color: #1A1A1A;
+}
+
+/* ---- 3D Background Canvas ---- */
+.network-bg-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+.network-bg-canvas.interactive {
+  pointer-events: auto;
+}
+
+/* ---- CRT Header ---- */
+.crt-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 48px;
+  background: rgba(20, 20, 25, 0.88);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  transition: all 0.3s ease;
+}
+
+.crt-header__logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: #fff;
+}
+.crt-header__logo-icon {
+  width: 32px;
+  height: 32px;
+}
+.crt-header__logo-text {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #fff;
+}
+
+.crt-header__nav {
+  display: flex;
+  align-items: center;
+  gap: 36px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.crt-header__nav a {
+  text-decoration: none;
+  color: rgba(255,255,255,0.7);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  padding: 6px 0;
+  position: relative;
+  transition: color 0.3s;
+}
+.crt-header__nav a:hover,
+.crt-header__nav a.active {
+  color: #fff;
+}
+.crt-header__nav a.active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #E60000;
+  border-radius: 2px;
+}
+
+.crt-header__btn {
+  padding: 8px 24px;
+  border-radius: 100px;
+  border: none;
+  background: #E60000;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.3s;
+  box-shadow: 0 4px 16px rgba(230,0,0,0.35);
+}
+.crt-header__btn:hover {
+  background: #cc0000;
+  box-shadow: 0 6px 24px rgba(230,0,0,0.5);
+  transform: translateY(-1px);
+}
+
+/* ---- Glass Panel Base ---- */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 20px;
+  box-shadow:
+    0 8px 32px rgba(0,0,0,0.08),
+    0 2px 8px rgba(0,0,0,0.04);
+  border: 1px solid rgba(255,255,255,0.8);
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.glass-panel:hover {
+  box-shadow:
+    0 12px 48px rgba(0,0,0,0.12),
+    0 4px 12px rgba(0,0,0,0.06);
+}
+
+/* ---- Floating Panels Layout ---- */
+.home-content {
+  position: relative;
+  z-index: 2;
+  padding-top: 100vh; /* Start content below the full-screen 3D view */
+  min-height: 300vh;
+}
+
+.home-section {
+  position: relative;
+  z-index: 3;
+  padding: 60px 48px;
+  display: flex;
+  gap: 40px;
+  align-items: flex-start;
+}
+
+/* ---- Scroll Reveal Animations ---- */
+.reveal-left {
+  opacity: 0;
+  transform: translateX(-80px);
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.reveal-right {
+  opacity: 0;
+  transform: translateX(80px);
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.reveal-up {
+  opacity: 0;
+  transform: translateY(60px);
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.reveal-left.visible,
+.reveal-right.visible,
+.reveal-up.visible {
+  opacity: 1;
+  transform: translate(0, 0);
+}
+
+/* ---- Side Navigation ---- */
+.side-nav {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.side-nav--left {
+  left: 20px;
+}
+.side-nav--right {
+  right: 20px;
+}
+.side-nav__item {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.92);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: 1px solid rgba(0,0,0,0.06);
+  transition: all 0.3s;
+  color: #757575;
+  font-size: 18px;
+}
+.side-nav__item:hover {
+  background: #fff;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+  color: #E60000;
+  transform: scale(1.1);
+}
+.side-nav__item.active {
+  background: #E60000;
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(230,0,0,0.3);
+}
+
+/* ---- News Feed Panel ---- */
+.news-feed {
+  width: 360px;
+  max-height: 520px;
+  padding: 28px;
+  flex-shrink: 0;
+}
+.news-feed__title {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+  color: #1A1A1A;
+}
+.news-feed__scroll {
+  overflow-y: auto;
+  max-height: 420px;
+  padding-right: 8px;
+}
+.news-feed__scroll::-webkit-scrollbar {
+  width: 3px;
+}
+.news-feed__scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.news-feed__scroll::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.12);
+  border-radius: 10px;
+}
+
+.news-card {
+  display: flex;
+  gap: 14px;
+  padding: 16px;
+  margin-bottom: 14px;
+  border-radius: 14px;
+  background: rgba(245, 245, 245, 0.6);
+  border: 1px solid rgba(0,0,0,0.04);
+  transition: all 0.3s;
+  cursor: pointer;
+}
+.news-card:hover {
+  background: rgba(240, 240, 240, 0.9);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+}
+.news-card__img {
+  width: 80px;
+  height: 80px;
+  border-radius: 10px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, #e0e0e0 0%, #d0d0d0 100%);
+}
+.news-card__body {
+  flex: 1;
+  min-width: 0;
+}
+.news-card__tag {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 6px;
+  background: #F0F0F0;
+  font-size: 11px;
+  font-weight: 600;
+  color: #757575;
+  margin-bottom: 6px;
+  text-transform: capitalize;
+}
+.news-card__tag--red {
+  background: rgba(230,0,0,0.08);
+  color: #E60000;
+}
+.news-card__headline {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1A1A1A;
+  line-height: 1.4;
+  margin-bottom: 4px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.news-card__date {
+  font-size: 11px;
+  color: #999;
+}
+
+/* ---- Publications Panel ---- */
+.pub-panel {
+  flex: 1;
+  padding: 28px;
+  min-width: 0;
+}
+.pub-panel__title {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+  color: #1A1A1A;
+}
+.pub-tabs {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 0;
+}
+.pub-tab {
+  padding: 8px 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: #757575;
+  cursor: pointer;
+  border: none;
+  background: none;
+  position: relative;
+  transition: color 0.3s;
+}
+.pub-tab.active {
+  color: #E60000;
+  font-weight: 600;
+}
+.pub-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #E60000;
+  border-radius: 2px;
+}
+.pub-tab:hover {
+  color: #1A1A1A;
+}
+
+.pub-grid {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+.pub-grid::-webkit-scrollbar {
+  height: 3px;
+}
+.pub-grid::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.1);
+  border-radius: 10px;
+}
+
+.pub-card {
+  width: 160px;
+  flex-shrink: 0;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.06);
+  transition: all 0.3s;
+  cursor: pointer;
+}
+.pub-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+}
+.pub-card__img {
+  width: 100%;
+  height: 100px;
+  object-fit: cover;
+  background: linear-gradient(135deg, #e8e8e8, #d8d8d8);
+}
+.pub-card__label {
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1A1A1A;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Curled corner effect */
+.pub-panel::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(
+    135deg,
+    transparent 50%,
+    rgba(240,240,240,0.95) 50%
+  );
+  border-radius: 0 0 20px 0;
+  pointer-events: none;
+}
+
+/* ---- Special Projects ---- */
+.special-projects {
+  padding: 60px 48px;
+  position: relative;
+  z-index: 3;
+}
+.special-projects__title {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 32px;
+  color: #1A1A1A;
+}
+.special-projects__grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+.project-card {
+  padding: 28px 24px;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.96);
+  border: 1px solid rgba(0,0,0,0.06);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+  text-align: center;
+  transition: all 0.3s;
+  cursor: pointer;
+}
+.project-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.1);
+  border-color: rgba(230,0,0,0.15);
+}
+.project-card__icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.project-card__icon svg {
+  width: 48px;
+  height: 48px;
+  stroke: #1A1A1A;
+  fill: none;
+  stroke-width: 1.5;
+}
+.project-card:hover .project-card__icon svg {
+  stroke: #E60000;
+}
+.project-card__name {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #1A1A1A;
+  margin-bottom: 6px;
+}
+.project-card__desc {
+  font-size: 12px;
+  color: #757575;
+  line-height: 1.5;
+}
+
+/* ---- AI Assistant ---- */
+.ai-panel {
+  width: 380px;
+  padding: 24px;
+  position: relative;
+}
+.ai-panel__title {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 18px;
+  color: #1A1A1A;
+}
+.ai-input-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 6px 6px 18px;
+  border-radius: 100px;
+  background: #F5F5F5;
+  border: 1px solid #e0e0e0;
+  transition: all 0.3s;
+}
+.ai-input-bar:focus-within {
+  border-color: rgba(230,0,0,0.3);
+  box-shadow: 0 0 0 3px rgba(230,0,0,0.08);
+}
+.ai-input-bar input {
+  flex: 1;
+  border: none;
+  background: none;
+  outline: none;
+  font-size: 14px;
+  color: #1A1A1A;
+  font-family: inherit;
+}
+.ai-input-bar input::placeholder {
+  color: #999;
+}
+.ai-btn-pulse {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #E60000;
+  color: #fff;
+  font-weight: 800;
+  font-size: 14px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: ai-pulse 2s ease-in-out infinite;
+  position: relative;
+  flex-shrink: 0;
+}
+@keyframes ai-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(230,0,0,0.5); }
+  50% { box-shadow: 0 0 0 12px rgba(230,0,0,0); }
+}
+
+/* ---- Concentric Waves ---- */
+@keyframes wave-expand {
+  0% { transform: scale(0.3); opacity: 0.6; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+
+/* ---- Footer Landing ---- */
+.home-footer {
+  position: relative;
+  z-index: 3;
+  padding: 48px;
+  border-top: 1px solid rgba(0,0,0,0.06);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #999;
+  font-size: 12px;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 1200px) {
+  .home-section {
+    flex-direction: column;
+    padding: 40px 24px;
+  }
+  .news-feed {
+    width: 100%;
+    max-height: none;
+  }
+  .special-projects__grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .side-nav { display: none; }
+}
+
+@media (max-width: 768px) {
+  .crt-header {
+    padding: 0 20px;
+  }
+  .crt-header__nav {
+    display: none;
+  }
+  .special-projects__grid {
+    grid-template-columns: 1fr;
+  }
+  .special-projects {
+    padding: 40px 20px;
+  }
+  .home-footer {
+    flex-direction: column;
+    gap: 12px;
+    text-align: center;
+  }
+}

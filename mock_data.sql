@@ -1,0 +1,27 @@
+-- Insert 10 pending roles into committee_roles for the "Validation Roles" UI
+INSERT INTO committee_roles (id, title, committee_id, volunteer_id, status, assigned_at, proposed_by, proposed_at, reason)
+VALUES
+(gen_random_uuid(), 'PRESIDENT', '2b4be398-94a6-4ab6-85d0-03cb86df4fca', 'ccd4de5e-e377-4b3a-bfe0-f1da88e5d5df', 'PROPOSED', NULL, 'ccd4de5e-e377-4b3a-bfe0-f1da88e5d5df', NOW() - INTERVAL '1 day', 'Nomination de renouvellement du président'),
+(gen_random_uuid(), 'VICE_PRESIDENT', '379e0d80-9e08-4587-962d-29854e0fdb04', '03dd899a-0878-40cd-bc19-aaa420dbb581', 'PROPOSED', NULL, 'ccd4de5e-e377-4b3a-bfe0-f1da88e5d5df', NOW() - INTERVAL '2 days', 'Proposition pour le poste de Vice-Président Tunis'),
+(gen_random_uuid(), 'SECRETAIRE_GENERAL', 'fbf57d32-7918-4246-9bb8-93d904b98329', '1601928f-8e06-4c39-a683-85f625b38d4a', 'PROPOSED', NULL, 'ccd4de5e-e377-4b3a-bfe0-f1da88e5d5df', NOW() - INTERVAL '3 days', 'Nouveau secrétaire général pour le comité local'),
+(gen_random_uuid(), 'RESP_SECOURISME', 'fbf57d32-7918-4246-9bb8-93d904b98329', '4940f335-d57b-41b6-8dc5-a3c1c4c3bcde', 'PROPOSED', NULL, 'ccd4de5e-e377-4b3a-bfe0-f1da88e5d5df', NOW() - INTERVAL '4 days', 'Affectation d un nouveau responsable secourisme'),
+(gen_random_uuid(), 'RESP_DIFFUSION', 'fbf57d32-7918-4246-9bb8-93d904b98329', 'e5e52cb4-4fe6-41c6-ae6f-c565477cfedb', 'PROPOSED', NULL, 'ccd4de5e-e377-4b3a-bfe0-f1da88e5d5df', NOW() - INTERVAL '5 days', 'Besoin urgent de combler ce poste'),
+(gen_random_uuid(), 'RESP_JEUNESSE', '2b4be398-94a6-4ab6-85d0-03cb86df4fca', 'ccd4de5e-e377-4b3a-bfe0-f1da88e5d5df', 'PROPOSED', NULL, '03dd899a-0878-40cd-bc19-aaa420dbb581', NOW() - INTERVAL '6 days', 'Candidature spontanée validée en AG'),
+(gen_random_uuid(), 'RESP_SANTE', '379e0d80-9e08-4587-962d-29854e0fdb04', '03dd899a-0878-40cd-bc19-aaa420dbb581', 'PROPOSED', NULL, '1601928f-8e06-4c39-a683-85f625b38d4a', NOW() - INTERVAL '7 days', 'Transfert de rôle suite à la démission du précédent responsable'),
+(gen_random_uuid(), 'RESP_CATASTROPHES', 'fbf57d32-7918-4246-9bb8-93d904b98329', '1601928f-8e06-4c39-a683-85f625b38d4a', 'PROPOSED', NULL, '1601928f-8e06-4c39-a683-85f625b38d4a', NOW() - INTERVAL '8 days', 'Élu par les volontaires du comité local'),
+(gen_random_uuid(), 'RESP_ACTION_SOCIALE', 'fbf57d32-7918-4246-9bb8-93d904b98329', '4940f335-d57b-41b6-8dc5-a3c1c4c3bcde', 'PROPOSED', NULL, 'ccd4de5e-e377-4b3a-bfe0-f1da88e5d5df', NOW() - INTERVAL '9 days', 'Nomination par le bureau directeur'),
+(gen_random_uuid(), 'RESP_VFF', 'fbf57d32-7918-4246-9bb8-93d904b98329', 'e5e52cb4-4fe6-41c6-ae6f-c565477cfedb', 'PROPOSED', NULL, '03dd899a-0878-40cd-bc19-aaa420dbb581', NOW() - INTERVAL '10 days', 'Candidature recommandée par le comité régional');
+
+-- Insert 10 audit logs into hierarchy_audit_logs for the "Audit Trail" UI
+INSERT INTO hierarchy_audit_logs (id, action, performed_by, target_committee_id, target_volunteer_id, timestamp, reason)
+VALUES
+(gen_random_uuid(), 'APPROVE_ROLE', 'ccd4de5e-e377-4b3a-bfe0-f1da88e5d5df', '2b4be398-94a6-4ab6-85d0-03cb86df4fca', '03dd899a-0878-40cd-bc19-aaa420dbb581', NOW() - INTERVAL '1 hour', 'Validation du nouveau rôle de VICE_PRESIDENT après vote en assemblée générale'),
+(gen_random_uuid(), 'PROPOSE_ROLE_RESP_JEUNESSE', '03dd899a-0878-40cd-bc19-aaa420dbb581', '379e0d80-9e08-4587-962d-29854e0fdb04', '1601928f-8e06-4c39-a683-85f625b38d4a', NOW() - INTERVAL '2 hours', 'Le volontaire a été proposé pour le rôle de responsable jeunesse'),
+(gen_random_uuid(), 'REJECT_ROLE', 'ccd4de5e-e377-4b3a-bfe0-f1da88e5d5df', 'fbf57d32-7918-4246-9bb8-93d904b98329', '4940f335-d57b-41b6-8dc5-a3c1c4c3bcde', NOW() - INTERVAL '3 hours', 'Rejet de la candidature : profil ne correspondant pas aux critères d expertise exigés'),
+(gen_random_uuid(), 'APPROVE_COMMITTEE', '03dd899a-0878-40cd-bc19-aaa420dbb581', '2b4be398-94a6-4ab6-85d0-03cb86df4fca', NULL, NOW() - INTERVAL '4 hours', 'Agrément institutionnel — Validation par le Comité Central suite à l inspection'),
+(gen_random_uuid(), 'REVOKE_ROLE_PRESIDENT', 'ccd4de5e-e377-4b3a-bfe0-f1da88e5d5df', '379e0d80-9e08-4587-962d-29854e0fdb04', '03dd899a-0878-40cd-bc19-aaa420dbb581', NOW() - INTERVAL '5 hours', 'Révocation suite à une violation grave du code de conduite du CRT'),
+(gen_random_uuid(), 'PROPOSE_ROLE_SECRETAIRE_GENERAL', '1601928f-8e06-4c39-a683-85f625b38d4a', 'fbf57d32-7918-4246-9bb8-93d904b98329', 'e5e52cb4-4fe6-41c6-ae6f-c565477cfedb', NOW() - INTERVAL '6 hours', 'Proposition soumise au président du comité régional pour validation finale'),
+(gen_random_uuid(), 'APPROVE_ROLE', 'ccd4de5e-e377-4b3a-bfe0-f1da88e5d5df', 'fbf57d32-7918-4246-9bb8-93d904b98329', 'e5e52cb4-4fe6-41c6-ae6f-c565477cfedb', NOW() - INTERVAL '7 hours', 'Affectation confirmée pour une durée de 4 ans selon les statuts de l association'),
+(gen_random_uuid(), 'REVOKE_ROLE_RESP_SANTE', '03dd899a-0878-40cd-bc19-aaa420dbb581', '2b4be398-94a6-4ab6-85d0-03cb86df4fca', '4940f335-d57b-41b6-8dc5-a3c1c4c3bcde', NOW() - INTERVAL '8 hours', 'Fin de mandat automatique non renouvelée'),
+(gen_random_uuid(), 'APPROVE_COMMITTEE', 'ccd4de5e-e377-4b3a-bfe0-f1da88e5d5df', '379e0d80-9e08-4587-962d-29854e0fdb04', NULL, NOW() - INTERVAL '9 hours', 'Ouverture d un nouveau comité local approuvée et inscrite au registre national'),
+(gen_random_uuid(), 'REJECT_ROLE', '1601928f-8e06-4c39-a683-85f625b38d4a', 'fbf57d32-7918-4246-9bb8-93d904b98329', 'ccd4de5e-e377-4b3a-bfe0-f1da88e5d5df', NOW() - INTERVAL '10 hours', 'Dossier incomplet, la candidature ne peut être retenue en l état');

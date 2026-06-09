@@ -1,0 +1,82 @@
+# PostgreSQL custom queries for postgres-exporter
+# Métriques custom pour NexusAid
+
+pg_replication:
+  query: "SELECT CASE WHEN NOT pg_is_in_recovery() THEN 0 ELSE GREATEST (0, EXTRACT(EPOCH FROM (now() - pg_last_xact_replay_timestamp()))) END AS lag"
+  master: true
+  metrics:
+    - lag:
+        usage: "GAUGE"
+        description: "Replication lag behind master in seconds"
+
+pg_postmaster:
+  query: "SELECT pg_postmaster_start_time as start_time_seconds from pg_postmaster_start_time()"
+  master: true
+  metrics:
+    - start_time_seconds:
+        usage: "GAUGE"
+        description: "Time at which postmaster started"
+
+pg_stat_user_tables:
+  query: |
+    SELECT
+      current_database() datname,
+      schemaname,
+      relname,
+      seq_scan,
+      seq_tup_read,
+      idx_scan,
+      idx_tup_fetch,
+      n_tup_ins,
+      n_tup_upd,
+      n_tup_del,
+      n_live_tup,
+      n_dead_tup,
+      n_mod_since_analyze,
+      last_vacuum,
+      last_autovacuum,
+      last_analyze,
+      last_autoanalyze,
+      vacuum_count,
+      autovacuum_count,
+      analyze_count,
+      autoanalyze_count
+    FROM pg_stat_user_tables
+  metrics:
+    - datname:
+        usage: "LABEL"
+        description: "Name of current database"
+    - schemaname:
+        usage: "LABEL"
+        description: "Name of the schema"
+    - relname:
+        usage: "LABEL"
+        description: "Name of this table"
+    - n_live_tup:
+        usage: "GAUGE"
+        description: "Estimated number of live rows"
+    - n_dead_tup:
+        usage: "GAUGE"
+        description: "Estimated number of dead rows"
+
+pg_nexusaid_stats:
+  query: |
+    SELECT
+      (SELECT COUNT(*) FROM users WHERE enabled = true) as active_users,
+      (SELECT COUNT(*) FROM users WHERE account_non_locked = false) as locked_users,
+      (SELECT COUNT(*) FROM committees) as total_committees,
+      (SELECT COUNT(*) FROM volunteers) as total_volunteers
+  master: true
+  metrics:
+    - active_users:
+        usage: "GAUGE"
+        description: "Total active NexusAid users"
+    - locked_users:
+        usage: "GAUGE"
+        description: "Total locked NexusAid accounts"
+    - total_committees:
+        usage: "GAUGE"
+        description: "Total committees"
+    - total_volunteers:
+        usage: "GAUGE"
+        description: "Total volunteers"

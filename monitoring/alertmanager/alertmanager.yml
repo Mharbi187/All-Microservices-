@@ -1,0 +1,217 @@
+global:
+  smtp_smarthost: 'smtp.gmail.com:587'
+  smtp_from: 'c6287943@gmail.com'
+  smtp_auth_username: 'c6287943@gmail.com'
+  smtp_auth_password: 'lqdgldnjygchljia'
+  smtp_require_tls: true
+  resolve_timeout: 5m
+
+# ─── TEMPLATES ────────────────────────────────────────────────
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# ─── ROUTE PRINCIPALE ─────────────────────────────────────────
+route:
+  receiver: 'nexusaid-default'
+  group_by: ['alertname', 'category', 'service']
+  group_wait: 10s
+  group_interval: 5m
+  repeat_interval: 4h
+
+  routes:
+    # Alertes CRITIQUES de sécurité → Email + WhatsApp immédiat
+    - match:
+        severity: critical
+        category: security
+      receiver: 'critical-security'
+      group_wait: 0s
+      repeat_interval: 30m
+      continue: true
+
+    # Alertes WARNING sécurité → Email + WhatsApp
+    - match:
+        category: security
+      receiver: 'security-alerts'
+      group_wait: 10s
+      repeat_interval: 1h
+      continue: true
+
+    # Service DOWN → Email + WhatsApp immédiat
+    - match:
+        alertname: ServiceDown
+      receiver: 'infrastructure-critical'
+      group_wait: 0s
+      repeat_interval: 15m
+      continue: true
+
+    # Infrastructure critique → Email + WhatsApp
+    - match:
+        severity: critical
+        category: infrastructure
+      receiver: 'infrastructure-critical'
+      group_wait: 5s
+      repeat_interval: 30m
+
+    # Infrastructure warning → Email seulement
+    - match:
+        category: infrastructure
+      receiver: 'infrastructure-warning'
+      group_wait: 30s
+      repeat_interval: 2h
+
+    # Application critique → Email + WhatsApp
+    - match:
+        severity: critical
+        category: application
+      receiver: 'application-critical'
+      group_wait: 10s
+      repeat_interval: 1h
+
+    # Application warning → Email
+    - match:
+        category: application
+      receiver: 'application-warning'
+      group_wait: 1m
+      repeat_interval: 4h
+
+# ─── INHIBIT RULES ────────────────────────────────────────────
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'instance']
+
+# ─── RECEIVERS ────────────────────────────────────────────────
+receivers:
+
+  # ─── Default ────────────────────────────────────────────────
+  - name: 'nexusaid-default'
+    email_configs:
+      - to: 'c6287943@gmail.com'
+        headers:
+          Subject: '[NexusAid] {{ .GroupLabels.alertname }} — {{ .Status | toUpper }}'
+        html: |
+          <h2>🔔 NexusAid Monitoring Alert</h2>
+          <p><strong>Status:</strong> {{ .Status | toUpper }}</p>
+          {{ range .Alerts }}
+          <hr>
+          <p><strong>Alert:</strong> {{ .Annotations.summary }}</p>
+          <p><strong>Description:</strong> {{ .Annotations.description }}</p>
+          <p><strong>Severity:</strong> {{ .Labels.severity }}</p>
+          <p><strong>Time:</strong> {{ .StartsAt.Format "2006-01-02 15:04:05" }}</p>
+          {{ end }}
+        send_resolved: true
+
+  # ─── Sécurité Critique (Email + WhatsApp) ───────────────────
+  - name: 'critical-security'
+    email_configs:
+      - to: 'c6287943@gmail.com'
+        headers:
+          Subject: '🚨 [CRITIQUE-SÉCURITÉ] {{ .GroupLabels.alertname }} — NexusAid'
+        html: |
+          <h1 style="color:red">🚨 ALERTE SÉCURITÉ CRITIQUE</h1>
+          {{ range .Alerts }}
+          <div style="border:2px solid red;padding:10px;margin:10px 0;">
+            <p><strong>{{ .Annotations.summary }}</strong></p>
+            <p>{{ .Annotations.description }}</p>
+            <p>Sévérité: <span style="color:red"><strong>{{ .Labels.severity | toUpper }}</strong></span></p>
+            <p>Service: {{ .Labels.service }}</p>
+            <p>Heure: {{ .StartsAt.Format "2006-01-02 15:04:05 UTC" }}</p>
+          </div>
+          {{ end }}
+        send_resolved: true
+    webhook_configs:
+      - url: 'http://wa-webhook:5001/alert'
+        send_resolved: true
+        http_config:
+          tls_config:
+            insecure_skip_verify: true
+        max_alerts: 10
+
+  # ─── Sécurité Warning (Email + WhatsApp) ────────────────────
+  - name: 'security-alerts'
+    email_configs:
+      - to: 'c6287943@gmail.com'
+        headers:
+          Subject: '⚠️ [SÉCURITÉ] {{ .GroupLabels.alertname }} — NexusAid'
+        html: |
+          <h2 style="color:orange">⚠️ Alerte Sécurité NexusAid</h2>
+          {{ range .Alerts }}
+          <div style="border:2px solid orange;padding:10px;margin:10px 0;">
+            <p><strong>{{ .Annotations.summary }}</strong></p>
+            <p>{{ .Annotations.description }}</p>
+          </div>
+          {{ end }}
+        send_resolved: true
+    webhook_configs:
+      - url: 'http://wa-webhook:5001/alert'
+        send_resolved: false
+        http_config:
+          tls_config:
+            insecure_skip_verify: true
+
+  # ─── Infrastructure Critique (Email + WhatsApp) ──────────────
+  - name: 'infrastructure-critical'
+    email_configs:
+      - to: 'c6287943@gmail.com'
+        headers:
+          Subject: '🔴 [INFRASTRUCTURE CRITIQUE] {{ .GroupLabels.alertname }} — NexusAid'
+        html: |
+          <h1 style="color:red">🔴 INFRASTRUCTURE CRITIQUE</h1>
+          {{ range .Alerts }}
+          <div style="border:2px solid red;padding:10px;margin:10px 0;">
+            <p><strong>{{ .Annotations.summary }}</strong></p>
+            <p>{{ .Annotations.description }}</p>
+            <p>Instance: {{ .Labels.instance }}</p>
+          </div>
+          {{ end }}
+        send_resolved: true
+    webhook_configs:
+      - url: 'http://wa-webhook:5001/alert'
+        send_resolved: true
+
+  # ─── Infrastructure Warning (Email seulement) ───────────────
+  - name: 'infrastructure-warning'
+    email_configs:
+      - to: 'c6287943@gmail.com'
+        headers:
+          Subject: '⚠️ [INFRASTRUCTURE] {{ .GroupLabels.alertname }} — NexusAid'
+        html: |
+          <h2 style="color:orange">⚠️ Alerte Infrastructure NexusAid</h2>
+          {{ range .Alerts }}
+          <p><strong>{{ .Annotations.summary }}</strong></p>
+          <p>{{ .Annotations.description }}</p>
+          {{ end }}
+        send_resolved: true
+
+  # ─── Application Critique (Email + WhatsApp) ────────────────
+  - name: 'application-critical'
+    email_configs:
+      - to: 'c6287943@gmail.com'
+        headers:
+          Subject: '🔴 [APPLICATION CRITIQUE] {{ .GroupLabels.alertname }} — NexusAid'
+        html: |
+          <h1 style="color:red">🔴 ALERTE APPLICATION CRITIQUE</h1>
+          {{ range .Alerts }}
+          <p><strong>{{ .Annotations.summary }}</strong></p>
+          <p>{{ .Annotations.description }}</p>
+          {{ end }}
+        send_resolved: true
+    webhook_configs:
+      - url: 'http://wa-webhook:5001/alert'
+        send_resolved: true
+
+  # ─── Application Warning (Email) ────────────────────────────
+  - name: 'application-warning'
+    email_configs:
+      - to: 'c6287943@gmail.com'
+        headers:
+          Subject: '⚠️ [APPLICATION] {{ .GroupLabels.alertname }} — NexusAid'
+        html: |
+          <h2 style="color:orange">⚠️ Alerte Application NexusAid</h2>
+          {{ range .Alerts }}
+          <p><strong>{{ .Annotations.summary }}</strong></p>
+          <p>{{ .Annotations.description }}</p>
+          {{ end }}
+        send_resolved: false
