@@ -592,8 +592,8 @@ const MainLayout: React.FC = () => {
             });
         }
 
-        // Validation Center — President & Responsibles
-        const isValidator = user?.roles?.some(r => r.includes('PRESIDENT') || r.includes('VICE_PRESIDENT') || r.includes('RESP_')) || user?.type === 'ADMIN';
+        // Validation Center — President & Admin
+        const isValidator = user?.roles?.some(r => r.includes('PRESIDENT')) || user?.type === 'ADMIN';
 
         if (isValidator) {
             items.push({

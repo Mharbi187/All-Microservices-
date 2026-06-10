@@ -44,7 +44,7 @@ const ALL_ROUTES = [
     '/catastrophes', '/radar', '/crisis-room',
     '/secourisme', '/diffusion', '/jeunesse', '/sante', '/social', '/immigration', '/vff',
     '/distribution-medicale',
-    '/validation-queue', '/audit-logs'
+    '/validation-queue', '/audit-logs', '/validation-center'
 ];
 const ALL_SIDEBAR = [
     ...SHARED_SIDEBAR,
@@ -53,7 +53,7 @@ const ALL_SIDEBAR = [
     '/reports', '/admin-reports', '/templates',
     '/catastrophes', '/radar', '/audit-logs',
     'domains', '/secourisme', '/diffusion', '/jeunesse', '/sante', '/social', '/immigration', '/vff',
-    '/distribution-medicale',
+    '/distribution-medicale', '/validation-center'
 ];
 
 // ---- Committee RoleTitle permissions ----
@@ -131,56 +131,56 @@ export const ROLE_PERMISSIONS: Record<RoleTitle, RolePermission> = {
         dashboardType: 'volunteer',
     },
     RESP_SECOURISME: {
-        allowedRoutes: [...SHARED_ROUTES, '/secourisme', '/stocks', '/reports', '/admin-reports', '/validation-center'],
-        sidebarKeys: [...SHARED_SIDEBAR, '/secourisme', '/stocks', '/reports', '/admin-reports', 'domains', '/validation-center'],
+        allowedRoutes: [...SHARED_ROUTES, '/secourisme', '/stocks', '/reports', '/admin-reports'],
+        sidebarKeys: [...SHARED_SIDEBAR, '/secourisme', '/stocks', '/reports', '/admin-reports', 'domains'],
         label: 'Resp. Secourisme',
         dashboardType: 'volunteer',
     },
     RESP_DIFFUSION: {
-        allowedRoutes: [...SHARED_ROUTES, '/diffusion', '/reports', '/admin-reports', '/volunteer/quiz', '/volunteer/news', '/volunteer/calendar', '/validation-center'],
-        sidebarKeys: [...SHARED_SIDEBAR, '/diffusion', '/reports', '/admin-reports', 'domains', '/volunteer/quiz', '/validation-center'],
+        allowedRoutes: [...SHARED_ROUTES, '/diffusion', '/reports', '/admin-reports', '/volunteer/quiz', '/volunteer/news', '/volunteer/calendar'],
+        sidebarKeys: [...SHARED_SIDEBAR, '/diffusion', '/reports', '/admin-reports', 'domains', '/volunteer/quiz'],
         label: 'Resp. Diffusion',
         dashboardType: 'volunteer',
     },
     RESP_DIFFUSION_NATIONAL: {
-        allowedRoutes: [...SHARED_ROUTES, '/diffusion', '/reports', '/admin-reports', '/volunteer/quiz', '/volunteer/news', '/volunteer/calendar', '/validation-center'],
-        sidebarKeys: [...SHARED_SIDEBAR, '/diffusion', '/reports', '/admin-reports', 'domains', '/volunteer/quiz', '/validation-center'],
+        allowedRoutes: [...SHARED_ROUTES, '/diffusion', '/reports', '/admin-reports', '/volunteer/quiz', '/volunteer/news', '/volunteer/calendar'],
+        sidebarKeys: [...SHARED_SIDEBAR, '/diffusion', '/reports', '/admin-reports', 'domains', '/volunteer/quiz'],
         label: 'Resp. Diffusion National',
         dashboardType: 'volunteer',
     },
     RESP_JEUNESSE: {
-        allowedRoutes: [...SHARED_ROUTES, '/jeunesse', '/reports', '/admin-reports', '/volunteers', '/validation-center'],
-        sidebarKeys: [...SHARED_SIDEBAR, '/jeunesse', '/reports', '/admin-reports', 'domains', 'management', '/volunteers', '/validation-center'],
+        allowedRoutes: [...SHARED_ROUTES, '/jeunesse', '/reports', '/admin-reports', '/volunteers'],
+        sidebarKeys: [...SHARED_SIDEBAR, '/jeunesse', '/reports', '/admin-reports', 'domains', 'management', '/volunteers'],
         label: 'Resp. Jeunesse',
         dashboardType: 'volunteer',
     },
     RESP_SANTE: {
-        allowedRoutes: [...SHARED_ROUTES, '/sante', '/distribution-medicale', '/stocks', '/reports', '/admin-reports', '/validation-center'],
-        sidebarKeys: [...SHARED_SIDEBAR, '/sante', '/distribution-medicale', '/stocks', '/reports', '/admin-reports', 'domains', '/validation-center'],
+        allowedRoutes: [...SHARED_ROUTES, '/sante', '/distribution-medicale', '/stocks', '/reports', '/admin-reports'],
+        sidebarKeys: [...SHARED_SIDEBAR, '/sante', '/distribution-medicale', '/stocks', '/reports', '/admin-reports', 'domains'],
         label: 'Resp. Santé',
         dashboardType: 'volunteer',
     },
     RESP_CATASTROPHES: {
-        allowedRoutes: [...SHARED_ROUTES, '/catastrophes', '/radar', '/crisis-room', '/stocks', '/reports', '/admin-reports', '/validation-center'],
-        sidebarKeys: [...SHARED_SIDEBAR, '/catastrophes', '/radar', '/stocks', '/reports', '/admin-reports', 'domains', '/validation-center'],
+        allowedRoutes: [...SHARED_ROUTES, '/catastrophes', '/radar', '/crisis-room', '/stocks', '/reports', '/admin-reports'],
+        sidebarKeys: [...SHARED_SIDEBAR, '/catastrophes', '/radar', '/stocks', '/reports', '/admin-reports', 'domains'],
         label: 'Resp. Catastrophes',
         dashboardType: 'volunteer',
     },
     RESP_ACTION_SOCIALE: {
-        allowedRoutes: [...SHARED_ROUTES, '/social', '/stocks', '/reports', '/admin-reports', '/validation-center'],
-        sidebarKeys: [...SHARED_SIDEBAR, '/social', '/stocks', '/reports', '/admin-reports', 'domains', '/validation-center'],
+        allowedRoutes: [...SHARED_ROUTES, '/social', '/stocks', '/reports', '/admin-reports'],
+        sidebarKeys: [...SHARED_SIDEBAR, '/social', '/stocks', '/reports', '/admin-reports', 'domains'],
         label: 'Resp. Action Sociale',
         dashboardType: 'volunteer',
     },
     RESP_IMMIGRATION: {
-        allowedRoutes: [...SHARED_ROUTES, '/immigration', '/reports', '/admin-reports', '/validation-center'],
-        sidebarKeys: [...SHARED_SIDEBAR, '/immigration', '/reports', '/admin-reports', 'domains', '/validation-center'],
+        allowedRoutes: [...SHARED_ROUTES, '/immigration', '/reports', '/admin-reports'],
+        sidebarKeys: [...SHARED_SIDEBAR, '/immigration', '/reports', '/admin-reports', 'domains'],
         label: 'Resp. Immigration',
         dashboardType: 'volunteer',
     },
     RESP_VFF: {
-        allowedRoutes: [...SHARED_ROUTES, '/vff', '/reports', '/admin-reports', '/validation-center'],
-        sidebarKeys: [...SHARED_SIDEBAR, '/vff', '/reports', '/admin-reports', 'domains', '/validation-center'],
+        allowedRoutes: [...SHARED_ROUTES, '/vff', '/reports', '/admin-reports'],
+        sidebarKeys: [...SHARED_SIDEBAR, '/vff', '/reports', '/admin-reports', 'domains'],
         label: 'Resp. VFF',
         dashboardType: 'volunteer',
     },
