@@ -6,6 +6,30 @@ spring:
   config:
     import: optional:configserver:http://config-server:8888
 
+# Actuator — Prometheus Metrics
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+    prometheus:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      percentiles:
+        http.server.requests: 0.5,0.75,0.90,0.95,0.99
+    tags:
+      application: admin-service
+      environment: production
+
 # Eureka Client
 eureka:
   client:
