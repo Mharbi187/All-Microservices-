@@ -30,6 +30,7 @@ public class CalendarEventService {
     private final CommitteeRepository committeeRepository;
     private final VolunteerRepository volunteerRepository;
     private final AuthService authService;
+    private final EmailService emailService;
 
     @Transactional(readOnly = true)
     public List<CalendarEventDTO> getUpcomingEvents() {
@@ -105,13 +106,22 @@ public class CalendarEventService {
             throw new IllegalStateException("Event is already full");
         }
 
+        boolean isRegistering = false;
         if (event.getParticipants().contains(volunteer)) {
             event.getParticipants().remove(volunteer); // Unregister
         } else {
             event.getParticipants().add(volunteer); // Register
+            isRegistering = true;
         }
 
         CalendarEvent saved = eventRepository.save(event);
+        
+        try {
+            emailService.sendEventRegistrationEmail(volunteer.getEmail(), volunteer.getFullName(), saved, isRegistering);
+        } catch (Exception e) {
+            // Ignorer l'erreur d'email pour ne pas bloquer l'inscription
+        }
+
         return mapToDTO(saved, currentUser.getId());
     }
 

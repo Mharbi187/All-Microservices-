@@ -185,7 +185,7 @@ public class EmailService {
             "<p style='color:#555;line-height:1.7'>Nous vous informons que votre réclamation concernant le sujet <strong>\"" + subject + "\"</strong> " +
             "a été consultée et est maintenant en cours d'examen par " + viewerName + ".</p>" +
             "<div style='text-align:center;margin:30px 0'>" +
-            "<a href='http://localhost:5173/volunteer/complaints' style='background:#e01c2e;color:#fff;padding:12px 24px;" +
+            "<a href='http://nexus-aid.me/volunteer/complaints' style='background:#e01c2e;color:#fff;padding:12px 24px;" +
             "text-decoration:none;border-radius:8px;font-weight:600;display:inline-block;box-shadow:0 4px 12px rgba(224,28,46,0.2)'>Voir ma réclamation</a>" +
             "</div>" +
             "<p style='color:#888;font-size:13px;margin-top:24px'>Envoyé automatiquement par Nexus-AID.</p>" +
@@ -216,7 +216,7 @@ public class EmailService {
             "</table>" +
             "</div>" +
             "<div style='text-align:center;margin:30px 0'>" +
-            "<a href='http://localhost:5173/volunteer/complaints' style='background:#e01c2e;color:#fff;padding:12px 24px;" +
+            "<a href='http://nexus-aid.me/volunteer/complaints' style='background:#e01c2e;color:#fff;padding:12px 24px;" +
             "text-decoration:none;border-radius:8px;font-weight:600;display:inline-block;box-shadow:0 4px 12px rgba(224,28,46,0.2)'>Voir les détails</a>" +
             "</div>" +
             "<p style='color:#888;font-size:13px;margin-top:24px'>Envoyé automatiquement par Nexus-AID.</p>" +
@@ -244,7 +244,7 @@ public class EmailService {
             "\"" + responseMessage + "\"" +
             "</div>" +
             "<div style='text-align:center;margin:30px 0'>" +
-            "<a href='http://localhost:5173/volunteer/complaints' style='background:#e01c2e;color:#fff;padding:12px 24px;" +
+            "<a href='http://nexus-aid.me/volunteer/complaints' style='background:#e01c2e;color:#fff;padding:12px 24px;" +
             "text-decoration:none;border-radius:8px;font-weight:600;display:inline-block;box-shadow:0 4px 12px rgba(224,28,46,0.2)'>Répondre ou voir la discussion</a>" +
             "</div>" +
             "<p style='color:#888;font-size:13px;margin-top:24px'>Envoyé automatiquement par Nexus-AID.</p>" +
@@ -361,7 +361,7 @@ public class EmailService {
                 + "<p style='color:#333;font-weight:600;margin:0 0 8px'>Instructions :</p>"
                 + "<p style='color:#555;margin:0;line-height:1.6'>" + instrStr + "</p></div>"
                 + "<div style='text-align:center;margin:30px 0'>"
-                + "<a href='http://localhost:5173/catastrophes' style='background:#e01c2e;color:#fff;padding:14px 28px;"
+                + "<a href='http://nexus-aid.me/catastrophes' style='background:#e01c2e;color:#fff;padding:14px 28px;"
                 + "text-decoration:none;border-radius:8px;font-weight:600;display:inline-block;"
                 + "box-shadow:0 4px 12px rgba(224,28,46,0.2)'>Voir mes missions &amp; Télécharger l'ordre</a></div>"
                 + "<p style='color:#888;font-size:13px;margin-top:24px'>Envoyé automatiquement par Nexus-AID. Pour toute question, contactez votre responsable catastrophes.</p>"
@@ -388,7 +388,7 @@ public class EmailService {
             "<p style='color:#555;line-height:1.7'>Nous avons le plaisir de vous informer que vous avez été ajouté(e) à l'équipe d'intervention <strong>" + teamType + "</strong> en tant que <strong style='color:#e01c2e'>" + specialty + "</strong>.</p>" +
             "<p style='color:#555;line-height:1.7'>En tant que membre de cette équipe d'intervention, vous pourrez être sollicité(e) à tout moment pour des missions d'urgence ou de planification.</p>" +
             "<div style='text-align:center;margin:30px 0'>" +
-            "<a href='http://localhost:5173/volunteer/interventions' style='background:#e01c2e;color:#fff;padding:12px 24px;" +
+            "<a href='http://nexus-aid.me/volunteer/interventions' style='background:#e01c2e;color:#fff;padding:12px 24px;" +
             "text-decoration:none;border-radius:8px;font-weight:600;display:inline-block;box-shadow:0 4px 12px rgba(224,28,46,0.2)'>Voir mon espace Intervention</a>" +
             "</div>" +
             "<p style='color:#888;font-size:13px;margin-top:24px'>Envoyé automatiquement par Nexus-AID.</p>" +
@@ -461,7 +461,7 @@ public class EmailService {
             "</div>" +
             "<p style='color:#555;line-height:1.7'>Veuillez vous connecter à la plateforme pour soumettre votre rapport de terrain.</p>" +
             "<div style='text-align:center;margin:30px 0'>" +
-            "<a href='http://localhost:5173/catastrophes/missions/" + mission.getId() + "' style='background:#e01c2e;color:#fff;padding:12px 24px;" +
+            "<a href='http://nexus-aid.me/catastrophes/missions/" + mission.getId() + "' style='background:#e01c2e;color:#fff;padding:12px 24px;" +
             "text-decoration:none;border-radius:8px;font-weight:600;display:inline-block;box-shadow:0 4px 12px rgba(224,28,46,0.2)'>Remplir le rapport</a>" +
             "</div>" +
             "<p style='color:#888;font-size:13px;margin-top:24px'>Envoyé automatiquement par Nexus-AID.</p>" +
@@ -487,7 +487,7 @@ public class EmailService {
             "</div>" +
             "<p style='color:#555;line-height:1.7'>Merci de votre engagement et de votre réactivité.</p>" +
             "<div style='text-align:center;margin:30px 0'>" +
-            "<a href='http://localhost:5173/catastrophes/missions/" + mission.getId() + "' style='background:#D97706;color:#fff;padding:12px 24px;" +
+            "<a href='http://nexus-aid.me/catastrophes/missions/" + mission.getId() + "' style='background:#D97706;color:#fff;padding:12px 24px;" +
             "text-decoration:none;border-radius:8px;font-weight:600;display:inline-block;box-shadow:0 4px 12px rgba(217,119,6,0.2)'>Remplir le rapport</a>" +
             "</div>" +
             "<p style='color:#888;font-size:13px;margin-top:24px'>Envoyé automatiquement par Nexus-AID.</p>" +
@@ -516,7 +516,7 @@ public class EmailService {
             "</div>" +
             "<p style='color:#555;line-height:1.7'>Veuillez vous connecter à la plateforme pour examiner et valider ce besoin.</p>" +
             "<div style='text-align:center;margin:30px 0'>" +
-            "<a href='http://localhost:5173/admin/donations/needs' style='background:#0284c7;color:#fff;padding:12px 24px;" +
+            "<a href='http://nexus-aid.me/admin/donations/needs' style='background:#0284c7;color:#fff;padding:12px 24px;" +
             "text-decoration:none;border-radius:8px;font-weight:600;display:inline-block;box-shadow:0 4px 12px rgba(2,132,199,0.2)'>Voir les besoins en attente</a>" +
             "</div>" +
             "<p style='color:#888;font-size:13px;margin-top:24px'>Envoyé automatiquement par Nexus-AID.</p>" +
@@ -589,5 +589,41 @@ public class EmailService {
             "<p style='color:#aaa;font-size:12px;margin:0'>© Croissant-Rouge Tunisien — Nexus-AID</p></div></div>";
 
         sendHtmlEmail(to, "Croissant-Rouge Tunisien - Votre reçu fiscal", html);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Calendar Event Email Templates
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Async
+    public void sendEventRegistrationEmail(String to, String name, com.nexusaid.core.entity.CalendarEvent event, boolean isRegistering) {
+        String actionTitle = isRegistering ? "Confirmation d'inscription" : "Annulation d'inscription";
+        String color = isRegistering ? "#10b981" : "#e01c2e";
+        String emoji = isRegistering ? "&#10004;&#65039;" : "&#10060;";
+        
+        String startDateStr = event.getStartDate() != null ? event.getStartDate().toString() : "—";
+        String endDateStr = event.getEndDate() != null ? event.getEndDate().toString() : "—";
+
+        String html = "<div style='font-family:Inter,Arial,sans-serif;max-width:600px;margin:0 auto;" +
+            "background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)'>" +
+            "<div style='background:linear-gradient(135deg," + color + "," + color + "dd);padding:32px;text-align:center'>" +
+            "<h1 style='color:#fff;margin:0;font-size:22px'>" + emoji + " " + actionTitle + "</h1>" +
+            "<p style='color:rgba(255,255,255,.85);margin:8px 0 0'>Croissant-Rouge Tunisien — Nexus-AID</p>" +
+            "</div><div style='padding:32px'>" +
+            "<p style='color:#333;font-size:16px'>Cher(e) <strong>" + name + "</strong>,</p>" +
+            "<p style='color:#555;line-height:1.7'>Nous confirmons votre " + (isRegistering ? "inscription à" : "désinscription de") + " l'événement suivant :</p>" +
+            "<div style='background:#f9fafb;border-left:4px solid " + color + ";padding:16px;border-radius:8px;margin:20px 0'>" +
+            "<h3 style='margin:0 0 12px;color:#333'>" + event.getTitle() + "</h3>" +
+            "<table style='width:100%;border-collapse:collapse'>" +
+            "<tr><td style='color:#666;padding:6px 0;width:30%'>Début</td><td style='font-weight:600;color:#333'>" + startDateStr + "</td></tr>" +
+            "<tr><td style='color:#666;padding:6px 0'>Fin</td><td style='font-weight:600;color:#333'>" + endDateStr + "</td></tr>" +
+            "<tr><td style='color:#666;padding:6px 0'>Lieu</td><td style='font-weight:600;color:#333'>" + (event.getLocation() != null ? event.getLocation() : "—") + "</td></tr>" +
+            "</table>" +
+            "</div>" +
+            "<p style='color:#888;font-size:13px;margin-top:24px'>Envoyé automatiquement par Nexus-AID.</p>" +
+            "</div><div style='background:#f8f8f8;padding:16px;text-align:center'>" +
+            "<p style='color:#aaa;font-size:12px;margin:0'>© Croissant-Rouge Tunisien — Nexus-AID</p></div></div>";
+
+        sendHtmlEmail(to, "[Nexus-AID] " + actionTitle + " - " + event.getTitle(), html);
     }
 }

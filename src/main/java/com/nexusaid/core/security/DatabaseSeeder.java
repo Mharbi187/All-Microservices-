@@ -471,6 +471,34 @@ public class DatabaseSeeder {
                 .maxParticipants(200)
                 .build());
 
+            eventRepository.save(CalendarEvent.builder()
+                .title("Atelier de Sensibilisation à l'Hygiène")
+                .description("Activité dans une école primaire pour enseigner les gestes barrières.")
+                .type("DIFFUSION")
+                .startDate(OffsetDateTime.now().plusDays(8).withHour(10).withMinute(0).withSecond(0).withNano(0))
+                .endDate(OffsetDateTime.now().plusDays(8).withHour(12).withMinute(0).withSecond(0).withNano(0))
+                .location("École Primaire El Menzah")
+                .organizer(admin)
+                .committee(local)
+                .targetScope(CommitteeType.LOCAL)
+                .status("VALIDE")
+                .maxParticipants(15)
+                .build());
+
+            eventRepository.save(CalendarEvent.builder()
+                .title("Exercice de Simulation d'Urgence")
+                .description("Simulation de catastrophe naturelle en coordination avec la Protection Civile.")
+                .type("URGENCE")
+                .startDate(OffsetDateTime.now().plusDays(20).withHour(6).withMinute(0).withSecond(0).withNano(0))
+                .endDate(OffsetDateTime.now().plusDays(20).withHour(18).withMinute(0).withSecond(0).withNano(0))
+                .location("Parc du Belvédère")
+                .organizer(admin)
+                .committee(regional)
+                .targetScope(CommitteeType.REGIONAL)
+                .status("VALIDE")
+                .maxParticipants(50)
+                .build());
+
             System.out.println("Calendar Events Seeding Complete!");
         };
     }
