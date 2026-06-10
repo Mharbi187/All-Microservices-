@@ -40,6 +40,13 @@ class ParticipantRole(enum.Enum):
     COMMUNICATIONS = "communications"
     COMMANDER = "commander"
     FIELD_MEDIC = "field_medic"
+    president = "president"
+    vice_president = "vice_president"
+    catastrophe_manager = "catastrophe_manager"
+    volunteer = "volunteer"
+    committee_member = "committee_member"
+    ndrt_member = "ndrt_member"
+    rdrt_member = "rdrt_member"
 
 class Participant(Base):
     __tablename__ = "room_participants"
@@ -188,6 +195,9 @@ class CrisisRoom(Base):
     deactivated_at = Column(DateTime, nullable=True)
     max_participants = Column(Integer, default=50)
     video_call_url = Column(String, default="")
+    closed_by = Column(String, nullable=True)
+    closed_at = Column(DateTime, nullable=True)
+    final_report = Column(Text, nullable=True)
 
     participants = relationship("Participant", back_populates="room", cascade="all", lazy="joined")
     messages = relationship("CrisisMessage", back_populates="room", cascade="all", lazy="joined")
@@ -206,7 +216,10 @@ class CrisisRoom(Base):
             "messages_count": len(self.messages) if self.messages else 0,
             "decisions_count": len(self.decisions) if self.decisions else 0,
             "documents_count": len(self.documents) if self.documents else 0,
-            "video_call_url": self.video_call_url
+            "video_call_url": self.video_call_url,
+            "closed_by": self.closed_by,
+            "closed_at": self.closed_at.isoformat() if self.closed_at else None,
+            "final_report": self.final_report
         }
 
     def activate(self) -> bool:
@@ -217,7 +230,7 @@ class CrisisRoom(Base):
         self.deactivated_at = None
         if not self.situation_board:
             self.situation_board = SituationBoard(crisis_room_id=self.id)
-        self.video_call_url = f"https://meet.nexusaid.tn/crisis/{self.id}"
+        self.video_call_url = f"https://meet.nexus-aid.me/crisis/{self.id}"
         self._add_system_message(f"🚨 Salle de crise activée pour: {self.disaster_name}")
         return True
 
@@ -263,7 +276,8 @@ class CrisisRoom(Base):
             sender_name=sender_name,
             content=content,
             message_type=message_type,
-            priority=priority
+            priority=priority,
+            sent_at=datetime.utcnow()
         )
         self.messages.append(msg)
         for p in self.participants:
@@ -319,15 +333,25 @@ class CrisisRoomService:
                 return {"success": True, "room": room.to_dict(), "video_call_url": room.video_call_url}
             return {"success": False, "error": "Room already active"}
 
-    def close_room(self, room_id: str) -> Dict:
+    def close_room(self, room_id: str, closed_by: str = None, final_report: str = None) -> Dict:
         with self._get_session() as db:
             room = db.query(CrisisRoom).filter(CrisisRoom.id == room_id).first()
             if not room:
                 return {"success": False, "error": "Room not found"}
             res = room.deactivate()
             if res:
+                room.closed_by = closed_by
+                room.final_report = final_report
                 db.commit()
                 db.refresh(room)
+                
+                # Libérer les équipes associées à cette catastrophe
+                try:
+                    from src.api import team_service
+                    team_service.release_teams_for_disaster(room.disaster_id)
+                except Exception as e:
+                    logger.error(f"Failed to release teams for disaster {room.disaster_id}: {e}")
+                
                 return {"success": True, "room": room.to_dict()}
             return {"success": False, "error": "Room is not active"}
 
@@ -344,6 +368,19 @@ class CrisisRoomService:
                 "situation_board": room.situation_board.to_dict() if room.situation_board else None
             }
 
+    def get_rooms_by_participant(self, user_id: str) -> List[Dict]:
+        with self._get_session() as db:
+            # On cherche toutes les salles qui ont ce participant
+            rooms = db.query(CrisisRoom).join(Participant, CrisisRoom.id == Participant.room_id).filter(Participant.user_id == user_id).all()
+            result = []
+            for room in rooms:
+                result.append({
+                    "room": room.to_dict(),
+                    "participants_count": len(room.participants) if room.participants else 0,
+                    "situation_board": room.situation_board.to_dict() if room.situation_board else None
+                })
+            return result
+
     def handle_msg_transaction(self, room_id, sender_id, sender_name, content, message_type, priority=0):
         with self._get_session() as db:
             room = db.query(CrisisRoom).filter(CrisisRoom.id == room_id).first()
@@ -359,7 +396,42 @@ class CrisisRoomService:
             room = db.query(CrisisRoom).filter(CrisisRoom.id == room_id).first()
             if not room:
                 return None
+            
+            # Check for duplicate
+            existing = db.query(Participant).filter(
+                Participant.room_id == room_id,
+                Participant.user_id == user_id
+            ).first()
+            
+            if existing:
+                raise Exception("DuplicateParticipant")
+                
             room.add_participant(user_id, name, prole, agency)
             db.commit()
-            db.refresh(room)
             return room
+
+    def remove_participant(self, room_id: str, user_id: str) -> bool:
+        with self._get_session() as db:
+            room = db.query(CrisisRoom).filter(CrisisRoom.id == room_id).first()
+            if not room:
+                return False
+            participant = db.query(Participant).filter(Participant.room_id == room_id, Participant.user_id == user_id).first()
+            if participant:
+                db.delete(participant)
+                room._add_system_message(f"L'utilisateur {participant.name} a été retiré de la salle de crise.")
+                db.commit()
+                return True
+            return False
+
+    def update_participant_role(self, room_id: str, user_id: str, new_role: ParticipantRole) -> bool:
+        with self._get_session() as db:
+            room = db.query(CrisisRoom).filter(CrisisRoom.id == room_id).first()
+            if not room:
+                return False
+            participant = db.query(Participant).filter(Participant.room_id == room_id, Participant.user_id == user_id).first()
+            if participant:
+                participant.role = new_role
+                room._add_system_message(f"Le rôle de l'utilisateur {participant.name} a été mis à jour.")
+                db.commit()
+                return True
+            return False
