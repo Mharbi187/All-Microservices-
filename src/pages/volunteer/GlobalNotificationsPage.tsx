@@ -87,7 +87,11 @@ export default function GlobalNotificationsPage() {
                 iconType: n.type || 'info',
                 onClick: () => {
                     markReportingRead(n.id);
-                    navigate(`/reporting/reports/${n.reportId}`);
+                    if (n.type === 'REPORT_ASSIGNED') {
+                        navigate(`/reporting/reports/${n.reportId}/fill`);
+                    } else {
+                        navigate(`/reporting/reports/${n.reportId}`);
+                    }
                 }
             });
         });
