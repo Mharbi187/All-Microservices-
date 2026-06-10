@@ -253,15 +253,6 @@ SIMULATION_SCENARIOS = {
                 "weather": {"temperature": 47.0, "humidity": 12, "wind_speed": 82.0, "wind_direction": "NW", "conditions": "Clear sky — extreme heat"}
             },
             {
-                "wilaya": "Tabarka",
-                "lat": 36.9542, "lon": 8.7589,
-                "risk_score": 0.88, "confidence_pct": 94.1,
-                "disaster_type": "WILDFIRE",
-                "is_high_risk": True,
-                "satellite": {"precipitation_7d_mm": 0.0, "max_frp": 312.8, "ndvi_anomaly": -0.28},
-                "weather": {"temperature": 44.0, "humidity": 15, "wind_speed": 68.0, "wind_direction": "NW", "conditions": "Dry gusts"}
-            },
-            {
                 "wilaya": "Le Kef",
                 "lat": 36.1676, "lon": 8.7046,
                 "risk_score": 0.52, "confidence_pct": 78.4,
