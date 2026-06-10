@@ -390,6 +390,13 @@ const MainLayout: React.FC = () => {
             label: 'Mes Interventions (NDRT)',
         });
 
+        // Salles de Crise
+        volunteerChildren.push({
+            key: '/volunteer/crisis-rooms',
+            icon: <MessageOutlined />,
+            label: 'Salles de Crise',
+        });
+
         // Quiz — visible to all volunteers
         volunteerChildren.push({
             key: '/volunteer/quiz',

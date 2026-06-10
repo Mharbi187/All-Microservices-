@@ -34,7 +34,7 @@ export default function RespondersPanel({ targetLat, targetLon, targetLabel }: R
     const loadTeams = useCallback(async () => {
         try {
             setLoading(true);
-            const result = await crisisApi.getAvailableTeams();
+            const result = await crisisApi.getAllTeams();
             setTeams(Array.isArray(result) ? result : []);
         } catch {
             notification.error({
@@ -192,8 +192,8 @@ export default function RespondersPanel({ targetLat, targetLon, targetLabel }: R
                                         <Text strong style={{ fontFamily: rfont.body, fontSize: 13, color: t.text, display: 'block' }}>
                                             {team.name}
                                         </Text>
-                                        <Space size={8}>
-                                            <span style={{
+                                        <Space size={6} style={{ marginTop: 4 }}>
+                                            <div style={{
                                                 background: team.team_type === 'NDRT'
                                                     ? `${rp.red500}15` : `${rp.amb500}15`,
                                                 color: team.team_type === 'NDRT' ? rp.red500 : rp.amb500,
@@ -202,7 +202,19 @@ export default function RespondersPanel({ targetLat, targetLon, targetLabel }: R
                                                 fontSize: 10, fontWeight: 700, fontFamily: rfont.data,
                                             }}>
                                                 {team.team_type}
-                                            </span>
+                                            </div>
+                                            {team.status && team.status !== 'available' && (
+                                                <div style={{
+                                                    background: `#64748b15`,
+                                                    color: t.textFaint,
+                                                    border: `1px solid #64748b25`,
+                                                    borderRadius: rr.pill, padding: '1px 7px',
+                                                    fontSize: 10, fontWeight: 700, fontFamily: rfont.data,
+                                                    textTransform: 'capitalize'
+                                                }}>
+                                                    {team.status === 'deployed' ? 'Déployée' : team.status === 'resting' ? 'En repos' : team.status === 'training' ? 'Entraînement' : team.status}
+                                                </div>
+                                            )}
                                             <Text style={{ fontFamily: rfont.body, fontSize: 11, color: t.textFaint }}>
                                                 {team.member_count} membres · {team.base_location_name ?? 'Base inconnue'}
                                             </Text>
@@ -210,23 +222,33 @@ export default function RespondersPanel({ targetLat, targetLon, targetLabel }: R
                                     </div>
                                 </div>
 
-                                <Button
-                                    type="primary"
-                                    icon={<RocketOutlined />}
-                                    loading={deployingId === team.id}
-                                    onClick={() => void dispatchTeam(team)}
-                                    style={{
-                                        background: `linear-gradient(90deg, ${rp.red600}, ${rp.red500})`,
-                                        borderColor: rp.red600,
-                                        borderRadius: rr.sm,
-                                        fontFamily: rfont.body, fontWeight: 700,
-                                        boxShadow: '0 2px 8px rgba(220,38,38,0.3)',
-                                    }}
-                                >
-                                    Déployer
-                                </Button>
-                            </div>
-                        </motion.div>
+                        <Button
+                            type="primary"
+                            icon={<RocketOutlined />}
+                            loading={deployingId === team.id}
+                            onClick={() => void dispatchTeam(team)}
+                            disabled={team.status !== 'available' && team.status !== undefined}
+                            style={{
+                                background: team.status !== 'available' && team.status !== undefined 
+                                    ? t.cardBg 
+                                    : `linear-gradient(90deg, ${rp.red600}, ${rp.red500})`,
+                                borderColor: team.status !== 'available' && team.status !== undefined 
+                                    ? t.divider 
+                                    : rp.red600,
+                                color: team.status !== 'available' && team.status !== undefined 
+                                    ? t.textSub 
+                                    : '#fff',
+                                borderRadius: rr.sm,
+                                fontFamily: rfont.body, fontWeight: 700,
+                                boxShadow: team.status !== 'available' && team.status !== undefined 
+                                    ? 'none' 
+                                    : '0 2px 8px rgba(220,38,38,0.3)',
+                            }}
+                        >
+                            Déployer
+                        </Button>
+                    </div>
+                </motion.div>
                     )}
                 />
             </div>

@@ -2,19 +2,21 @@
 // NEXUS-AID — Mission Assignment Tab
 // Create / manage disaster intervention missions with GPS,
 // team assignment, materials, notifications and PDF order
+// + Audit score + Photo upload after mission completion
 // ============================================================
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     Button, Col, DatePicker, Form, Input, Modal, Row, Select, Space,
     Spin, Statistic, Tag, Typography, message, Checkbox, Divider,
-    Tooltip, Badge, Empty, Popconfirm, Transfer, Alert
+    Tooltip, Badge, Empty, Popconfirm, Transfer, Alert, Upload, Progress
 } from 'antd';
-import type { TransferProps } from 'antd';
+import type { TransferProps, UploadFile } from 'antd';
 import {
     PlusOutlined, ReloadOutlined, EnvironmentOutlined, BellOutlined,
     FilePdfOutlined, EditOutlined, DeleteOutlined, UserOutlined,
     ClockCircleOutlined, TeamOutlined, ToolOutlined, CheckCircleOutlined,
-    ExclamationCircleOutlined, StopOutlined, CalendarOutlined
+    ExclamationCircleOutlined, StopOutlined, CalendarOutlined,
+    CameraOutlined, FieldTimeOutlined
 } from '@ant-design/icons';
 import { motion, AnimatePresence } from 'framer-motion';
 import dayjs from 'dayjs';
@@ -61,6 +63,19 @@ const MATERIALS_LIST = [
     'GPS portable', 'Kit communication satellite', 'Médicaments basiques', 'Oxygène médical'
 ];
 
+// ─── Audit score helper ───────────────────────────────────────
+function computeMissionAudit(mission: DisasterMissionDTO) {
+    const checks = {
+        hasStart: !!mission.startDatetime,
+        hasEnd: !!mission.endDatetime,
+        hasLocation: !!(mission.locationGps?.lat),
+        hasChief: !!mission.teamChiefName,
+        hasVolunteers: (mission.assignedVolunteers?.length ?? 0) > 0,
+    };
+    const passed = Object.values(checks).filter(Boolean).length;
+    return { checks, score: Math.round((passed / Object.keys(checks).length) * 100) };
+}
+
 const MissionAssignmentTab: React.FC<MissionAssignmentTabProps> = ({ isDark, onGeneratePdf }) => {
     const user = useAuthStore((s) => s.user);
     const [missions, setMissions] = useState<DisasterMissionDTO[]>([]);
@@ -74,6 +89,12 @@ const MissionAssignmentTab: React.FC<MissionAssignmentTabProps> = ({ isDark, onG
     const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
     const [gpsValue, setGpsValue] = useState({ lat: '', lng: '', address: '' });
     const [form] = Form.useForm();
+    // Photo upload state: key = missionId, value = list of uploaded files
+    const [missionPhotos, setMissionPhotos] = useState<Record<string, UploadFile[]>>(
+        () => {
+            try { return JSON.parse(localStorage.getItem('nexusaid_mission_photos') ?? '{}'); } catch { return {}; }
+        }
+    );
 
     const isNational = user?.rawRoles?.some(r => r.committeeType === 'NATIONAL') ?? false;
     const committeeId = user?.committeeId ?? '';
@@ -393,6 +414,41 @@ const MissionAssignmentTab: React.FC<MissionAssignmentTabProps> = ({ isDark, onG
                                                 </Space>
                                             </div>
 
+                                            {/* Audit score + Duration */}
+                                            {(() => {
+                                                const audit = computeMissionAudit(mission);
+                                                const durationH = mission.startDatetime && mission.endDatetime
+                                                    ? dayjs(mission.endDatetime).diff(dayjs(mission.startDatetime), 'hour', true).toFixed(1)
+                                                    : null;
+                                                return (
+                                                    <div style={{
+                                                        padding: '8px 20px',
+                                                        borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'}`,
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: 12,
+                                                        flexWrap: 'wrap',
+                                                    }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                            <Progress
+                                                                percent={audit.score}
+                                                                size="small"
+                                                                style={{ width: 80 }}
+                                                                strokeColor={audit.score === 100 ? '#22c55e' : audit.score >= 60 ? '#eab308' : '#e01c2e'}
+                                                                format={p => <span style={{ fontSize: 10, fontWeight: 700 }}>{p}%</span>}
+                                                            />
+                                                            <Text type="secondary" style={{ fontSize: 10 }}>Audit</Text>
+                                                        </div>
+                                                        {durationH && (
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                                <FieldTimeOutlined style={{ fontSize: 11, color: '#64748b' }} />
+                                                                <Text type="secondary" style={{ fontSize: 11 }}>{durationH}h</Text>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })()}
+
                                             {/* Card Footer — Actions */}
                                             <div style={{
                                                 padding: '12px 16px',
@@ -459,6 +515,57 @@ const MissionAssignmentTab: React.FC<MissionAssignmentTabProps> = ({ isDark, onG
                                                     </Button>
                                                 </Tooltip>
                                             </div>
+
+                                            {/* Photo upload — only after mission COMPLETED */}
+                                            {mission.status === 'COMPLETED' && mission.id && (
+                                                <div style={{
+                                                    padding: '12px 16px',
+                                                    borderTop: `1px solid ${isDark ? 'rgba(34,197,94,0.15)' : 'rgba(34,197,94,0.1)'}`,
+                                                    background: isDark ? 'rgba(34,197,94,0.04)' : 'rgba(34,197,94,0.02)',
+                                                }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                                                        <CameraOutlined style={{ color: '#22c55e', fontSize: 12 }} />
+                                                        <Text style={{ fontSize: 11, color: '#22c55e', fontWeight: 700 }}>Photos de traçabilité</Text>
+                                                        {(missionPhotos[mission.id]?.length ?? 0) > 0 && (
+                                                            <Tag color="success" style={{ borderRadius: 4, fontSize: 10, padding: '0 5px', margin: 0 }}>
+                                                                {missionPhotos[mission.id].length} photo(s)
+                                                            </Tag>
+                                                        )}
+                                                    </div>
+                                                    <Upload
+                                                        accept="image/*"
+                                                        multiple
+                                                        listType="picture"
+                                                        fileList={missionPhotos[mission.id] ?? []}
+                                                        beforeUpload={() => false}
+                                                        onChange={({ fileList }) => {
+                                                            const updated = { ...missionPhotos, [mission.id!]: fileList };
+                                                            setMissionPhotos(updated);
+                                                            try {
+                                                                // persist only metadata (not file content) for UX continuity
+                                                                const light = Object.fromEntries(
+                                                                    Object.entries(updated).map(([k, v]) => [
+                                                                        k,
+                                                                        v.map(f => ({ uid: f.uid, name: f.name, status: f.status }))
+                                                                    ])
+                                                                );
+                                                                localStorage.setItem('nexusaid_mission_photos', JSON.stringify(light));
+                                                            } catch { /* ignore */ }
+                                                            if (fileList.length > 0) {
+                                                                message.success('Photo ajoutée pour la traçabilité de la mission');
+                                                            }
+                                                        }}
+                                                    >
+                                                        <Button
+                                                            size="small"
+                                                            icon={<CameraOutlined />}
+                                                            style={{ borderRadius: 6, fontSize: 11, borderColor: '#22c55e', color: '#22c55e' }}
+                                                        >
+                                                            Ajouter photos
+                                                        </Button>
+                                                    </Upload>
+                                                </div>
+                                            )}
                                         </div>
                                     </motion.div>
                                 </Col>

@@ -52,13 +52,30 @@ export const crisisApi = {
         const res = await apiClient.get(`/crisis-room/${roomId}/summary`);
         return res.data;
     },
+    getActiveRooms: async () => {
+        const res = await apiClient.get('/crisis-room/active');
+        return res.data;
+    },
+    closeCrisisRoom: async (roomId: string, payload: { closed_by: string, final_report: string }) => {
+        const res = await apiClient.post(`/crisis-room/${roomId}/close`, payload);
+        return res.data;
+    },
     getAvailableTeams: async () => {
         const res = await apiClient.get('/teams/available');
         return res.data;
     },
-    dispatchTeam: async (teamId: string, lat: number, lon: number) => {
+    getAllTeams: async () => {
+        const res = await apiClient.get('/teams/all');
+        return res.data;
+    },
+    getMyCrisisRooms: async (userId: string) => {
+        const res = await apiClient.get(`/volunteers/${userId}/crisis-rooms`);
+        return res.data;
+    },
+    dispatchTeam: async (teamId: string, lat: number, lon: number, roomId?: string) => {
         const res = await apiClient.post('/teams/dispatch', {
             team_id: teamId,
+            room_id: roomId || "",
             lat,
             lon
         });
@@ -83,6 +100,14 @@ export const crisisApi = {
     },
     inviteParticipant: async (roomId: string, payload: { user_id: string, name: string, role: string, agency: string }) => {
         const res = await apiClient.post(`/crisis-room/${roomId}/participants`, payload);
+        return res.data;
+    },
+    removeParticipant: async (roomId: string, userId: string) => {
+        const res = await apiClient.delete(`/crisis-room/${roomId}/participants/${userId}`);
+        return res.data;
+    },
+    updateParticipantRole: async (roomId: string, userId: string, role: string) => {
+        const res = await apiClient.put(`/crisis-room/${roomId}/participants/${userId}/role`, { role });
         return res.data;
     }
 };

@@ -120,6 +120,7 @@ const QuizPage = lazy(() => import('@/pages/volunteer/QuizPage'));
 const GlobalNotificationsPage = lazy(() => import('@/pages/volunteer/GlobalNotificationsPage'));
 const DonationReceptionPage = lazy(() => import('@/pages/volunteer/DonationReceptionPage'));
 const MyInterventionsPage = lazy(() => import('@/pages/domains/catastrophes/MyInterventionsPage'));
+const MyCrisisRoomsPage = lazy(() => import('@/pages/volunteer/MyCrisisRoomsPage'));
 const DonorDashboardPage = lazy(() => import('@/pages/donor/DonorDashboardPage'));
 const DonorMapPage = lazy(() => import('@/pages/donor/DonorMapPage'));
 const MakeDonationPage = lazy(() => import('@/pages/donor/MakeDonationPage'));
@@ -141,6 +142,7 @@ const RcpEvaluationFormPage = lazy(() => import('@/pages/domains/RcpEvaluationFo
 // ---- Crisis Command Center ----
 const RadarDashboardPage = lazy(() => import('@/pages/crisis/Dashboard'));
 const CrisisRoomPage = lazy(() => import('@/pages/crisis/CrisisRoomPage'));
+const VolunteerCrisisRoom = lazy(() => import('@/pages/crisis/VolunteerCrisisRoom'));
 
 // ---- Reporting & Template Builder ----
 const TemplateListPage = lazy(() => import('@/pages/templates/TemplateListPage'));
@@ -211,6 +213,7 @@ export const router = createBrowserRouter([
             { path: 'notifications', element: withLoader(<GlobalNotificationsPage />) },
             { path: 'volunteer/reception', element: withLoader(<DonationReceptionPage />) },
             { path: 'volunteer/interventions', element: withLoader(<MyInterventionsPage />) },
+            { path: 'volunteer/crisis-rooms', element: withLoader(<MyCrisisRoomsPage />) },
             // Domain-specific routes
             { path: 'secourisme', element: withLoader(<SecourismePage />) },
             { path: 'secourisme/rcp-evaluation', element: withLoader(<RcpEvaluationFormPage />) },
@@ -261,6 +264,7 @@ export const router = createBrowserRouter([
         children: [
             { path: '/radar/fullscreen', element: withLoader(<RadarDashboardPage />) },
             { path: '/crisis-room/:id/fullscreen', element: withLoader(<CrisisRoomPage />) },
+            { path: '/volunteer/room/:id', element: withLoader(<VolunteerCrisisRoom />) },
         ],
     },
 
