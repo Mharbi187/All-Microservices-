@@ -47,7 +47,7 @@ public class DonationController {
     // ─── 2. Responsables de Comité (Création & Suivi) ─────────────────────────
 
     @PostMapping("/needs")
-    @PreAuthorize("hasAnyRole('RESP_CATASTROPHES', 'RESP_ACTION_SOCIALE', 'RESP_SANTE', 'PRESIDENT', 'VICE_PRESIDENT')")
+    @PreAuthorize("hasAnyRole('RESP_CATASTROPHES', 'RESP_ACTION_SOCIALE', 'RESP_SANTE', 'PRESIDENT', 'PRESIDENT_LOCAL', 'PRESIDENT_REGIONAL', 'PRESIDENT_NATIONAL', 'VICE_PRESIDENT', 'VICE_PRESIDENT_LOCAL', 'VICE_PRESIDENT_REGIONAL', 'VICE_PRESIDENT_NATIONAL', 'ADMIN')")
     public ResponseEntity<DonationNeed> createExpectedNeed(
             @RequestBody CreateNeedRequest request,
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
@@ -68,7 +68,7 @@ public class DonationController {
     // ─── 3. Présidents & VP (Validation & Rejet) ──────────────────────────────
 
     @GetMapping("/needs/pending")
-    @PreAuthorize("hasAnyRole('PRESIDENT', 'VICE_PRESIDENT')")
+    @PreAuthorize("hasAnyRole('PRESIDENT', 'PRESIDENT_LOCAL', 'PRESIDENT_REGIONAL', 'PRESIDENT_NATIONAL', 'VICE_PRESIDENT', 'VICE_PRESIDENT_LOCAL', 'VICE_PRESIDENT_REGIONAL', 'VICE_PRESIDENT_NATIONAL', 'ADMIN')")
     public ResponseEntity<Page<DonationNeed>> getPendingNeeds(
             HttpServletRequest req,
             @RequestParam(defaultValue = "0") int page,
@@ -80,7 +80,7 @@ public class DonationController {
     }
 
     @GetMapping("/needs/committee")
-    @PreAuthorize("hasAnyRole('PRESIDENT', 'VICE_PRESIDENT')")
+    @PreAuthorize("hasAnyRole('PRESIDENT', 'PRESIDENT_LOCAL', 'PRESIDENT_REGIONAL', 'PRESIDENT_NATIONAL', 'VICE_PRESIDENT', 'VICE_PRESIDENT_LOCAL', 'VICE_PRESIDENT_REGIONAL', 'VICE_PRESIDENT_NATIONAL', 'ADMIN')")
     public ResponseEntity<Page<DonationNeed>> getCommitteeNeeds(
             HttpServletRequest req,
             @RequestParam(defaultValue = "0") int page,
@@ -92,7 +92,7 @@ public class DonationController {
     }
 
     @PutMapping("/needs/{id}/validate")
-    @PreAuthorize("hasAnyRole('PRESIDENT', 'VICE_PRESIDENT') and @donationSecurity.canValidateNeedFor(#id, authentication)")
+    @PreAuthorize("hasAnyRole('PRESIDENT', 'PRESIDENT_LOCAL', 'PRESIDENT_REGIONAL', 'PRESIDENT_NATIONAL', 'VICE_PRESIDENT', 'VICE_PRESIDENT_LOCAL', 'VICE_PRESIDENT_REGIONAL', 'VICE_PRESIDENT_NATIONAL', 'ADMIN') and @donationSecurity.canValidateNeedFor(#id, authentication)")
     public ResponseEntity<DonationNeed> validateNeed(
             @PathVariable UUID id,
             @RequestBody ValidateNeedRequest request,
@@ -106,7 +106,7 @@ public class DonationController {
     // ─── 4. Statistiques ──────────────────────────────────────────────────────
 
     @GetMapping("/stats")
-    @PreAuthorize("hasAnyRole('PRESIDENT', 'VICE_PRESIDENT')")
+    @PreAuthorize("hasAnyRole('PRESIDENT', 'PRESIDENT_LOCAL', 'PRESIDENT_REGIONAL', 'PRESIDENT_NATIONAL', 'VICE_PRESIDENT', 'VICE_PRESIDENT_LOCAL', 'VICE_PRESIDENT_REGIONAL', 'VICE_PRESIDENT_NATIONAL', 'ADMIN')")
     public ResponseEntity<DonationStatsResponse> getStats(HttpServletRequest req) {
         String authHeader = req.getHeader("Authorization");
         List<UUID> accessibleIds = hierarchyService.getAccessibleCommitteeIds(authHeader);
@@ -116,7 +116,7 @@ public class DonationController {
     // ─── 5. Réception de Dons & Reçus ─────────────────────────────────────────
 
     @PostMapping("/monetary")
-    @PreAuthorize("hasAnyRole('PRESIDENT', 'VICE_PRESIDENT', 'RESP_CATASTROPHES', 'RESP_ACTION_SOCIALE')")
+    @PreAuthorize("hasAnyRole('PRESIDENT', 'PRESIDENT_LOCAL', 'PRESIDENT_REGIONAL', 'PRESIDENT_NATIONAL', 'VICE_PRESIDENT', 'VICE_PRESIDENT_LOCAL', 'VICE_PRESIDENT_REGIONAL', 'VICE_PRESIDENT_NATIONAL', 'ADMIN', 'RESP_CATASTROPHES', 'RESP_ACTION_SOCIALE')")
     public ResponseEntity<DonationReceiptResponse> processMonetaryDonation(
             @RequestBody CreateMonetaryDonationRequest request,
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
@@ -126,7 +126,7 @@ public class DonationController {
     }
 
     @PostMapping("/in-kind")
-    @PreAuthorize("hasAnyRole('PRESIDENT', 'VICE_PRESIDENT', 'RESP_CATASTROPHES', 'RESP_ACTION_SOCIALE')")
+    @PreAuthorize("hasAnyRole('PRESIDENT', 'PRESIDENT_LOCAL', 'PRESIDENT_REGIONAL', 'PRESIDENT_NATIONAL', 'VICE_PRESIDENT', 'VICE_PRESIDENT_LOCAL', 'VICE_PRESIDENT_REGIONAL', 'VICE_PRESIDENT_NATIONAL', 'ADMIN', 'RESP_CATASTROPHES', 'RESP_ACTION_SOCIALE')")
     public ResponseEntity<DonationReceiptResponse> processInKindDonation(
             @RequestBody CreateInKindDonationRequest request,
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
