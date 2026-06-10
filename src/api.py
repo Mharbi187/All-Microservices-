@@ -2363,6 +2363,201 @@ async def crisis_websocket(websocket: WebSocket, room_id: str):
             # Receive client messages (typing indicators, read receipts, etc.)
             data = await websocket.receive_json()
             # Broadcast typing and read events to other participants
+        content=f"Le rôle d'un membre a été mis à jour vers {req.role}.",
+        message_type=MessageType.SYSTEM
+    )
+    if sys_msg:
+        await manager.broadcast(room_id, {
+            "event": "NEW_MESSAGE",
+            "data": sys_msg.to_dict()
+        })
+        
+    return {"success": True}
+
+@app.get("/api/v1/crisis-room/active")
+def get_active_crisis_rooms():
+    from src.database import SessionLocal
+    from src.crisis_room import CrisisRoom, CrisisRoomStatus
+    db = SessionLocal()
+    try:
+        rooms = db.query(CrisisRoom).filter(CrisisRoom.status == CrisisRoomStatus.ACTIVE).all()
+        return [r.to_dict() for r in rooms]
+    finally:
+        db.close()
+
+class CloseRoomRequest(BaseModel):
+    closed_by: str
+    final_report: str
+
+@app.post("/api/v1/crisis-room/{room_id}/close")
+def close_crisis_room(room_id: str, req: CloseRoomRequest):
+    result = crisis_service.close_room(room_id, req.closed_by, req.final_report)
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("error"))
+    return result
+
+@app.get("/api/v1/crisis-room/{room_id}/summary")
+def get_crisis_summary(room_id: str):
+    summary = crisis_service.get_room_summary(room_id)
+    if "error" in summary:
+        raise HTTPException(status_code=404, detail=summary["error"])
+    return summary
+
+@app.post("/api/v1/crisis-room/{room_id}/messages")
+async def send_message(room_id: str, req: MessageRequest):
+    room = crisis_service.get_crisis_room(room_id)
+    if not room:
+        raise HTTPException(status_code=404, detail="Room not found")
+    
+    mtype = MessageType.TEXT
+    if req.message_type == 'alert': mtype = MessageType.ALERT
+    elif req.message_type == 'decision': mtype = MessageType.DECISION
+    elif req.message_type == 'system': mtype = MessageType.SYSTEM
+
+    msg = crisis_service.handle_msg_transaction(room_id, req.sender_id, req.sender_name, req.content, message_type=mtype)
+    if not msg:
+       raise HTTPException(status_code=404, detail="Failed to save message")
+    
+    # Broadcast to WebSocket clients
+    await manager.broadcast(room_id, {
+        "event": "NEW_MESSAGE",
+        "data": msg.to_dict()
+    })
+    return msg.to_dict()
+
+@app.post("/api/v1/crisis-room/{room_id}/cpr-metrics")
+async def ingest_cpr_metrics(room_id: str, data: dict):
+    """
+    Ingest CPR metrics from the Computer Vision module and broadcast
+    them in real-time to the Crisis Room WebSockets.
+    """
+    await manager.broadcast(room_id, {
+        "event": "CPR_METRICS_UPDATE",
+        "data": data
+    })
+    return {"success": True}
+
+# --- TEAMS ENDPOINTS ---
+
+@app.get("/api/v1/teams/available")
+def get_available_teams():
+    return [t.to_dict() for t in team_service.get_available_teams()]
+
+@app.get("/api/v1/teams/all")
+def get_all_teams():
+    return [t.to_dict() for t in team_service.get_all_teams()]
+
+@app.get("/api/v1/volunteers/search")
+def search_volunteers(q: str = "", room_id: Optional[str] = None):
+    from src.database import SessionLocal
+    from sqlalchemy import text
+    
+    db = SessionLocal()
+    results = []
+    try:
+        query_str = f"%{q.lower()}%"
+        # Search directly in the MS1 users and volunteers tables (by name or email)
+        sql = """
+            SELECT u.id, u.full_name, u.email, dtm.specialty, dtm.team_type, c.name, u.phone
+            FROM users u
+            JOIN volunteers v ON u.id = v.id
+            LEFT JOIN disaster_team_members dtm ON v.id = dtm.volunteer_id
+            LEFT JOIN committees c ON v.committee_id = c.id
+            WHERE (LOWER(u.full_name) LIKE :q OR LOWER(u.email) LIKE :q)
+        """
+        params = {"q": query_str}
+        if room_id:
+            sql += " AND CAST(u.id AS VARCHAR) NOT IN (SELECT user_id FROM room_participants WHERE room_id = :room_id)"
+            params["room_id"] = room_id
+            
+        sql += " LIMIT 20"
+        
+        cursor = db.execute(text(sql), params)
+        for r in cursor:
+            # 0: id, 1: name, 2: email, 3: specialty, 4: team_type, 5: committee_name, 6: phone
+            role = r[3] or "Bénévole"
+            team_type = r[4]
+            committee = r[5]
+            
+            # Construct a rich agency description (e.g. "Comité Régional de Tunis (RDRT)")
+            agency_parts = []
+            if committee:
+                agency_parts.append(committee)
+            if team_type:
+                agency_parts.append(team_type)
+            agency = " - ".join(agency_parts) if agency_parts else "Croissant Rouge"
+            
+            results.append({
+                "id": str(r[0]),
+                "name": r[1],
+                "email": r[2] or "",
+                "role": role,
+                "agency": agency,
+                "phone": r[6] or "21650000000"
+            })
+        return results
+    finally:
+        db.close()
+
+@app.post("/api/v1/teams/dispatch")
+async def dispatch_team(req: DispatchRequest):
+    loc = Location(latitude=req.lat, longitude=req.lon)
+    
+    disaster_id = "active_disaster"
+    if req.room_id:
+        room = crisis_service.get_crisis_room(req.room_id)
+        if room:
+            disaster_id = room.disaster_id
+            
+    res = team_service.deploy_team(req.team_id, disaster_id, loc)
+    if not res["success"]:
+        raise HTTPException(status_code=400, detail=res["error"])
+    
+    # Broadcast deployment to all active rooms
+    for room_id in manager.active_connections:
+        await manager.broadcast(room_id, {
+            "event": "TEAM_DEPLOYED",
+            "data": res["team"]
+        })
+    return res
+
+# --- LOGISTICS ENDPOINTS ---
+
+@app.get("/api/v1/disasters/{disaster_id}/logistics")
+def get_logistics_plan(
+    disaster_id: str,
+    affected_area_km2: float = 50,
+    pop: int = 5000,
+    user: dict = Depends(verify_jwt)
+):
+    """
+    Dynamic resource estimation endpoint.
+    Requires valid JWT token.
+    """
+    resources = resource_engine.estimate_wildfire_resources(
+        affected_area_km2=affected_area_km2,
+        affected_population=pop,
+        fire_severity='high'
+    )
+    df_plan = resource_engine.generate_procurement_plan(resources)
+    return {
+        "total_cost_usd": resource_engine.calculate_total_cost(resources),
+        "procurement_plan": df_plan.to_dict(orient="records")
+    }
+
+# --- WEBSOCKET ENDPOINT ---
+@app.websocket("/ws/crisis/{room_id}")
+async def crisis_websocket(websocket: WebSocket, room_id: str):
+    """
+    Unified WebSocket endpoint for crisis room real-time comms.
+    Replaces separate Flask-SocketIO server.
+    """
+    await manager.connect(websocket, room_id)
+    try:
+        while True:
+            # Receive client messages (typing indicators, read receipts, etc.)
+            data = await websocket.receive_json()
+            # Broadcast typing and read events to other participants
             if data.get("type") in ["TYPING_START", "TYPING_STOP", "READ_RECEIPT"]:
                 await manager.broadcast(room_id, {
                     "event": data.get("type"),
@@ -2371,4 +2566,3 @@ async def crisis_websocket(websocket: WebSocket, room_id: str):
     except WebSocketDisconnect:
         manager.disconnect(websocket, room_id)
         logger.info(f"Client disconnected from room {room_id}")
->>>>>>> 9d8d7fe93bd5b6b4427b5bc5802470073de1db0b
