@@ -8,7 +8,11 @@
     "dev": "node --watch index.js"
   },
   "dependencies": {
+<<<<<<< HEAD
     "eureka-js-client": "*",
+=======
+    "eureka-js-client": "^4.5.0",
+>>>>>>> a875217ae5bf0804335408787fd3d316fa02df5d
     "express": "^4.18.2",
     "puppeteer-core": "^21.11.0"
   },
