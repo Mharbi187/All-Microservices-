@@ -73,4 +73,14 @@ public class CommitteeRole {
     public boolean isMandateExpired() {
         return mandateEndDate != null && LocalDate.now().isAfter(mandateEndDate);
     }
+
+    @com.fasterxml.jackson.annotation.JsonProperty("committee")
+    public java.util.Map<String, String> getCommitteeInfo() {
+        if (this.committee == null) return null;
+        return java.util.Map.of(
+            "id", this.committee.getId().toString(),
+            "name", this.committee.getName(),
+            "type", this.committee.getType().name()
+        );
+    }
 }

@@ -43,6 +43,12 @@ public class EducationalResource {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
     
+    @Column(name = "status", nullable = false)
+    private String status = "PENDING"; // EN_ATTENTE | PUBLIE | REJETE
+
+    @Column(name = "committee_id")
+    private UUID committeeId;
+    
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

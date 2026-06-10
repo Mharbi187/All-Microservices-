@@ -55,4 +55,20 @@ public class DiffusionController {
         UUID userId = jwtService.extractUserId(token.substring(7));
         return ResponseEntity.ok(diffusionService.createCampaign(campaign, userId));
     }
+
+    @PatchMapping("/campaigns/{id}/status")
+    @PreAuthorize("hasAnyRole('PRESIDENT', 'ADMIN')")
+    public ResponseEntity<AwarenessCampaign> updateCampaignStatus(
+            @PathVariable UUID id,
+            @RequestBody java.util.Map<String, String> payload) {
+        return ResponseEntity.ok(diffusionService.updateCampaignStatus(id, payload.get("status")));
+    }
+
+    @PatchMapping("/resources/{id}/status")
+    @PreAuthorize("hasAnyRole('PRESIDENT', 'ADMIN')")
+    public ResponseEntity<EducationalResource> updateResourceStatus(
+            @PathVariable UUID id,
+            @RequestBody java.util.Map<String, String> payload) {
+        return ResponseEntity.ok(diffusionService.updateResourceStatus(id, payload.get("status")));
+    }
 }

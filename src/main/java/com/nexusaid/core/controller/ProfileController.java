@@ -100,6 +100,24 @@ public class ProfileController {
         return ResponseEntity.ok("Volunteer rejected.");
     }
 
+    @PutMapping("/volunteers/{volunteerId}/suspend")
+    @PreAuthorize("hasAnyRole('PRESIDENT', 'VICE_PRESIDENT', 'RESP_JEUNESSE', 'ADMIN')")
+    public ResponseEntity<String> suspendVolunteer(
+            @PathVariable UUID volunteerId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        profileService.suspendVolunteer(volunteerId, userDetails.getUser().getId());
+        return ResponseEntity.ok("Volunteer suspended successfully.");
+    }
+
+    @PutMapping("/volunteers/{volunteerId}/reactivate")
+    @PreAuthorize("hasAnyRole('PRESIDENT', 'VICE_PRESIDENT', 'RESP_JEUNESSE', 'ADMIN')")
+    public ResponseEntity<String> reactivateVolunteer(
+            @PathVariable UUID volunteerId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        profileService.reactivateVolunteer(volunteerId, userDetails.getUser().getId());
+        return ResponseEntity.ok("Volunteer reactivated successfully.");
+    }
+
     @PutMapping("/volunteers/{volunteerId}/promote-to-trainer")
     @PreAuthorize("hasAnyRole('PRESIDENT', 'PRESIDENT_LOCAL', 'PRESIDENT_REGIONAL', 'PRESIDENT_NATIONAL', 'RESP_JEUNESSE', 'RESP_JEUNESSE_LOCAL', 'RESP_JEUNESSE_REGIONAL', 'ADMIN')")
     public ResponseEntity<String> promoteToTrainer(

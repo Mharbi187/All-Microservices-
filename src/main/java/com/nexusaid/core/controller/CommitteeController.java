@@ -80,7 +80,7 @@ public class CommitteeController {
     public ResponseEntity<String> validateRoleAssignment(
             @PathVariable UUID roleId,
             @RequestParam boolean approve,
-            @RequestBody(required = false) String reason,
+            @RequestParam(required = false) String reason,
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
         committeeService.validateRoleAssignment(roleId, approve, userDetails.getUser().getId(), reason);
         return ResponseEntity.ok("Role validation processed.");

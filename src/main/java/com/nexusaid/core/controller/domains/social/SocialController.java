@@ -26,8 +26,11 @@ public class SocialController {
 
     @PostMapping("/families")
     @PreAuthorize("hasAnyRole('PRESIDENT', 'RESP_ACTION_SOCIALE')")
-    public ResponseEntity<Family> registerFamily(@RequestBody Family family) {
-        return ResponseEntity.ok(socialService.registerFamily(family));
+    public ResponseEntity<Family> registerFamily(
+            @RequestHeader("Authorization") String token,
+            @RequestBody Family family) {
+        UUID userId = jwtService.extractUserId(token.substring(7));
+        return ResponseEntity.ok(socialService.registerFamily(family, userId));
     }
 
     @GetMapping("/families")
@@ -49,6 +52,17 @@ public class SocialController {
     public ResponseEntity<Family> updateFamily(
             @PathVariable UUID familyId,
             @RequestBody Family family) {
+        return ResponseEntity.ok(socialService.updateFamily(familyId, family));
+    }
+
+    @PatchMapping("/families/{familyId}/status")
+    @PreAuthorize("hasAnyRole('PRESIDENT', 'ADMIN')")
+    public ResponseEntity<Family> updateFamilyStatus(
+            @PathVariable UUID familyId,
+            @RequestBody Map<String, String> payload) {
+        Family family = socialService.getFamilyById(familyId)
+            .orElseThrow(() -> new RuntimeException("Family not found"));
+        family.setStatus(payload.get("status"));
         return ResponseEntity.ok(socialService.updateFamily(familyId, family));
     }
 

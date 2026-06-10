@@ -255,7 +255,13 @@ public class CommitteeService {
             role.setApprovedBy(validatedByUserId);
             role.setApprovedAt(LocalDateTime.now());
             role.setAssignedAt(LocalDateTime.now());
-            role.setMandateEndDate(LocalDate.now().plusYears(Committee.MANDATE_DURATION_YEARS));
+            
+            Committee committee = role.getCommittee();
+            if (committee.getCurrentMandateEnd() != null) {
+                role.setMandateEndDate(committee.getCurrentMandateEnd());
+            } else {
+                role.setMandateEndDate(LocalDate.now().plusYears(Committee.MANDATE_DURATION_YEARS));
+            }
         } else {
             role.setStatus(CommitteeRoleStatus.REJECTED);
         }

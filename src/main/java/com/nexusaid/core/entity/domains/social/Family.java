@@ -58,6 +58,15 @@ public class Family {
     @Column(name = "event_tags", columnDefinition = "jsonb")
     private List<String> eventTags; // e.g., Ramadan, Rentrée Scolaire
 
+    @Column(name = "phone_number")
+    private String phoneNumber;
+
+    @Column(name = "income_category")
+    private String incomeCategory;
+
+    @Column(name = "committee_id")
+    private UUID committeeId;
+
     @Column(name = "registered_at")
     private LocalDateTime registeredAt;
 

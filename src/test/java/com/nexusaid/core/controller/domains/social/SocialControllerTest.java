@@ -87,7 +87,7 @@ public class SocialControllerTest {
     @Test
     @WithMockUser(roles = "PRESIDENT")
     void createFamily() throws Exception {
-        Mockito.when(socialService.registerFamily(any(Family.class))).thenReturn(testFamily);
+        Mockito.when(socialService.registerFamily(any(Family.class), any(UUID.class))).thenReturn(testFamily);
 
         mockMvc.perform(post("/api/v1/social/families")
                 .contentType(MediaType.APPLICATION_JSON)

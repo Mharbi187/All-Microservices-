@@ -19,6 +19,8 @@ import com.nexusaid.core.repository.CommitteeRoleRepository;
 import com.nexusaid.core.repository.TrainerRepository;
 import com.nexusaid.core.repository.UserRepository;
 import com.nexusaid.core.repository.VolunteerRepository;
+import com.nexusaid.core.entity.HierarchyAuditLog;
+import com.nexusaid.core.repository.HierarchyAuditLogRepository;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
@@ -50,6 +52,7 @@ public class ProfileService {
     private final EntityManager entityManager;
     private final EmailService emailService;
     private final NotificationService notificationService;
+    private final HierarchyAuditLogRepository auditLogRepository;
 
     public List<Volunteer> getPendingVolunteersForCommittee(UUID committeeId, UUID requestingUserId) {
         verifyPresidentAccess(committeeId, requestingUserId);
@@ -79,16 +82,62 @@ public class ProfileService {
     @Transactional
     public void rejectVolunteer(UUID volunteerId, UUID requestingUserId) {
         Volunteer volunteer = volunteerRepository.findById(volunteerId)
-                .orElseThrow(() -> new IllegalArgumentException("Volunteer not found"));
+                .orElseThrow(() -> new IllegalArgumentException("Volontaire introuvable"));
 
-        if (volunteer.getCommitteeId() == null) {
-            throw new IllegalArgumentException("Volunteer does not belong to any committee");
+        List<UUID> visibleCommittees = getVisibleCommitteeIds(requestingUserId);
+        if (!visibleCommittees.contains(volunteer.getCommitteeId())) {
+            throw new AccessDeniedException("Vous n'avez pas l'autorisation de rejeter ce volontaire.");
         }
 
-        verifyPresidentAccess(volunteer.getCommitteeId(), requestingUserId);
-
-        volunteer.setAccountStatus(AccountStatus.REJECTED);
+        volunteer.setAccountStatus(com.nexusaid.core.entity.enums.AccountStatus.REJECTED);
         volunteerRepository.save(volunteer);
+        // Could also physically delete or keep as rejected depending on rules
+    }
+
+    @Transactional
+    public void suspendVolunteer(UUID volunteerId, UUID requestingUserId) {
+        Volunteer volunteer = volunteerRepository.findById(volunteerId)
+                .orElseThrow(() -> new IllegalArgumentException("Volontaire introuvable"));
+
+        List<UUID> visibleCommittees = getVisibleCommitteeIds(requestingUserId);
+        if (!visibleCommittees.contains(volunteer.getCommitteeId())) {
+            throw new AccessDeniedException("Vous n'avez pas l'autorisation de suspendre ce volontaire.");
+        }
+
+        volunteer.setAccountStatus(com.nexusaid.core.entity.enums.AccountStatus.SUSPENDED);
+        volunteerRepository.save(volunteer);
+        
+        // Audit
+        HierarchyAuditLog log = new HierarchyAuditLog();
+        log.setAction("SUSPEND_VOLUNTEER");
+        log.setPerformedBy(requestingUserId);
+        log.setTargetVolunteerId(volunteerId);
+        log.setReason("Suspension par un responsable");
+        log.setTimestamp(LocalDateTime.now());
+        auditLogRepository.save(log);
+    }
+
+    @Transactional
+    public void reactivateVolunteer(UUID volunteerId, UUID requestingUserId) {
+        Volunteer volunteer = volunteerRepository.findById(volunteerId)
+                .orElseThrow(() -> new IllegalArgumentException("Volontaire introuvable"));
+
+        List<UUID> visibleCommittees = getVisibleCommitteeIds(requestingUserId);
+        if (!visibleCommittees.contains(volunteer.getCommitteeId())) {
+            throw new AccessDeniedException("Vous n'avez pas l'autorisation de réactiver ce volontaire.");
+        }
+
+        volunteer.setAccountStatus(com.nexusaid.core.entity.enums.AccountStatus.APPROVED);
+        volunteerRepository.save(volunteer);
+        
+        // Audit
+        HierarchyAuditLog log = new HierarchyAuditLog();
+        log.setAction("REACTIVATE_VOLUNTEER");
+        log.setPerformedBy(requestingUserId);
+        log.setTargetVolunteerId(volunteerId);
+        log.setReason("Réactivation par un responsable");
+        log.setTimestamp(LocalDateTime.now());
+        auditLogRepository.save(log);
     }
 
     @Transactional
@@ -216,14 +265,16 @@ public class ProfileService {
         if (isAncestorPresident)
             return;
 
-        // Rule 2: RESP_JEUNESSE (direct or hierarchical ancestor)
+        // Rule 2: VICE_PRESIDENT, SECRETAIRE_GENERAL, or RESP_JEUNESSE (direct or hierarchical ancestor)
         List<CommitteeRole> approvedRoles = committeeRoleRepository.findByVolunteerId(requestingUserId)
                 .stream()
                 .filter(r -> r.getStatus() == CommitteeRoleStatus.APPROVED)
                 .toList();
 
-        boolean isRespJeunesseOfDirectOrParent = approvedRoles.stream()
-                .filter(r -> r.getTitle() == RoleTitle.RESP_JEUNESSE)
+        boolean isAllowedRoleOfDirectOrParent = approvedRoles.stream()
+                .filter(r -> r.getTitle() == RoleTitle.RESP_JEUNESSE 
+                          || r.getTitle() == RoleTitle.VICE_PRESIDENT 
+                          || r.getTitle() == RoleTitle.SECRETAIRE_GENERAL)
                 .anyMatch(r -> {
                     if (r.getCommittee().getId().equals(committeeId)) {
                         return true;
@@ -238,7 +289,7 @@ public class ProfileService {
                     return false;
                 });
 
-        if (isRespJeunesseOfDirectOrParent)
+        if (isAllowedRoleOfDirectOrParent)
             return;
 
         // Check if user is National President (another way to be sure)
@@ -251,7 +302,7 @@ public class ProfileService {
             return;
 
         throw new AccessDeniedException(
-                "Seul le PRÉSIDENT (hiérarchique) ou le RESP_JEUNESSE (de ce comité) peut effectuer cette action.");
+                "Seul le PRÉSIDENT, VICE-PRÉSIDENT, SECRÉTAIRE GÉNÉRAL, ou le RESP_JEUNESSE peut effectuer cette action.");
     }
 
 

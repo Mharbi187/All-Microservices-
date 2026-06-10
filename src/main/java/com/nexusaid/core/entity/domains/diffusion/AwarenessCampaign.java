@@ -63,4 +63,13 @@ public class AwarenessCampaign {
 
     @Column(name = "collaboration_type")
     private String collaborationType; // e.g. "INTERNAL" or "COLLABORATION"
+
+    @Column(name = "status", nullable = false)
+    private String status = "PENDING"; // EN_ATTENTE | PUBLIE | REJETE
+
+    @Column(name = "target_audience")
+    private String targetAudience;
+
+    @Column(name = "committee_id")
+    private UUID committeeId;
 }

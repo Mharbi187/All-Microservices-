@@ -22,12 +22,23 @@ public class SocialService {
     private final VulnerabilityScoreRepository scoreRepository;
     private final SocialActionRepository actionRepository;
     private final VulnerabilityScoringEngine scoringEngine;
+    private final com.nexusaid.core.repository.CommitteeRoleRepository roleRepository;
+
+    private boolean isPresident(UUID userId) {
+        return roleRepository.findByVolunteerId(userId).stream()
+                .anyMatch(r -> r.getStatus() == com.nexusaid.core.entity.enums.CommitteeRoleStatus.APPROVED 
+                        && r.getTitle() == com.nexusaid.core.entity.enums.RoleTitle.PRESIDENT);
+    }
 
     // ===== Families =====
 
     @Transactional
-    public Family registerFamily(Family family) {
-        family.setStatus("ACTIVE");
+    public Family registerFamily(Family family, UUID creatorId) {
+        if (isPresident(creatorId)) {
+            family.setStatus("ACTIVE");
+        } else {
+            family.setStatus("PENDING");
+        }
         return familyRepository.save(family);
     }
 
