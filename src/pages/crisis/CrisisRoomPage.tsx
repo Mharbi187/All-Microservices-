@@ -225,10 +225,19 @@ export default function CrisisRoomPage() {
 
     const isFullAccess = useMemo(() => {
         if (user?.type === 'ADMIN') return true;
+        
+        // Check if user has global crisis management roles
+        const hasGlobalAccess = user?.roles?.some((r: string) => 
+            r.includes('PRESIDENT') || 
+            r.includes('VICE_PRESIDENT') || 
+            r.includes('CATASTROPHE_MANAGER')
+        );
+        if (hasGlobalAccess) return true;
+
         if (!currentUserRole) return false;
         const fullAccessRoles = ['president', 'vice_president', 'catastrophe_manager', 'commander', 'coordinator', 'team_leader'];
         return fullAccessRoles.includes(currentUserRole.toLowerCase());
-    }, [currentUserRole, user?.type]);
+    }, [currentUserRole, user]);
 
     const isClosed = summary?.room?.status === 'closed';
     const canManage = isFullAccess && !isClosed;
