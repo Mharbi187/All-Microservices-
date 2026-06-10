@@ -38,10 +38,16 @@ import com.nexusaid.core.repository.domains.vff.PartnerRepository;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+
+import com.nexusaid.core.entity.CalendarEvent;
+import com.nexusaid.core.repository.CalendarEventRepository;
+import com.nexusaid.core.entity.NewsItem;
+import com.nexusaid.core.repository.NewsRepository;
 
 @Configuration
 @RequiredArgsConstructor
@@ -399,5 +405,140 @@ public class DatabaseSeeder {
         c.setEndDate(date.plusDays(2).toString());
         c.setStatus("ACTIVE");
         repo.save(c);
+    }
+
+    @Bean
+    public CommandLineRunner seedEventsData(
+            CalendarEventRepository eventRepository,
+            CommitteeRepository committeeRepository,
+            UserRepository userRepository) {
+        return args -> {
+            if (eventRepository.count() > 0) {
+                System.out.println("Calendar events already seeded. Skipping.");
+                return;
+            }
+            System.out.println("Starting Database Seeding for Calendar Events...");
+
+            var users = userRepository.findAll();
+            if (users.isEmpty()) return;
+            var admin = users.stream().filter(u -> u.getEmail().contains("president.national")).findFirst().orElse(users.get(0));
+
+            var committees = committeeRepository.findAll();
+            if (committees.isEmpty()) return;
+            Committee national = committees.stream().filter(c -> c.getType() == CommitteeType.NATIONAL).findFirst().orElse(committees.get(0));
+            Committee regional = committees.stream().filter(c -> c.getType() == CommitteeType.REGIONAL).findFirst().orElse(national);
+            Committee local = committees.stream().filter(c -> c.getType() == CommitteeType.LOCAL).findFirst().orElse(regional);
+
+            eventRepository.save(CalendarEvent.builder()
+                .title("Formation Premiers Secours")
+                .description("Formation de base pour tous les nouveaux bénévoles.")
+                .type("FORMATION")
+                .startDate(OffsetDateTime.now().plusDays(2).withHour(9).withMinute(0).withSecond(0).withNano(0))
+                .endDate(OffsetDateTime.now().plusDays(2).withHour(17).withMinute(0).withSecond(0).withNano(0))
+                .location("Siège Ariana")
+                .organizer(admin)
+                .committee(local)
+                .targetScope(CommitteeType.LOCAL)
+                .status("VALIDE")
+                .maxParticipants(30)
+                .build());
+
+            eventRepository.save(CalendarEvent.builder()
+                .title("Campagne de Don de Sang")
+                .description("Grande campagne régionale de collecte de sang en collaboration avec l'hôpital.")
+                .type("COLLECTE")
+                .startDate(OffsetDateTime.now().plusDays(5).withHour(8).withMinute(0).withSecond(0).withNano(0))
+                .endDate(OffsetDateTime.now().plusDays(5).withHour(14).withMinute(0).withSecond(0).withNano(0))
+                .location("Hôpital Charles Nicolle, Tunis")
+                .organizer(admin)
+                .committee(regional)
+                .targetScope(CommitteeType.REGIONAL)
+                .status("VALIDE")
+                .maxParticipants(100)
+                .build());
+
+            eventRepository.save(CalendarEvent.builder()
+                .title("Réunion Nationale Annuelle")
+                .description("Bilan annuel et planification stratégique pour l'année prochaine.")
+                .type("REUNION")
+                .startDate(OffsetDateTime.now().plusDays(15).withHour(10).withMinute(0).withSecond(0).withNano(0))
+                .endDate(OffsetDateTime.now().plusDays(15).withHour(16).withMinute(0).withSecond(0).withNano(0))
+                .location("Hôtel El Mouradi, Gammarth")
+                .organizer(admin)
+                .committee(national)
+                .targetScope(CommitteeType.NATIONAL)
+                .status("VALIDE")
+                .maxParticipants(200)
+                .build());
+
+            System.out.println("Calendar Events Seeding Complete!");
+        };
+    }
+
+    @Bean
+    public CommandLineRunner seedNewsData(
+            NewsRepository newsRepository,
+            CommitteeRepository committeeRepository,
+            UserRepository userRepository) {
+        return args -> {
+            if (newsRepository.count() > 0) {
+                System.out.println("News already seeded. Skipping.");
+                return;
+            }
+            System.out.println("Starting Database Seeding for News...");
+
+            var users = userRepository.findAll();
+            if (users.isEmpty()) return;
+            var admin = users.stream().filter(u -> u.getEmail().contains("president.national")).findFirst().orElse(users.get(0));
+
+            var committees = committeeRepository.findAll();
+            if (committees.isEmpty()) return;
+            Committee national = committees.stream().filter(c -> c.getType() == CommitteeType.NATIONAL).findFirst().orElse(committees.get(0));
+            Committee regional = committees.stream().filter(c -> c.getType() == CommitteeType.REGIONAL).findFirst().orElse(national);
+
+            newsRepository.save(NewsItem.builder()
+                .title("Bilan de la caravane de santé hivernale")
+                .summary("Notre caravane a visité 5 villages et examiné plus de 300 patients.")
+                .content("La caravane médicale organisée par le Croissant Rouge Tunisien a achevé sa tournée hivernale. L'équipe médicale composée de 15 médecins bénévoles a pu distribuer des médicaments et effectuer des consultations gratuites.")
+                .category("EVENT")
+                .imageUrl("https://picsum.photos/seed/crt-sante/800/400")
+                .targetScope(CommitteeType.NATIONAL)
+                .status("PUBLIE")
+                .isPublic(true)
+                .author(admin)
+                .committee(national)
+                .publishedAt(OffsetDateTime.now().minusDays(2))
+                .build());
+
+            newsRepository.save(NewsItem.builder()
+                .title("Alerte Canicule : Consignes de sécurité")
+                .summary("Des températures très élevées sont attendues cette semaine. Protégez-vous.")
+                .content("Nous appelons tous les citoyens à rester chez eux pendant les heures de pic de chaleur (12h - 16h) et à bien s'hydrater. Nos bénévoles distribueront des bouteilles d'eau aux abords des stations de transport en commun.")
+                .category("URGENCE")
+                .imageUrl("https://picsum.photos/seed/crt-alert/800/400")
+                .targetScope(CommitteeType.NATIONAL)
+                .status("PUBLIE")
+                .isPublic(true)
+                .author(admin)
+                .committee(national)
+                .publishedAt(OffsetDateTime.now().minusHours(5))
+                .build());
+
+            newsRepository.save(NewsItem.builder()
+                .title("Félicitations à nos nouveaux secouristes")
+                .summary("Une promotion de 20 secouristes vient de valider sa formation.")
+                .content("Le Comité Régional est fier d'accueillir 20 nouveaux secouristes certifiés qui ont complété avec succès les 40 heures de formation aux premiers secours. Ils sont désormais prêts à intervenir.")
+                .category("FORMATION")
+                .imageUrl("https://picsum.photos/seed/crt-secours/800/400")
+                .targetScope(CommitteeType.REGIONAL)
+                .status("PUBLIE")
+                .isPublic(true)
+                .author(admin)
+                .committee(regional)
+                .publishedAt(OffsetDateTime.now().minusDays(10))
+                .build());
+
+            System.out.println("News Seeding Complete!");
+        };
     }
 }
