@@ -87,9 +87,11 @@ public class SocialControllerTest {
     @Test
     @WithMockUser(roles = "PRESIDENT")
     void createFamily() throws Exception {
+        Mockito.when(jwtService.extractUserId(any(String.class))).thenReturn(UUID.randomUUID());
         Mockito.when(socialService.registerFamily(any(Family.class), any(UUID.class))).thenReturn(testFamily);
 
         mockMvc.perform(post("/api/v1/social/families")
+                .header("Authorization", "Bearer mock-token")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(testFamily)))
                 .andExpect(status().isOk())
