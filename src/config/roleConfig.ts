@@ -161,8 +161,8 @@ export const ROLE_PERMISSIONS: Record<RoleTitle, RolePermission> = {
         dashboardType: 'volunteer',
     },
     RESP_CATASTROPHES: {
-        allowedRoutes: [...SHARED_ROUTES, '/catastrophes', '/stocks', '/reports', '/admin-reports', '/validation-center'],
-        sidebarKeys: [...SHARED_SIDEBAR, '/catastrophes', '/stocks', '/reports', '/admin-reports', 'domains', '/validation-center'],
+        allowedRoutes: [...SHARED_ROUTES, '/catastrophes', '/radar', '/crisis-room', '/stocks', '/reports', '/admin-reports', '/validation-center'],
+        sidebarKeys: [...SHARED_SIDEBAR, '/catastrophes', '/radar', '/stocks', '/reports', '/admin-reports', 'domains', '/validation-center'],
         label: 'Resp. Catastrophes',
         dashboardType: 'volunteer',
     },
