@@ -2363,16 +2363,12 @@ async def crisis_websocket(websocket: WebSocket, room_id: str):
             # Receive client messages (typing indicators, read receipts, etc.)
             data = await websocket.receive_json()
             # Broadcast typing and read events to other participants
-        content=f"Le rôle d'un membre a été mis à jour vers {req.role}.",
-        message_type=MessageType.SYSTEM
-    )
-    if sys_msg:
-        await manager.broadcast(room_id, {
-            "event": "NEW_MESSAGE",
-            "data": sys_msg.to_dict()
-        })
-        
-    return {"success": True}
+            await manager.broadcast(room_id, {
+                "event": data.get("event", "TYPING"),
+                "data": data.get("data", {})
+            }, exclude=websocket)
+    except WebSocketDisconnect:
+        manager.disconnect(websocket, room_id)
 
 @app.get("/api/v1/crisis-room/active")
 def get_active_crisis_rooms():
