@@ -36,6 +36,7 @@ import {
     AppstoreOutlined,
     MessageOutlined,
     InfoCircleOutlined,
+    ThunderboltOutlined,
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import { useTranslation } from 'react-i18next';
@@ -178,7 +179,7 @@ const MainLayout: React.FC = () => {
                         setGlobalNotifCount(prev => Math.max(0, prev - 1));
                     } catch {}
                     if (n.link) navigate(n.link);
-                    else navigate('/reporting/notifications');
+                    else navigate('/notifications');
                 }
             });
         });
@@ -298,6 +299,18 @@ const MainLayout: React.FC = () => {
             key: '/dashboard',
             icon: <DashboardOutlined />,
             label: t('nav.dashboard'),
+        });
+
+        // Notifications — visible to everyone
+        items.push({
+            key: '/notifications',
+            icon: <BellOutlined />,
+            label: (
+                <Space>
+                    Mes Notifications
+                    {actualNotifCount > 0 && <Badge count={actualNotifCount} size="small" />}
+                </Space>
+            ),
         });
 
         // Modifier l'Accueil — only for authorized national roles
@@ -572,7 +585,22 @@ const MainLayout: React.FC = () => {
             });
         }
 
-        // Divider + Profil (replacing settings to avoid duplication)
+        // Validation Center — President & Responsibles
+        const isValidator = user?.roles?.some(r => r.includes('PRESIDENT') || r.includes('VICE_PRESIDENT') || r.includes('RESP_')) || user?.type === 'ADMIN';
+
+        if (isValidator) {
+            items.push({
+                key: '/validation-center',
+                icon: <ThunderboltOutlined />,
+                label: (
+                    <Space>
+                        Centre de Validation
+                    </Space>
+                ),
+            });
+        }
+
+        // Divider + Profil
         items.push({ type: 'divider' });
         items.push({
             key: '/volunteer/profile',
@@ -581,7 +609,7 @@ const MainLayout: React.FC = () => {
         });
 
         return items;
-    }, [permissions, t]);
+    }, [permissions, t, user, actualNotifCount]);
 
     // ---- User dropdown menu ----
     const userMenuItems: MenuProps['items'] = [
@@ -635,6 +663,7 @@ const MainLayout: React.FC = () => {
         templates: 'Modèles',
         'validation-queue': 'Validation Roles',
         'audit-logs': 'Audit Trail',
+        'validation-center': 'Centre de Validation',
     };
 
     return (

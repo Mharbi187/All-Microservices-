@@ -29,6 +29,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import jeunesseService from '@/services/jeunesseService';
 import committeeService from '@/services/committeeService';
 import type { YouthIntegrationFormDTO, YouthRecommendationDTO, YouthFormTemplateDTO, MicroProjectDTO, Committee } from '@/types';
+import { exportJeunessePDF } from '@/utils/jeunessePdfExport';
 import { useUIStore, useAuthStore } from '@/stores';
 
 // New Components
@@ -902,7 +903,36 @@ const JeunessePage: React.FC = () => {
                                     {activeTab === 'stats' && (
                                         <motion.div key="stats" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                                             <YouthStatsDashboard 
-                                                onExport={() => { }} 
+                                                onExport={() => {
+                                                    const committee = allCommittees.find(c => c.id === selectedCommittee);
+                                                    exportJeunessePDF({
+                                                        committeeName: committee?.name || (selectedCommittee === 'ALL' ? 'Tunisie' : selectedCommittee),
+                                                        level: userLevel,
+                                                        totalForms: forms.length,
+                                                        totalProjects: projects.length,
+                                                        totalRecommendations: publishedRecommendations.length,
+                                                        projects: projects.map(p => ({
+                                                            title: p.title,
+                                                            theme: p.theme,
+                                                            status: p.status || 'PENDING_VALIDATION',
+                                                            startDate: p.startDate || '',
+                                                            endDate: p.endDate || '',
+                                                        })),
+                                                        recommendations: publishedRecommendations.map(r => ({
+                                                            title: r.title,
+                                                            category: r.category || '',
+                                                            priority: r.priority || '',
+                                                            status: r.status || '',
+                                                            target: r.target || '',
+                                                        })),
+                                                        templates: templates.map(t => ({
+                                                            title: t.title,
+                                                            description: t.description || '',
+                                                            responseCount: t._responseCount || 0,
+                                                            status: t.status || '',
+                                                        })),
+                                                    });
+                                                }}
                                                 data={stats} 
                                                 loading={statsLoading} 
                                                 userLevel={userLevel} 

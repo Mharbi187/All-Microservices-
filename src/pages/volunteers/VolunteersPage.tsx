@@ -215,6 +215,28 @@ const VolunteersPage: React.FC = () => {
         } finally { setActionLoading(null); }
     };
 
+    const handleSuspend = async (volunteerId: string) => {
+        setActionLoading(volunteerId);
+        try {
+            await volunteerService.suspend(volunteerId);
+            message.success('Compte suspendu');
+            fetchData();
+        } catch (err: unknown) {
+            message.error(getErrMsg(err, 'Erreur lors de la suspension'));
+        } finally { setActionLoading(null); }
+    };
+
+    const handleReactivate = async (volunteerId: string) => {
+        setActionLoading(volunteerId);
+        try {
+            await volunteerService.reactivate(volunteerId);
+            message.success('Compte réactivé');
+            fetchData();
+        } catch (err: unknown) {
+            message.error(getErrMsg(err, 'Erreur lors de la réactivation'));
+        } finally { setActionLoading(null); }
+    };
+
     const openPromote = (vol: VolunteerRecord) => {
         setPromoteVol(vol);
         promoteForm.resetFields();
@@ -430,9 +452,19 @@ const VolunteersPage: React.FC = () => {
                         </>
                     )}
                     {canValidate && r.accountStatus === 'APPROVED' && (
-                        <Tooltip title="Promouvoir en formateur">
-                            <Button type="link" size="small" loading={actionLoading === r.id} icon={<StarOutlined />} onClick={() => openPromote(r)} style={{ padding: '0 4px' }}>Promouvoir</Button>
-                        </Tooltip>
+                        <>
+                            <Tooltip title="Promouvoir en formateur">
+                                <Button type="link" size="small" loading={actionLoading === r.id} icon={<StarOutlined />} onClick={() => openPromote(r)} style={{ padding: '0 4px' }}>Promouvoir</Button>
+                            </Tooltip>
+                            <Popconfirm title="Bloquer ce compte ?" onConfirm={() => handleSuspend(r.id)}>
+                                <Button type="link" danger size="small" loading={actionLoading === r.id} icon={<StopOutlined />} style={{ padding: '0 4px' }}>Bloquer</Button>
+                            </Popconfirm>
+                        </>
+                    )}
+                    {canValidate && r.accountStatus === 'SUSPENDED' && (
+                        <Popconfirm title="Réactiver ce compte ?" onConfirm={() => handleReactivate(r.id)}>
+                            <Button type="link" size="small" loading={actionLoading === r.id} icon={<CheckCircleOutlined />} style={{ color: '#16a34a', padding: '0 4px' }}>Réactiver</Button>
+                        </Popconfirm>
                     )}
                 </Space>
             ),
@@ -713,7 +745,17 @@ const VolunteersPage: React.FC = () => {
                                 </>
                             )}
                             {selectedVol.accountStatus === 'APPROVED' && canValidate && (
-                                <Button icon={<StarOutlined />} onClick={() => { setDetailVisible(false); openPromote(selectedVol); }}>Promouvoir formateur</Button>
+                                <>
+                                    <Button icon={<StarOutlined />} onClick={() => { setDetailVisible(false); openPromote(selectedVol); }}>Promouvoir formateur</Button>
+                                    <Popconfirm title="Bloquer ce compte ?" onConfirm={() => { handleSuspend(selectedVol.id); setDetailVisible(false); }}>
+                                        <Button danger icon={<StopOutlined />}>Bloquer compte</Button>
+                                    </Popconfirm>
+                                </>
+                            )}
+                            {selectedVol.accountStatus === 'SUSPENDED' && canValidate && (
+                                <Popconfirm title="Réactiver ce compte ?" onConfirm={() => { handleReactivate(selectedVol.id); setDetailVisible(false); }}>
+                                    <Button type="primary" icon={<CheckCircleOutlined />} style={{ background: '#16a34a' }}>Réactiver compte</Button>
+                                </Popconfirm>
                             )}
                             {canValidate && (
                                 <Button icon={<UserOutlined />} onClick={() => openEdit(selectedVol)}>Modifier les infos</Button>

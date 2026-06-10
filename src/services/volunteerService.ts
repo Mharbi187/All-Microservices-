@@ -48,6 +48,16 @@ const volunteerService = {
         return data;
     },
 
+    suspend: async (volunteerId: string): Promise<string> => {
+        const { data } = await apiClient.put<string>(`/profiles/volunteers/${volunteerId}/suspend`);
+        return data;
+    },
+
+    reactivate: async (volunteerId: string): Promise<string> => {
+        const { data } = await apiClient.put<string>(`/profiles/volunteers/${volunteerId}/reactivate`);
+        return data;
+    },
+
     promote: async (volunteerId: string, payload: { expertiseDomains: string }): Promise<string> => {
         const { data } = await apiClient.put<string>(`/profiles/volunteers/${volunteerId}/promote-to-trainer`, payload);
         return data;

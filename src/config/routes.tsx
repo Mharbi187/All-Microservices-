@@ -117,6 +117,7 @@ const MyComplaintsPage = lazy(() => import('@/pages/volunteer/MyComplaintsPage')
 const ResourcesPage = lazy(() => import('@/pages/volunteer/ResourcesPage'));
 const YouthSpacePage = lazy(() => import('@/pages/volunteer/YouthSpacePage'));
 const QuizPage = lazy(() => import('@/pages/volunteer/QuizPage'));
+const GlobalNotificationsPage = lazy(() => import('@/pages/volunteer/GlobalNotificationsPage'));
 const DonationReceptionPage = lazy(() => import('@/pages/volunteer/DonationReceptionPage'));
 const MyInterventionsPage = lazy(() => import('@/pages/domains/catastrophes/MyInterventionsPage'));
 const DonorDashboardPage = lazy(() => import('@/pages/donor/DonorDashboardPage'));
@@ -151,6 +152,8 @@ const ReportingDashboardPage = lazy(() => import('@/pages/reports/ReportingDashb
 const ReportingListPage = lazy(() => import('@/pages/reports/ReportingListPage'));
 const ReportingTemplatesPage = lazy(() => import('@/pages/reports/ReportingTemplatesPage'));
 const ReportingNotificationsPage = lazy(() => import('@/pages/reports/ReportingNotificationsPage'));
+const ValidationCenterPage = lazy(() => import('@/pages/validation/ValidationCenterPage'));
+
 
 
 export const router = createBrowserRouter([
@@ -205,6 +208,7 @@ export const router = createBrowserRouter([
             { path: 'volunteer/resources', element: withLoader(<ResourcesPage />) },
             { path: 'volunteer/youth', element: withLoader(<YouthSpacePage />) },
             { path: 'volunteer/quiz', element: withLoader(<QuizPage />) },
+            { path: 'notifications', element: withLoader(<GlobalNotificationsPage />) },
             { path: 'volunteer/reception', element: withLoader(<DonationReceptionPage />) },
             { path: 'volunteer/interventions', element: withLoader(<MyInterventionsPage />) },
             // Domain-specific routes
@@ -237,6 +241,8 @@ export const router = createBrowserRouter([
             { path: 'admin-reports', element: <Navigate to="/reporting/list" replace /> },
             { path: 'admin-reports/:id', element: <Navigate to="/reporting/reports/:id" replace /> },
             { path: 'admin-reports/:id/fill', element: <Navigate to="/reporting/reports/:id/fill" replace /> },
+            // Validation Center (President only)
+            { path: 'validation-center', element: withLoader(<ValidationCenterPage />) },
         ],
     },
 
