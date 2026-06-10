@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 """
 Unified FastAPI backend for Tunisia Disaster Detection + Crisis Command Center
 
