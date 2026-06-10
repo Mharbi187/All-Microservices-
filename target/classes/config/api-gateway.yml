@@ -3,6 +3,8 @@ server:
   port: 8060
 
 spring:
+  main:
+    allow-bean-definition-overriding: true
   cloud:
     gateway:
       discovery:
