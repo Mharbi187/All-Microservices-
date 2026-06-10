@@ -37,7 +37,16 @@ const eurekaClient = new Eureka({
   },
 });
 
-eurekaClient.start();
+// Wait for Eureka to be ready before registering
+setTimeout(() => {
+  eurekaClient.start((error) => {
+    if (error) {
+      console.error('Eureka registration error:', error);
+    } else {
+      console.log('Registered with Eureka successfully');
+    }
+  });
+}, 15000);
 
 // Make sure to unregister on exit
 process.on('SIGINT', () => {
