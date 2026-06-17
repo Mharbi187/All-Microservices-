@@ -14,4 +14,5 @@ public interface VolunteerRepository extends JpaRepository<Volunteer, UUID> {
     Optional<Volunteer> findByMatricule(String matricule);
     List<Volunteer> findByCommitteeIdAndAccountStatus(UUID committeeId, AccountStatus accountStatus);
     List<Volunteer> findByCommitteeId(UUID committeeId);
+    List<Volunteer> findByCommitteeIdInAndAccountStatus(List<UUID> committeeIds, AccountStatus accountStatus);
 }

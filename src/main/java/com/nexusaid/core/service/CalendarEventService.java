@@ -13,8 +13,10 @@ import com.nexusaid.core.repository.UserRepository;
 import com.nexusaid.core.repository.VolunteerRepository;
 import com.nexusaid.core.entity.enums.UserType;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -97,13 +99,16 @@ public class CalendarEventService {
     public CalendarEventDTO registerForEvent(UUID eventId) {
         User currentUser = authService.getCurrentUser();
         Volunteer volunteer = volunteerRepository.findById(currentUser.getId())
-                .orElseThrow(() -> new IllegalArgumentException("Only volunteers can register for events"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Seuls les volontaires peuvent s'inscrire à un événement. Votre compte est de type : " + currentUser.getType().name()));
 
         CalendarEvent event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new IllegalArgumentException("Event not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Événement introuvable"));
 
-        if (event.getMaxParticipants() != null && event.getParticipants().size() >= event.getMaxParticipants() && !event.getParticipants().contains(volunteer)) {
-            throw new IllegalStateException("Event is already full");
+        if (event.getMaxParticipants() != null
+                && event.getParticipants().size() >= event.getMaxParticipants()
+                && !event.getParticipants().contains(volunteer)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Cet événement est complet");
         }
 
         boolean isRegistering = false;
@@ -115,7 +120,7 @@ public class CalendarEventService {
         }
 
         CalendarEvent saved = eventRepository.save(event);
-        
+
         try {
             emailService.sendEventRegistrationEmail(volunteer.getEmail(), volunteer.getFullName(), saved, isRegistering);
         } catch (Exception e) {

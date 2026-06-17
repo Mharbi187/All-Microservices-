@@ -192,5 +192,4 @@ public class ProfileController {
     public ResponseEntity<List<Map<String, Object>>> getDonors(
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
         return ResponseEntity.ok(profileService.getDonors(userDetails.getUser().getId()));
-    }
-}
+    }}

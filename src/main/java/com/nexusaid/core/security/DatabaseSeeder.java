@@ -49,6 +49,35 @@ import com.nexusaid.core.repository.CalendarEventRepository;
 import com.nexusaid.core.entity.NewsItem;
 import com.nexusaid.core.repository.NewsRepository;
 
+// Diffusion
+import com.nexusaid.core.entity.domains.diffusion.Quiz;
+import com.nexusaid.core.entity.domains.diffusion.QuizQuestion;
+import com.nexusaid.core.repository.domains.diffusion.QuizRepository;
+
+// Social
+import com.nexusaid.core.entity.domains.social.Family;
+import com.nexusaid.core.entity.domains.social.SocialAction;
+import com.nexusaid.core.repository.domains.social.FamilyRepository;
+import com.nexusaid.core.repository.domains.social.SocialActionRepository;
+
+// Santé
+import com.nexusaid.core.entity.domains.sante.BloodDonation;
+import com.nexusaid.core.entity.domains.sante.HealthAction;
+import com.nexusaid.core.repository.domains.sante.BloodDonationRepository;
+import com.nexusaid.core.repository.domains.sante.HealthActionRepository;
+
+// Jeunesse
+import com.nexusaid.core.entity.domains.jeunesse.MicroProject;
+import com.nexusaid.core.entity.domains.jeunesse.YouthIntegrationForm;
+import com.nexusaid.core.repository.domains.jeunesse.MicroProjectRepository;
+import com.nexusaid.core.repository.domains.jeunesse.YouthIntegrationFormRepository;
+
+// Secourisme
+import com.nexusaid.core.entity.domains.secourisme.RescueEquipment;
+import com.nexusaid.core.entity.domains.secourisme.RcpEvaluation;
+import com.nexusaid.core.repository.domains.secourisme.RescueEquipmentRepository;
+import com.nexusaid.core.repository.domains.secourisme.RcpEvaluationRepository;
+
 @Configuration
 @RequiredArgsConstructor
 public class DatabaseSeeder {
@@ -567,6 +596,233 @@ public class DatabaseSeeder {
                 .build());
 
             System.out.println("News Seeding Complete!");
+        };
+    }
+
+    @Bean
+    public CommandLineRunner seedDiffusionData(
+            QuizRepository quizRepository,
+            CommitteeRepository committeeRepository,
+            UserRepository userRepository) {
+        return args -> {
+            if (quizRepository.findAll().stream().anyMatch(q -> q.getTitle().equals("Bases du Secourisme"))) return;
+            System.out.println("Starting Database Seeding for Quizzes...");
+
+            var users = userRepository.findAll();
+            if (users.isEmpty()) return;
+            var admin = users.stream().filter(u -> u.getEmail().contains("president.national")).findFirst().orElse(users.get(0));
+
+            var committees = committeeRepository.findAll();
+            if (committees.isEmpty()) return;
+            Committee national = committees.stream().filter(c -> c.getType() == CommitteeType.NATIONAL).findFirst().orElse(committees.get(0));
+
+            Quiz quiz1 = Quiz.builder()
+                .title("Bases du Secourisme")
+                .description("Testez vos connaissances sur les gestes qui sauvent.")
+                .category("SECOURISME")
+                .status("PUBLISHED")
+                .targetScope(CommitteeType.NATIONAL)
+                .createdBy(admin)
+                .committee(national)
+                .minScore(7)
+                .timeLimit(10)
+                .build();
+            
+            QuizQuestion q1 = QuizQuestion.builder()
+                .quiz(quiz1)
+                .text("Que faire en cas de brûlure légère ?")
+                .type("MULTIPLE_CHOICE")
+                .points(10)
+                .options(List.of("Mettre du beurre", "Refroidir sous l'eau", "Percer la cloque", "Ne rien faire"))
+                .correctAnswers(List.of(1))
+                .build();
+            quiz1.getQuestions().add(q1);
+
+            quizRepository.save(quiz1);
+
+            Quiz quiz2 = Quiz.builder()
+                .title("Histoire du Mouvement")
+                .description("Connaissez-vous l'histoire du Croissant Rouge ?")
+                .category("HISTOIRE")
+                .status("PUBLISHED")
+                .targetScope(CommitteeType.NATIONAL)
+                .createdBy(admin)
+                .committee(national)
+                .minScore(5)
+                .timeLimit(5)
+                .build();
+            quizRepository.save(quiz2);
+
+            System.out.println("Quizzes Seeding Complete!");
+        };
+    }
+
+    @Bean
+    public CommandLineRunner seedSocialData(
+            FamilyRepository familyRepository,
+            SocialActionRepository socialActionRepository,
+            CommitteeRepository committeeRepository,
+            UserRepository userRepository) {
+        return args -> {
+            if (familyRepository.findAll().stream().anyMatch(f -> f.getFamilyName().equals("Ben Youssef"))) return;
+            System.out.println("Starting Database Seeding for Social...");
+
+            var committees = committeeRepository.findAll();
+            if (committees.isEmpty()) return;
+            Committee local = committees.stream().filter(c -> c.getType() == CommitteeType.LOCAL).findFirst().orElse(committees.get(0));
+
+            var users = userRepository.findAll();
+            UUID userId = users.isEmpty() ? UUID.randomUUID() : users.get(0).getId();
+
+            Family f1 = new Family();
+            f1.setFamilyName("Ben Youssef");
+            f1.setMembers(5);
+            f1.setAddress("Cité Ettadhamen, Ariana");
+            f1.setPhoneNumber("55123456");
+            f1.setCommitteeId(local.getId());
+            f1 = familyRepository.save(f1);
+
+            Family f2 = new Family();
+            f2.setFamilyName("Trabelsi");
+            f2.setMembers(3);
+            f2.setAddress("Mnihla, Ariana");
+            f2.setPhoneNumber("98123456");
+            f2.setCommitteeId(local.getId());
+            f2 = familyRepository.save(f2);
+
+            SocialAction sa1 = new SocialAction();
+            sa1.setTitle("Distribution de couffins de Ramadan");
+            sa1.setActionType("DISTRIBUTION");
+            sa1.setPerformedAt(LocalDateTime.now().minusDays(5));
+            sa1.setFamilyId(f1.getId());
+            sa1.setPerformedBy(userId);
+            socialActionRepository.save(sa1);
+
+            System.out.println("Social Data Seeding Complete!");
+        };
+    }
+
+    @Bean
+    public CommandLineRunner seedJeunesseData(
+            MicroProjectRepository microProjectRepository,
+            YouthIntegrationFormRepository youthIntegrationFormRepository,
+            CommitteeRepository committeeRepository,
+            VolunteerRepository volunteerRepository) {
+        return args -> {
+            if (microProjectRepository.findAll().stream().anyMatch(m -> m.getTitle().equals("Recyclage Plastique dans les Lycées"))) return;
+            System.out.println("Starting Database Seeding for Jeunesse...");
+
+            var committees = committeeRepository.findAll();
+            if (committees.isEmpty()) return;
+            Committee local = committees.stream().filter(c -> c.getType() == CommitteeType.LOCAL).findFirst().orElse(committees.get(0));
+
+            var volunteers = volunteerRepository.findAll();
+            if (volunteers.isEmpty()) return;
+            UUID volId = volunteers.get(0).getId();
+
+            MicroProject mp1 = new MicroProject();
+            mp1.setTitle("Recyclage Plastique dans les Lycées");
+            mp1.setDescription("Projet écologique mené par les jeunes volontaires.");
+            mp1.setStatus("IN_PROGRESS");
+            mp1.setTheme("Environnement");
+            mp1.setLeadVolunteerId(volId);
+            mp1.setStartDate(LocalDate.now().minusDays(10));
+            mp1.setCommitteeId(local.getId());
+            microProjectRepository.save(mp1);
+
+            YouthIntegrationForm form1 = new YouthIntegrationForm();
+            form1.setVolunteerId(volId);
+            form1.setVolunteerName("Aymen Gharbi");
+            form1.setInterestAreas(List.of("Environnement", "Secourisme"));
+            youthIntegrationFormRepository.save(form1);
+
+            System.out.println("Jeunesse Data Seeding Complete!");
+        };
+    }
+
+    @Bean
+    public CommandLineRunner seedSanteData(
+            HealthActionRepository healthActionRepository,
+            BloodDonationRepository bloodDonationRepository,
+            CommitteeRepository committeeRepository,
+            VolunteerRepository volunteerRepository) {
+        return args -> {
+            if (healthActionRepository.findAll().stream().anyMatch(h -> h.getTitle().equals("Caravane Médicale Rurale"))) return;
+            System.out.println("Starting Database Seeding for Sante...");
+
+            var committees = committeeRepository.findAll();
+            if (committees.isEmpty()) return;
+            Committee local = committees.stream().filter(c -> c.getType() == CommitteeType.LOCAL).findFirst().orElse(committees.get(0));
+
+            var volunteers = volunteerRepository.findAll();
+            if (volunteers.isEmpty()) return;
+            UUID volId = volunteers.get(0).getId();
+
+            HealthAction ha1 = new HealthAction();
+            ha1.setTitle("Caravane Médicale Rurale");
+            ha1.setCategory("Dépistage Diabète");
+            ha1.setLocation("Village X");
+            ha1.setStartDate(LocalDate.now().minusDays(20));
+            ha1.setStatus("COMPLETED");
+            ha1.setBeneficiariesCount(120);
+            ha1.setCommittee(local);
+            healthActionRepository.save(ha1);
+
+            BloodDonation bd1 = new BloodDonation();
+            bd1.setDonationDate(LocalDate.now().minusDays(3));
+            bd1.setQuantity(450.0);
+            bd1.setBloodType("A+");
+            bd1.setDonorVolunteerId(volId);
+            bd1.setCommitteeId(local.getId());
+            bloodDonationRepository.save(bd1);
+
+            System.out.println("Sante Data Seeding Complete!");
+        };
+    }
+
+    @Bean
+    public CommandLineRunner seedSecourismeData(
+            RescueEquipmentRepository rescueEquipmentRepository,
+            RcpEvaluationRepository rcpEvaluationRepository,
+            VolunteerRepository volunteerRepository,
+            CommitteeRepository committeeRepository) {
+        return args -> {
+            if (rescueEquipmentRepository.findAll().stream().anyMatch(r -> r.getName().equals("Défibrillateur Automatique (DAE)"))) return;
+            System.out.println("Starting Database Seeding for Secourisme...");
+
+            var committees = committeeRepository.findAll();
+            if (committees.isEmpty()) return;
+            Committee local = committees.stream().filter(c -> c.getType() == CommitteeType.LOCAL).findFirst().orElse(committees.get(0));
+
+            var volunteers = volunteerRepository.findAll();
+            UUID volId = volunteers.isEmpty() ? null : volunteers.get(0).getId();
+
+            RescueEquipment eq1 = new RescueEquipment();
+            eq1.setName("Défibrillateur Automatique (DAE)");
+            eq1.setType("MEDICAL");
+            eq1.setQuantity(2);
+            eq1.setStatus("AVAILABLE");
+            eq1.setAssignedToCommittee(local);
+            rescueEquipmentRepository.save(eq1);
+
+            RescueEquipment eq2 = new RescueEquipment();
+            eq2.setName("Trousse de secours complète");
+            eq2.setType("CONSUMABLE");
+            eq2.setQuantity(15);
+            eq2.setStatus("AVAILABLE");
+            eq2.setAssignedToCommittee(local);
+            rescueEquipmentRepository.save(eq2);
+
+            RcpEvaluation rcp1 = new RcpEvaluation();
+            rcp1.setTrainerName("Formateur X");
+            rcp1.setEvaluationDate(LocalDate.now().minusDays(1));
+            rcp1.setScoreIa(new java.math.BigDecimal("90.5"));
+            rcp1.setScoreTrainer(new java.math.BigDecimal("95.0"));
+            rcp1.setParticipantName("Aymen Gharbi");
+            rcp1.setCommittee(local);
+            rcpEvaluationRepository.save(rcp1);
+
+            System.out.println("Secourisme Data Seeding Complete!");
         };
     }
 }
