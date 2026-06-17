@@ -215,7 +215,7 @@ spring:
         - id: disaster-api
           uri: ${DISASTER_DETECTION_URL:http://disaster-detection:8000}
           predicates:
-            - Path=/api/v1/disasters/**,/api/v1/radar,/api/v1/crisis-room/**,/api/v1/teams/**,/api/v1/logistics/**,/api/v1/volunteers/**/crisis-rooms
+            - Path=/api/v1/disasters/**,/api/v1/radar,/api/v1/crisis-room/**,/api/v1/teams/**,/api/v1/logistics/**,/api/v1/volunteers/**
 
         # CPR Assistant - REST API (Health & Session Management)
         # Uses direct container URL to avoid Eureka registration race condition
