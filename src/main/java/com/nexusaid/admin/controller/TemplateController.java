@@ -81,8 +81,7 @@ public class TemplateController {
         return ResponseEntity.ok(
                 versionService.getVersionHistory(id).stream()
                         .map(TemplateVersionDTO::from)
-                        .toList()
-        );
+                        .toList());
     }
 
     @PostMapping("/versions/{versionId}/publish")
@@ -114,7 +113,7 @@ public class TemplateController {
     public ResponseEntity<byte[]> exportVersionPdf(
             @PathVariable UUID id,
             @PathVariable UUID versionId) {
-        
+
         TemplateVersion version = versionService.getVersionHistory(id).stream()
                 .filter(v -> v.getId().equals(versionId))
                 .findFirst()
@@ -124,7 +123,8 @@ public class TemplateController {
         byte[] pdfBytes = pdfGenerationService.generateFromHtml(html);
 
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"template-" + id + "-v" + version.getVersionNumber() + ".pdf\"")
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"template-" + id + "-v" + version.getVersionNumber() + ".pdf\"")
                 .contentType(MediaType.APPLICATION_PDF)
                 .body(pdfBytes);
     }

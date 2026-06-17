@@ -11,13 +11,17 @@ import java.time.Duration;
 import java.util.Map;
 
 /**
- * Generates PDFs by delegating to the external pdf-service (Node.js + Puppeteer).
+ * Generates PDFs by delegating to the external pdf-service (Node.js +
+ * Puppeteer).
  *
  * Architecture:
- * - PRIMARY: Calls pdf-service via HTTP — full CSS/HTML fidelity with Chromium rendering.
- * - FALLBACK: If PDF_ENGINE=openpdf or pdf-service is unavailable, a basic text PDF is returned.
+ * - PRIMARY: Calls pdf-service via HTTP — full CSS/HTML fidelity with Chromium
+ * rendering.
+ * - FALLBACK: If PDF_ENGINE=openpdf or pdf-service is unavailable, a basic text
+ * PDF is returned.
  *
- * The pdf-service renders HTML with puppeteer-core + system Chromium for a minimal Docker footprint.
+ * The pdf-service renders HTML with puppeteer-core + system Chromium for a
+ * minimal Docker footprint.
  */
 @Service
 @RequiredArgsConstructor
@@ -64,7 +68,8 @@ public class PdfGenerationService {
     }
 
     /**
-     * Basic OpenPDF fallback — strips HTML tags and generates a simple plain text PDF.
+     * Basic OpenPDF fallback — strips HTML tags and generates a simple plain text
+     * PDF.
      * Used only when Puppeteer is unavailable or PDF_ENGINE=openpdf.
      */
     private byte[] generateOpenPdfFallback(String html) {

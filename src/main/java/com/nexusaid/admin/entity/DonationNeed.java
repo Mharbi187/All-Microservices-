@@ -69,7 +69,6 @@ public class DonationNeed {
     private String creatorName;
 
     /** Titre du rôle du créateur (ex: RESP_SECOURISME) */
-    @Column(name = "created_by_role", nullable = false)
     private String creatorRoleName;
 
     // ─── Validation (Président / VP) ──────────────────────────────────────────

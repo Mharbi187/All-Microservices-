@@ -160,7 +160,8 @@ public class ReportSubmissionService {
         // 2 — Encrypt data if requested
         if (encrypt && report.getFilledData() != null) {
             EncryptionService.EncryptedData encryptedData = encryptionService.encrypt(filledDataJson);
-            com.fasterxml.jackson.databind.node.ObjectNode secureNode = new com.fasterxml.jackson.databind.ObjectMapper().createObjectNode();
+            com.fasterxml.jackson.databind.node.ObjectNode secureNode = new com.fasterxml.jackson.databind.ObjectMapper()
+                    .createObjectNode();
             secureNode.put("_encrypted", true);
             secureNode.put("cipherText", encryptedData.getCipherText());
             secureNode.put("iv", encryptedData.getIv());
@@ -190,7 +191,7 @@ public class ReportSubmissionService {
     public CompletableFuture<String> generateOfficialPdf(UUID reportId, boolean force, UUID generatedBy) {
         ReportInstance report = reportRepository.findById(reportId)
                 .orElseThrow(() -> new RuntimeException("Report not found: " + reportId));
-        
+
         if (!"FINALIZED".equals(report.getWorkflowStatus()) && !"ARCHIVED".equals(report.getWorkflowStatus())) {
             throw new IllegalStateException("Only FINALIZED or ARCHIVED reports can have official PDFs.");
         }
@@ -206,8 +207,7 @@ public class ReportSubmissionService {
 
         String html = previewService.renderFilledHtml(
                 report.getTemplateVersion() != null ? report.getTemplateVersion().getStructure() : null,
-                data
-        );
+                data);
         byte[] pdfBytes = pdfGenerationService.generateFromHtml(html);
 
         int year = LocalDateTime.now().getYear();
@@ -216,17 +216,19 @@ public class ReportSubmissionService {
 
         // Upload to MinIO
         fileStorageService.upload("reports", pdfKey, pdfBytes, "application/pdf");
-        
+
         // Save metadata
         report.setPdfStorageKey(pdfKey);
-        report.setPdfUrl("/api/v1/admin/reports/" + reportId + "/pdf"); // Direct download link or we can use PresignedUrl
+        report.setPdfUrl("/api/v1/admin/reports/" + reportId + "/pdf"); // Direct download link or we can use
+                                                                        // PresignedUrl
         report.setPdfGeneratedAt(LocalDateTime.now());
         report.setPdfVersion(version);
 
         reportRepository.save(report);
         auditLogService.log(reportId, "OFFICIAL_PDF_GENERATED", generatedBy);
-        
-        log.info("Official PDF generated for report {}: took {}ms, key={}", reportId, System.currentTimeMillis() - startTime, pdfKey);
+
+        log.info("Official PDF generated for report {}: took {}ms, key={}", reportId,
+                System.currentTimeMillis() - startTime, pdfKey);
 
         return CompletableFuture.completedFuture(report.getPdfUrl());
     }
@@ -242,15 +244,14 @@ public class ReportSubmissionService {
 
         String html = previewService.renderFilledHtml(
                 report.getTemplateVersion() != null ? report.getTemplateVersion().getStructure() : null,
-                data
-        );
-        
+                data);
+
         // Add draft watermark to HTML if needed here
-        html = html.replace("<div class='page'>", "<div class='page'><div style='position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-45deg);font-size:100px;color:rgba(200,200,200,0.3);z-index:9999;pointer-events:none;'>DRAFT</div>");
+        html = html.replace("<div class='page'>",
+                "<div class='page'><div style='position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-45deg);font-size:100px;color:rgba(200,200,200,0.3);z-index:9999;pointer-events:none;'>DRAFT</div>");
 
         return pdfGenerationService.generateFromHtml(html);
     }
-
 
     // ── Legacy: v1 block-based submission ────────────────────────────────────
 
@@ -276,7 +277,8 @@ public class ReportSubmissionService {
 
         for (ReportBlockSubmitDto blockDto : request.getBlocks()) {
             TemplateBlock templateBlock = templateBlockRepository.findById(blockDto.getTemplateBlockId())
-                    .orElseThrow(() -> new RuntimeException("Template block not found: " + blockDto.getTemplateBlockId()));
+                    .orElseThrow(
+                            () -> new RuntimeException("Template block not found: " + blockDto.getTemplateBlockId()));
 
             if (templateBlock.getIsSensitive()) {
                 EncryptionService.EncryptedData encryptedData = encryptionService.encrypt(blockDto.getContent());

@@ -92,7 +92,7 @@ public class ReportController {
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
 
         ReportInstance archived = submissionService.archiveReport(id, userDetails.getUser().getId(), encrypt);
-        
+
         java.util.Map<String, Object> response = new java.util.HashMap<>();
         response.put("message", "Report archived successfully.");
         response.put("reportId", id);
